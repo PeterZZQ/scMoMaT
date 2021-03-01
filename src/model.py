@@ -22,10 +22,10 @@ class cfrmModel(Module):
         self.label_c1 = torch.LongTensor(np.loadtxt(os.path.join(dir, 'cell_label_C1.txt'), skiprows=1, usecols=[1]))
         self.label_c2 = torch.LongTensor(np.loadtxt(os.path.join(dir, 'cell_label_C2.txt'), skiprows=1, usecols=[1]))
         # learnable parameters
-        self.A_1g = Parameter(torch.rand(N, N))
-        self.A_2r = Parameter(torch.rand(N, N))
-        self.D_gr = Parameter(torch.rand(N, 1))
-        self.D_12 = Parameter(torch.rand(N, 1))
+        self.A_1g = Parameter(torch.eye(N))
+        self.A_2r = Parameter(torch.eye(N))
+        self.D_gr = Parameter(torch.ones(N, 1))
+        self.D_12 = Parameter(torch.ones(N, 1))
         u, s, v = torch.svd(self.G)
         self.C_1g = Parameter(torch.FloatTensor(u[:, :N]))
         self.alpha[0] = 1 / s[0]
@@ -44,13 +44,12 @@ class cfrmModel(Module):
         return (A.t() @ A - torch.eye(A.shape[1])).pow(2).sum()
 
     def batch_loss(self):
-        print(self.C_1g[:10])
         loss1 = (self.G - self.C_1g @ self.A_1g @ self.C_g.t()).abs().sum()
         loss2 = (self.R - self.C_2r @ self.A_2r @ self.C_r.t()).abs().sum()
         loss3 = (self.A - self.C_r @ (self.D_gr * self.C_g.t())).abs().sum()
         loss4 = (self.A_1g - self.D_12 * self.A_2r).pow(2).mean()
         loss5 = sum(map(self.orthogonal_loss, [self.C_1g, self.C_2r, self.C_g, self.C_r]))
-        print(loss1.item(), loss2.item(), loss3.item(), loss4.item(), loss5.item())
+        # print(loss1.item(), loss2.item(), loss3.item(), loss4.item(), loss5.item())
         loss = self.alpha[0] * loss1 + self.alpha[1] * loss2 + self.alpha[2] * loss3 + self.alpha[3] * loss4 + self.alpha[4] * loss5
         return loss
 
