@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torch.optim as opt
 from torch.nn import Module, Parameter
 from sklearn.cluster import KMeans
+import utils
 
 class cfrmModel(Module):
     def __init__(self, dir, N=3, batch_size=100, lr=1e-3, dropout=0.1):
@@ -13,8 +14,14 @@ class cfrmModel(Module):
         self.alpha = torch.FloatTensor([1, 1, 1, 1, 1])
         self.dropout = dropout
         # data
-        self.G = torch.FloatTensor(np.loadtxt(os.path.join(dir, 'GxC1.txt'))).t()
-        self.R = torch.FloatTensor(np.loadtxt(os.path.join(dir, 'RxC2.txt'))).t()
+        counts_rna = np.loadtxt(os.path.join(dir, 'GxC1.txt')).T
+        counts_atac = np.loadtxt(os.path.join(dir, 'RxC2.txt')).T
+        
+        counts_rna = utils.preprocess(counts = counts_rna, mode = "quantile", modality = "RNA")
+        counts_atac = utils.preprocess(counts = counts_atac, mode = "quantile", modality= "ATAC")
+
+        self.G = torch.FloatTensor(counts_rna)
+        self.R = torch.FloatTensor(counts_atac)
         self.A = torch.FloatTensor(np.loadtxt(os.path.join(dir, 'RxG.txt')))
         assert self.A.shape[0] == self.R.shape[1]
         assert self.A.shape[1] == self.G.shape[1]
