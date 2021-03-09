@@ -367,5 +367,6 @@ class cfrmSparseModel(Module):
 #                         count = 0
 
 if __name__ == '__main__':
-    model = cfrmSparseModel(dir = '../data/real/BMMC/', N=20, lr=1e-3, interval=1, batch_size=0.2)
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model = cfrmSparseModel(dir = '../data/real/BMMC/', N=20, lr=1e-3, interval=1, batch_size=0.2).to(device)
     model.train_func(T=10000)

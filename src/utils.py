@@ -1,4 +1,6 @@
 import numpy as np
+import torch
+from torch_sparse import SparseTensor
 import matplotlib.pyplot as plt
 
 
@@ -182,4 +184,10 @@ def plot_latent(z1, z2, anno1 = None, anno2 = None, mode = "joint", save = None,
     
     print(save)
 
-
+def csr2st(A):
+    A = A.tocoo()
+    col = torch.LongTensor(A.col)
+    row = torch.LongTensor(A.row)
+    value = torch.FloatTensor(A.data)
+    sparse_sizes = A.shape
+    return SparseTensor(row=row, col=col, value=value, sparse_sizes=sparse_sizes)
