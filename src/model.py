@@ -260,6 +260,7 @@ class cfrmSparseModel(Module):
 class NewModel(Module):
     def __init__(self, dir, N=3, batch_size=1.0, interval=10, lr=1e-3, init='svd'):
         super().__init__()
+        self.N = N
         self.batch_size = batch_size
         self.interval = interval
         self.alpha = torch.FloatTensor([1, 1, 1, 1, 1, 1])
@@ -318,7 +319,8 @@ class NewModel(Module):
                      self.softmax(self.C_g[mask_g]).t()) - self.b_g[:, mask_g]).pow(2).mean()
             loss2 = (self.R[np.ix_(mask_2, mask_r)] - self.s_r[:, mask_r] * (self.softmax(self.C_2[mask_2].detach()) @
                      self.softmax(self.C_r[mask_r]).t()) - self.b_r[:, mask_r]).pow(2).mean()
-            loss3 = (self.A[mask_g] @ self.C_r - self.C_g[mask_g]).pow(2).mean()
+            loss3 = (self.A[:, mask_r].t() @ self.C_g - self.C_r[mask_r]).pow(2).mean()
+            # loss3 = (self.A[mask_g] @ self.C_r - self.C_g[mask_g]).pow(2).mean()
             loss4 = self.entropy_loss(self.C_g[mask_g]) + self.entropy_loss(self.C_r[mask_g])
         elif mode == 'valid':
             with torch.no_grad():
@@ -357,20 +359,20 @@ class NewModel(Module):
                     print("\t", i)
             if loss.item() < best_loss:
                 best_loss = loss.item()
-                torch.save(self.state_dict(), '../check_points/real.pt')
+                torch.save(self.state_dict(), f'../check_points/real_{self.N}.pt')
                 count = 0
             else:
                 count += 1
-                if count % 20 == 0:
+                if count % 100 == 0:
                     self.optimizer.param_groups[0]['lr'] *= 0.5
                     print('Epoch: {}, shrink lr to {:.4f}'.format(t + 1, self.optimizer.param_groups[0]['lr']))
                     if self.optimizer.param_groups[0]['lr'] < 1e-4:
                         break
                     else:
-                        self.load_state_dict(torch.load('../check_points/real.pt'))
+                        self.load_state_dict(torch.load(f'../check_points/real_{self.N}.pt'))
                         count = 0
 
 if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    model = NewModel(dir = '../data/real/BMMC/', N=25, lr=1e-3, interval=1, batch_size=0.2).to(device)
+    model = NewModel(dir = '../data/real/BMMC/', N=24, lr=1e-3, interval=1, batch_size=0.2).to(device)
     model.train_func(T=10000)
