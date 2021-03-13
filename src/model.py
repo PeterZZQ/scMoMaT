@@ -263,7 +263,7 @@ class NewModel(Module):
         self.N = N
         self.batch_size = batch_size
         self.interval = interval
-        self.alpha = torch.FloatTensor([1000, 1000, 1, 1])
+        self.alpha = torch.FloatTensor([1000, 1000, 1000, 1])
         # data
         counts_rna = sp.load_npz(os.path.join(dir, 'C1xG.npz'))
         counts_atac = sp.load_npz(os.path.join(dir, 'C2xR.npz')).astype(np.float32)
