@@ -363,7 +363,7 @@ class NewModel(Module):
                     count = 0
                 else:
                     count += 1
-                    if count % 100 == 0:
+                    if count % 20 == 0:
                         self.optimizer.param_groups[0]['lr'] *= 0.5
                         print('Epoch: {}, shrink lr to {:.4f}'.format(t + 1, self.optimizer.param_groups[0]['lr']))
                         if self.optimizer.param_groups[0]['lr'] < 1e-4:
