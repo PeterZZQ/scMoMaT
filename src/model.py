@@ -348,7 +348,7 @@ class NewModel(Module):
                 self.optimizer.step()
             if (t+1) % self.interval == 0:
                 loss, loss1, loss2, loss3, loss4 = self.batch_loss('valid')
-                print('Epoch {}, Training Loss: {:.4f}'.format(t + 1, loss.item()))
+                print('Epoch {}, Validating Loss: {:.4f}'.format(t + 1, loss.item()))
                 info = [
                     'loss RNA: {:.5f}'.format(loss1.item()),
                     'loss ATAC: {:.5f}'.format(loss2.item()),
@@ -357,21 +357,21 @@ class NewModel(Module):
                 ]
                 for i in info:
                     print("\t", i)
-            if loss.item() < best_loss:
-                best_loss = loss.item()
-                torch.save(self.state_dict(), f'../check_points/real_{self.N}.pt')
-                count = 0
-            else:
-                count += 1
-                if count % 100 == 0:
-                    self.optimizer.param_groups[0]['lr'] *= 0.5
-                    print('Epoch: {}, shrink lr to {:.4f}'.format(t + 1, self.optimizer.param_groups[0]['lr']))
-                    if self.optimizer.param_groups[0]['lr'] < 1e-4:
-                        break
-                    else:
-                        self.load_state_dict(torch.load(f'../check_points/real_{self.N}.pt'))
-                        count = 0
+                if loss.item() < best_loss:
+                    best_loss = loss.item()
+                    torch.save(self.state_dict(), f'../check_points/real_{self.N}.pt')
+                    count = 0
+                else:
+                    count += 1
+                    if count % 100 == 0:
+                        self.optimizer.param_groups[0]['lr'] *= 0.5
+                        print('Epoch: {}, shrink lr to {:.4f}'.format(t + 1, self.optimizer.param_groups[0]['lr']))
+                        if self.optimizer.param_groups[0]['lr'] < 1e-4:
+                            break
+                        else:
+                            self.load_state_dict(torch.load(f'../check_points/real_{self.N}.pt'))
+                            count = 0
 
 if __name__ == '__main__':
-    model = NewModel(dir = '../data/real/BMMC/', N=24, lr=1e-3, interval=5, batch_size=0.2)
+    model = NewModel(dir = '../data/real/BMMC/', N=24, lr=1e-3, interval=5, batch_size=0.25)
     model.train_func(T=10000)
