@@ -197,13 +197,13 @@ class cfrmSparseModel(Module):
                      self.C_g[mask_g].detach().t()).pow(2).mean()
             loss2 = (self.R[np.ix_(mask_2, mask_r)] - self.C_2[mask_2] @ (self.A_2r_l * self.A * self.A_2r_r).detach() @
                      self.C_r[mask_r].detach().t()).pow(2).mean()
-            loss4 = self.C_1[mask_1].abs().mean() + self.C_2[mask_2].abs().mean()
+            loss4 = (self.C_1[mask_1].mean(dim=0) - self.C_2[mask_2].mean(dim=0)).square().sum()
             loss3 = 0
         elif mode == 'C_gr':
             loss1 = (self.G[np.ix_(mask_1, mask_g)] - self.C_1[mask_1].detach() @ (self.A_1g_l * self.A * self.A_1g_r).detach() @ self.C_g[mask_g].t()).pow(2).mean()
             loss2 = (self.R[np.ix_(mask_2, mask_r)] - self.C_2[mask_2].detach() @ (self.A_2r_l * self.A * self.A_2r_r).detach() @ self.C_r[mask_r].t()).pow(2).mean()
             loss3 = (self.M[np.ix_(mask_g, mask_r)] - self.C_g[mask_g] @ (self.A_gr_l * self.A * self.A_gr_r).detach() @ self.C_r[mask_r].t()).pow(2).mean()
-            loss4 = self.C_g[mask_g].abs().mean() + self.C_r[mask_r].abs().mean()
+            loss4 = 0
         elif mode == 'A':
             loss1 = (self.G[np.ix_(mask_1, mask_g)] - self.C_1[mask_1].detach() @ (self.A_1g_l * self.A * self.A_1g_r) @ self.C_g[mask_g].detach().t()).pow(2).mean()
             loss2 = (self.R[np.ix_(mask_2, mask_r)] - self.C_2[mask_2].detach() @ (self.A_2r_l * self.A * self.A_2r_r) @ self.C_r[mask_r].detach().t()).pow(2).mean()
@@ -214,7 +214,7 @@ class cfrmSparseModel(Module):
                 loss1 = (self.G - self.C_1 @ (self.A_1g_l * self.A * self.A_1g_r) @ self.C_g.t()).pow(2).mean()
                 loss2 = (self.R - self.C_2 @ (self.A_2r_l * self.A * self.A_2r_r) @ self.C_r.t()).pow(2).mean()
                 loss3 = (self.M - self.C_g @ (self.A_gr_l * self.A * self.A_gr_r) @ self.C_r.t()).pow(2).mean()
-                loss4 = (self.C_1.abs().mean() + self.C_2.abs().mean() + self.C_g.abs().mean() + self.C_r.abs().mean())
+                loss4 = (self.C_1.mean(dim=0) - self.C_2.mean(dim=0)).abs().sum()
         else:
             raise NotImplementedError
         loss = self.alpha[0] * loss1 + self.alpha[1] * loss2 + self.alpha[2] * loss3 + self.alpha[3] * loss4
@@ -238,13 +238,13 @@ class cfrmSparseModel(Module):
                     'loss RNA: {:.5f}'.format(loss1.item()),
                     'loss ATAC: {:.5f}'.format(loss2.item()),
                     'loss gene act: {:.5f}'.format(loss3.item()),
-                    'loss sparse: {:.5f}'.format(loss4.item()),
+                    'loss merge: {:.5f}'.format(loss4.item()),
                 ]
                 for i in info:
                     print("\t", i)
             if loss.item() < best_loss:
                 best_loss = loss.item()
-                torch.save(self.state_dict(), '../check_points/real.pt')
+                torch.save(self.state_dict(), '../check_points/real_cfrm.pt')
                 count = 0
             else:
                 count += 1
@@ -254,7 +254,7 @@ class cfrmSparseModel(Module):
                     if self.optimizer.param_groups[0]['lr'] < 1e-4:
                         break
                     else:
-                        self.load_state_dict(torch.load('../check_points/real.pt'))
+                        self.load_state_dict(torch.load('../check_points/real_cfrm.pt'))
                         count = 0
 
 class NewModel(Module):
@@ -373,5 +373,6 @@ class NewModel(Module):
                             count = 0
 
 if __name__ == '__main__':
-    model = NewModel(dir = '../data/real/BMMC/', N=24, lr=1e-3, interval=5, batch_size=0.25)
+    model = cfrmSparseModel(dir = '../data/real/BMMC/', N=25, lr=1e-3, interval=5, batch_size=0.25)
+    # model = NewModel(dir = '../data/real/BMMC/', N=24, lr=1e-3, interval=5, batch_size=0.25)
     model.train_func(T=10000)
