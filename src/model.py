@@ -242,20 +242,20 @@ class cfrmSparseModel(Module):
                 ]
                 for i in info:
                     print("\t", i)
-            if loss.item() < best_loss:
-                best_loss = loss.item()
-                torch.save(self.state_dict(), '../check_points/real_cfrm.pt')
-                count = 0
-            else:
-                count += 1
-                if count % 20 == 0:
-                    self.optimizer.param_groups[0]['lr'] *= 0.5
-                    print('Epoch: {}, shrink lr to {:.4f}'.format(t + 1, self.optimizer.param_groups[0]['lr']))
-                    if self.optimizer.param_groups[0]['lr'] < 1e-4:
-                        break
-                    else:
-                        self.load_state_dict(torch.load('../check_points/real_cfrm.pt'))
-                        count = 0
+                if loss.item() < best_loss:
+                    best_loss = loss.item()
+                    torch.save(self.state_dict(), '../check_points/real_cfrm.pt')
+                    count = 0
+                else:
+                    count += 1
+                    if count % 20 == 0:
+                        self.optimizer.param_groups[0]['lr'] *= 0.5
+                        print('Epoch: {}, shrink lr to {:.4f}'.format(t + 1, self.optimizer.param_groups[0]['lr']))
+                        if self.optimizer.param_groups[0]['lr'] < 1e-4:
+                            break
+                        else:
+                            self.load_state_dict(torch.load('../check_points/real_cfrm.pt'))
+                            count = 0
 
 class NewModel(Module):
     def __init__(self, dir, N=3, batch_size=1.0, interval=10, lr=1e-3, init='svd'):
