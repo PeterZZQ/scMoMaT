@@ -77,6 +77,7 @@ def preprocess(counts, mode = "standard", modality = "RNA"):
         # region by gene matrix
         counts = counts/(np.sum(counts, axis = 0)[None,:] + 1e-6)
 
+
     return counts
 
 def plot_latent(z1, z2, anno1 = None, anno2 = None, mode = "joint", save = None, figsize = (20,10), axis_label = "Latent", **kwargs):
@@ -227,3 +228,4 @@ def match_alignment(z_rna, z_atac, k = 10):
 
     z_atac = torch.FloatTensor(K).mm(z_rna)
     return z_rna, z_atac
+
