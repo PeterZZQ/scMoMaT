@@ -375,3 +375,101 @@ class NewModel(Module):
 if __name__ == '__main__':
     model = NewModel(dir = '../data/real/BMMC/', N=24, lr=1e-3, interval=5, batch_size=0.25)
     model.train_func(T=10000)
+
+    
+    
+class classicCFRM(Module):
+    def __init__(self, dir, N=3, batch_size=100, lr=1e-3, dropout=0.1, init = "random"):
+        super().__init__()
+        self.batch_size = batch_size
+        self.alpha = torch.FloatTensor([1, 1, 1])
+        self.dropout = dropout
+        self.N = N
+        # data
+        counts_rna = np.loadtxt(os.path.join(dir, 'GxC1.txt')).T
+        counts_atac = np.loadtxt(os.path.join(dir, 'RxC2.txt')).T
+        
+        counts_rna = preprocess(counts = counts_rna, mode = "quantile", modality = "RNA")
+        counts_atac = preprocess(counts = counts_atac, mode = "quantile", modality= "ATAC")
+
+        self.G = torch.FloatTensor(counts_rna)
+        self.R = torch.FloatTensor(counts_atac)
+        self.A = torch.FloatTensor(np.loadtxt(os.path.join(dir, 'RxG.txt')))
+        assert self.A.shape[0] == self.R.shape[1]
+        assert self.A.shape[1] == self.G.shape[1]
+        self.label_g = torch.LongTensor(np.loadtxt(os.path.join(dir, 'gene_label.txt')))
+        self.label_c1 = torch.LongTensor(np.loadtxt(os.path.join(dir, 'cell_label_C1.txt'), skiprows=1, usecols=[1]))
+        self.label_c2 = torch.LongTensor(np.loadtxt(os.path.join(dir, 'cell_label_C2.txt'), skiprows=1, usecols=[1]))
+
+        # learnable parameters
+        if init == "svd":
+            u_g, s_g, v_g = torch.svd(self.G)
+            self.C_1 = u_g[:, :N]
+            self.C_g = v_g[:, :N]        
+
+            u_r, s_r, v_r = torch.svd(self.R)
+            self.C_2 = u_r[:, :N]
+            self.C_r = v_r[:, :N]
+
+        if init == "random":
+            self.C_1, _ = torch.qr(torch.randn((self.G.shape[0],N)))
+            self.C_2, _ = torch.qr(torch.randn((self.R.shape[0],N)))
+            self.C_g, _ = torch.qr(torch.randn((self.G.shape[1],N)))
+            self.C_r, _ = torch.qr(torch.randn((self.R.shape[1],N)))
+
+
+        self.A_1g = self.C_1.t() @ self.G @ self.C_g
+        self.A_2r = self.C_2.t() @ self.R @ self.C_r
+        self.A_rg = self.C_r.t() @ self.A @ self.C_g
+
+        loss = self.loss()
+        for l in loss:
+            print(l.item())
+        
+       
+    def loss(self):
+        loss1 = (self.G - self.C_1 @ self.A_1g @ self.C_g.t()).pow(2).mean()
+        loss2 = (self.R - self.C_2 @ self.A_2r @ self.C_r.t()).pow(2).mean()
+        loss3 = (self.A - self.C_r @ self.A_rg @ self.C_g.t()).pow(2).mean()
+        loss = self.alpha[0] * loss1 + self.alpha[1] * loss2 + self.alpha[2] * loss3
+
+        return loss, self.alpha[0] * loss1, self.alpha[1] * loss2, self.alpha[2] * loss3
+
+    def train_func(self, T):
+        for t in range(T):
+            for mode in ['C_1', 'C_2', 'C_r', 'C_g']:
+                if mode == 'C_1':
+                    M = self.alpha[0] * (self.G @ self.C_g @ self.C_g.t() @ self.G.t())
+                    s_g, u_g = torch.eig(M, eigenvectors=True)
+                    self.C_1 = u_g[:, :self.N]
+
+                elif mode == 'C_2':
+                    M = self.alpha[1] * (self.R @ self.C_r @ self.C_r.t() @ self.R.t())
+                    s_g, u_g = torch.eig(M, eigenvectors=True)
+                    self.C_2 = u_g[:, :self.N]
+
+                elif mode == 'C_r':
+                    M = self.alpha[1] * (self.R.t() @ self.C_2 @ self.C_2.t() @ self.R) + self.alpha[2] * (self.A @ self.C_g @ self.C_g.t() @ self.A.t())
+                    s_g, u_g = torch.eig(M, eigenvectors=True)
+                    self.C_r = u_g[:, :self.N]
+
+                elif mode == 'C_g':
+                    M = self.alpha[0] * (self.G.t() @ self.C_1 @ self.C_1.t() @ self.G) + self.alpha[2] * (self.A.t() @ self.C_r @ self.C_r.t() @ self.A)
+                    s_g, u_g = torch.eig(M, eigenvectors=True)
+                    self.C_g = u_g[:, :self.N]
+            
+            self.A_1g = self.C_1.t() @ self.G @ self.C_g
+            self.A_2r = self.C_2.t() @ self.R @ self.C_r
+            self.A_rg = self.C_r.t() @ self.A @ self.C_g
+            
+            loss, loss1, loss2, loss3 = self.loss()
+            print('Epoch {}, Training Loss: {:.4f}'.format(t+1, loss.item()))
+            info = [
+                'loss RNA: {:.5f}'.format(loss1.item()),
+                'loss ATAC: {:.5f}'.format(loss2.item()),
+                'loss gene act: {:.5f}'.format(loss3.item())
+            ]
+            for i in info:
+                print("\t", i)
+
+                    
