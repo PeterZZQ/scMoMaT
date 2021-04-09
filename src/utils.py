@@ -72,6 +72,7 @@ def preprocess(counts, mode = "standard", modality = "RNA"):
         else:
             # make binary
             counts = (counts > 0).astype(np.float) 
+            # counts = counts / np.sum(counts, axis = 1)[:,None]
     
     elif mode == "gact":
         # region by gene matrix
