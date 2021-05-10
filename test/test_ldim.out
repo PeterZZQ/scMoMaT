@@ -1,0 +1,1123 @@
+---------------------------------------
+Begin PBS Prologue Thu May  6 14:39:01 EDT 2021
+Job ID:     6742832.sched-hive.pace.gatech.edu
+User ID:    zzhang834
+Job name:   test_cfrm
+Queue:      hive-gpu-short
+End PBS Prologue Thu May  6 14:39:01 EDT 2021
+---------------------------------------
+/var/spool/torque/mom_priv/jobs/6742832.sched-hive.pace.gatech.edu.SC: line 13: 353634 Killed                  python test_simulated.py
+---------------------------------------
+Begin PBS Epilogue Thu May  6 23:57:13 EDT 2021
+Job ID:     6742832.sched-hive.pace.gatech.edu
+User ID:    zzhang834
+Job name:   test_cfrm
+Resources:  nodes=1:ppn=4:gpus=1,walltime=10:20:00,neednodes=1:ppn=4:gpus=1
+Rsrc Used:  cput=09:39:07,vmem=145293788kb,walltime=09:18:12,mem=132350356kb,energy_used=0
+Queue:      hive-gpu-short
+Nodes:     
+atl1-1-01-018-31.pace.gatech.edu
+End PBS Epilogue Thu May  6 23:57:13 EDT 2021
+---------------------------------------
+---------------------------------------
+Begin PBS Prologue Fri May  7 00:29:05 EDT 2021
+Job ID:     6744248.sched-hive.pace.gatech.edu
+User ID:    zzhang834
+Job name:   test_cfrm
+Queue:      hive-gpu-short
+End PBS Prologue Fri May  7 00:29:05 EDT 2021
+---------------------------------------
+../src/utils.py:121: RuntimeWarning: More than 20 figures have been opened. Figures created through the pyplot interface (`matplotlib.pyplot.figure`) are retained until explicitly closed and may consume too much memory. (To control this warning, see the rcParam `figure.max_open_warning`).
+  fig = plt.figure(figsize = figsize)
+data: 2b5c_ziqi1
+latent_dim: 3
+batch_size: 0.1
+run: 0
+Epoch 5000, Validating Loss: -126.3893
+	 loss 1: 26.37396
+	 loss 2: 45.93079
+	 loss 3: -99.99895
+	 loss 4: -98.69506
+Epoch 10000, Validating Loss: -129.0899
+	 loss 1: 25.52269
+	 loss 2: 44.25747
+	 loss 3: -99.99922
+	 loss 4: -98.87086
+Final Loss is -129.08994
+data: 2b5c_ziqi1
+latent_dim: 3
+batch_size: 0.1
+run: 1
+Epoch 5000, Validating Loss: -126.3419
+	 loss 1: 26.41768
+	 loss 2: 45.95149
+	 loss 3: -99.99840
+	 loss 4: -98.71269
+Epoch 10000, Validating Loss: -126.8931
+	 loss 1: 26.34946
+	 loss 2: 45.89371
+	 loss 3: -99.99936
+	 loss 4: -99.13691
+Final Loss is -126.89310
+data: 2b5c_ziqi1
+latent_dim: 3
+batch_size: 0.1
+run: 2
+Epoch 5000, Validating Loss: -126.5564
+	 loss 1: 26.36942
+	 loss 2: 45.92636
+	 loss 3: -99.99909
+	 loss 4: -98.85311
+Epoch 10000, Validating Loss: -133.8716
+	 loss 1: 23.83109
+	 loss 2: 41.05506
+	 loss 3: -99.99945
+	 loss 4: -98.75826
+Final Loss is -133.87157
+data: 2b5c_ziqi1
+latent_dim: 3
+batch_size: 0.5
+run: 0
+Epoch 5000, Validating Loss: -135.4569
+	 loss 1: 23.39324
+	 loss 2: 40.43954
+	 loss 3: -99.99998
+	 loss 4: -99.28968
+Epoch 10000, Validating Loss: -135.6694
+	 loss 1: 23.38198
+	 loss 2: 40.41693
+	 loss 3: -99.99997
+	 loss 4: -99.46831
+Final Loss is -135.66937
+data: 2b5c_ziqi1
+latent_dim: 3
+batch_size: 0.5
+run: 1
+Epoch 5000, Validating Loss: -135.3229
+	 loss 1: 23.41292
+	 loss 2: 40.47958
+	 loss 3: -99.99993
+	 loss 4: -99.21542
+Epoch 10000, Validating Loss: -135.6649
+	 loss 1: 23.37916
+	 loss 2: 40.42292
+	 loss 3: -99.99998
+	 loss 4: -99.46696
+Final Loss is -135.66486
+data: 2b5c_ziqi1
+latent_dim: 3
+batch_size: 0.5
+run: 2
+Epoch 5000, Validating Loss: -135.4914
+	 loss 1: 23.39001
+	 loss 2: 40.43690
+	 loss 3: -99.99994
+	 loss 4: -99.31841
+Epoch 10000, Validating Loss: -135.6715
+	 loss 1: 23.38293
+	 loss 2: 40.42006
+	 loss 3: -99.99998
+	 loss 4: -99.47455
+Final Loss is -135.67154
+data: 2b5c_ziqi1
+latent_dim: 3
+batch_size: 1
+run: 0
+Epoch 5000, Validating Loss: -135.6696
+	 loss 1: 23.34669
+	 loss 2: 40.37745
+	 loss 3: -99.99998
+	 loss 4: -99.39376
+Epoch 10000, Validating Loss: -135.8447
+	 loss 1: 23.32882
+	 loss 2: 40.36326
+	 loss 3: -99.99998
+	 loss 4: -99.53674
+Final Loss is -135.84465
+data: 2b5c_ziqi1
+latent_dim: 3
+batch_size: 1
+run: 1
+Epoch 5000, Validating Loss: -135.7237
+	 loss 1: 23.34127
+	 loss 2: 40.37672
+	 loss 3: -99.99999
+	 loss 4: -99.44171
+Epoch 10000, Validating Loss: -135.8566
+	 loss 1: 23.32809
+	 loss 2: 40.36330
+	 loss 3: -99.99999
+	 loss 4: -99.54803
+Final Loss is -135.85663
+data: 2b5c_ziqi1
+latent_dim: 3
+batch_size: 1
+run: 2
+Epoch 5000, Validating Loss: -135.7482
+	 loss 1: 23.33932
+	 loss 2: 40.37334
+	 loss 3: -100.00000
+	 loss 4: -99.46089
+Epoch 10000, Validating Loss: -135.8675
+	 loss 1: 23.32764
+	 loss 2: 40.36262
+	 loss 3: -100.00000
+	 loss 4: -99.55772
+Final Loss is -135.86746
+data: 2b5c_ziqi1
+latent_dim: 5
+batch_size: 0.1
+run: 0
+Epoch 5000, Validating Loss: -132.0241
+	 loss 1: 25.13351
+	 loss 2: 40.70490
+	 loss 3: -99.99658
+	 loss 4: -97.86591
+Epoch 10000, Validating Loss: -137.9085
+	 loss 1: 22.14386
+	 loss 2: 37.22017
+	 loss 3: -99.99678
+	 loss 4: -97.27578
+Final Loss is -137.90854
+data: 2b5c_ziqi1
+latent_dim: 5
+batch_size: 0.1
+run: 1
+Epoch 5000, Validating Loss: -133.0107
+	 loss 1: 23.79680
+	 loss 2: 40.90425
+	 loss 3: -99.99835
+	 loss 4: -97.71346
+Epoch 10000, Validating Loss: -136.1851
+	 loss 1: 22.28579
+	 loss 2: 39.90256
+	 loss 3: -99.99831
+	 loss 4: -98.37514
+Final Loss is -136.18510
+data: 2b5c_ziqi1
+latent_dim: 5
+batch_size: 0.1
+run: 2
+Epoch 5000, Validating Loss: -128.5399
+	 loss 1: 26.28393
+	 loss 2: 42.98884
+	 loss 3: -99.98542
+	 loss 4: -97.82726
+Epoch 10000, Validating Loss: -138.1592
+	 loss 1: 21.95776
+	 loss 2: 37.56681
+	 loss 3: -99.99665
+	 loss 4: -97.68710
+Final Loss is -138.15918
+data: 2b5c_ziqi1
+latent_dim: 5
+batch_size: 0.5
+run: 0
+Epoch 5000, Validating Loss: -142.2729
+	 loss 1: 20.95552
+	 loss 2: 35.88485
+	 loss 3: -99.99986
+	 loss 4: -99.11345
+Epoch 10000, Validating Loss: -142.7720
+	 loss 1: 20.83475
+	 loss 2: 35.73188
+	 loss 3: -99.99997
+	 loss 4: -99.33868
+Final Loss is -142.77203
+data: 2b5c_ziqi1
+latent_dim: 5
+batch_size: 0.5
+run: 1
+Epoch 5000, Validating Loss: -140.8570
+	 loss 1: 21.41723
+	 loss 2: 36.81970
+	 loss 3: -99.99985
+	 loss 4: -99.09409
+Epoch 10000, Validating Loss: -141.2139
+	 loss 1: 21.38219
+	 loss 2: 36.78586
+	 loss 3: -99.99991
+	 loss 4: -99.38203
+Final Loss is -141.21390
+data: 2b5c_ziqi1
+latent_dim: 5
+batch_size: 0.5
+run: 2
+Epoch 5000, Validating Loss: -140.6829
+	 loss 1: 21.44069
+	 loss 2: 36.77203
+	 loss 3: -99.99905
+	 loss 4: -98.89655
+Epoch 10000, Validating Loss: -142.2385
+	 loss 1: 21.08220
+	 loss 2: 35.88284
+	 loss 3: -99.99808
+	 loss 4: -99.20543
+Final Loss is -142.23846
+data: 2b5c_ziqi1
+latent_dim: 5
+batch_size: 1
+run: 0
+Epoch 5000, Validating Loss: -142.8726
+	 loss 1: 20.85214
+	 loss 2: 35.77666
+	 loss 3: -99.99982
+	 loss 4: -99.50157
+Epoch 10000, Validating Loss: -143.3348
+	 loss 1: 20.55919
+	 loss 2: 35.65074
+	 loss 3: -99.99997
+	 loss 4: -99.54481
+Final Loss is -143.33484
+data: 2b5c_ziqi1
+latent_dim: 5
+batch_size: 1
+run: 1
+Epoch 5000, Validating Loss: -142.7241
+	 loss 1: 20.83251
+	 loss 2: 35.77726
+	 loss 3: -99.99996
+	 loss 4: -99.33387
+Epoch 10000, Validating Loss: -143.3314
+	 loss 1: 20.56273
+	 loss 2: 35.65164
+	 loss 3: -99.99993
+	 loss 4: -99.54581
+Final Loss is -143.33136
+data: 2b5c_ziqi1
+latent_dim: 5
+batch_size: 1
+run: 2
+Epoch 5000, Validating Loss: -142.7925
+	 loss 1: 20.80300
+	 loss 2: 35.76759
+	 loss 3: -99.99918
+	 loss 4: -99.36391
+Epoch 10000, Validating Loss: -143.3240
+	 loss 1: 20.56307
+	 loss 2: 35.65476
+	 loss 3: -99.99998
+	 loss 4: -99.54187
+Final Loss is -143.32402
+data: 2b5c_ziqi1
+latent_dim: 7
+batch_size: 0.1
+run: 0
+Epoch 5000, Validating Loss: -137.2871
+	 loss 1: 22.34824
+	 loss 2: 37.36500
+	 loss 3: -99.99451
+	 loss 4: -97.00584
+Epoch 10000, Validating Loss: -140.1846
+	 loss 1: 21.12793
+	 loss 2: 36.74584
+	 loss 3: -99.99813
+	 loss 4: -98.06026
+Final Loss is -140.18463
+data: 2b5c_ziqi1
+latent_dim: 7
+batch_size: 0.1
+run: 1
+Epoch 5000, Validating Loss: -134.3094
+	 loss 1: 23.05116
+	 loss 2: 40.80247
+	 loss 3: -99.99280
+	 loss 4: -98.17025
+Epoch 10000, Validating Loss: -139.7179
+	 loss 1: 21.67149
+	 loss 2: 37.13073
+	 loss 3: -99.99910
+	 loss 4: -98.52105
+Final Loss is -139.71794
+data: 2b5c_ziqi1
+latent_dim: 7
+batch_size: 0.1
+run: 2
+Epoch 5000, Validating Loss: -133.5127
+	 loss 1: 24.12642
+	 loss 2: 40.51418
+	 loss 3: -99.99683
+	 loss 4: -98.15651
+Epoch 10000, Validating Loss: -139.6477
+	 loss 1: 21.68200
+	 loss 2: 37.13846
+	 loss 3: -99.99925
+	 loss 4: -98.46890
+Final Loss is -139.64771
+data: 2b5c_ziqi1
+latent_dim: 7
+batch_size: 0.5
+run: 0
+Epoch 5000, Validating Loss: -142.7037
+	 loss 1: 20.63862
+	 loss 2: 35.79976
+	 loss 3: -99.99892
+	 loss 4: -99.14316
+Epoch 10000, Validating Loss: -143.2050
+	 loss 1: 20.42769
+	 loss 2: 35.65224
+	 loss 3: -99.99868
+	 loss 4: -99.28631
+Final Loss is -143.20505
+data: 2b5c_ziqi1
+latent_dim: 7
+batch_size: 0.5
+run: 1
+Epoch 5000, Validating Loss: -142.4070
+	 loss 1: 20.73396
+	 loss 2: 35.95045
+	 loss 3: -99.99921
+	 loss 4: -99.09216
+Epoch 10000, Validating Loss: -143.4864
+	 loss 1: 20.15445
+	 loss 2: 35.68953
+	 loss 3: -99.99977
+	 loss 4: -99.33058
+Final Loss is -143.48637
+data: 2b5c_ziqi1
+latent_dim: 7
+batch_size: 0.5
+run: 2
+Epoch 5000, Validating Loss: -143.0425
+	 loss 1: 20.28168
+	 loss 2: 35.75768
+	 loss 3: -99.99936
+	 loss 4: -99.08250
+Epoch 10000, Validating Loss: -143.7180
+	 loss 1: 20.06643
+	 loss 2: 35.54334
+	 loss 3: -99.99985
+	 loss 4: -99.32791
+Final Loss is -143.71799
+data: 2b5c_ziqi1
+latent_dim: 7
+batch_size: 1
+run: 0
+Epoch 5000, Validating Loss: -144.3167
+	 loss 1: 19.93732
+	 loss 2: 35.35347
+	 loss 3: -99.99971
+	 loss 4: -99.60781
+Epoch 10000, Validating Loss: -144.7781
+	 loss 1: 19.87326
+	 loss 2: 35.18372
+	 loss 3: -99.99998
+	 loss 4: -99.83507
+Final Loss is -144.77808
+data: 2b5c_ziqi1
+latent_dim: 7
+batch_size: 1
+run: 1
+Epoch 5000, Validating Loss: -144.1239
+	 loss 1: 20.00675
+	 loss 2: 35.43196
+	 loss 3: -99.99922
+	 loss 4: -99.56335
+Epoch 10000, Validating Loss: -144.6535
+	 loss 1: 19.89977
+	 loss 2: 35.24821
+	 loss 3: -99.99988
+	 loss 4: -99.80157
+Final Loss is -144.65347
+data: 2b5c_ziqi1
+latent_dim: 7
+batch_size: 1
+run: 2
+Epoch 5000, Validating Loss: -144.2454
+	 loss 1: 20.01417
+	 loss 2: 35.43122
+	 loss 3: -99.99951
+	 loss 4: -99.69125
+Epoch 10000, Validating Loss: -144.4446
+	 loss 1: 19.95868
+	 loss 2: 35.34261
+	 loss 3: -99.99986
+	 loss 4: -99.74603
+Final Loss is -144.44461
+data: 2b5c_ziqi1
+latent_dim: 10
+batch_size: 0.1
+run: 0
+Epoch 5000, Validating Loss: -138.9504
+	 loss 1: 21.76094
+	 loss 2: 37.19286
+	 loss 3: -99.99852
+	 loss 4: -97.90569
+Epoch 10000, Validating Loss: -141.0250
+	 loss 1: 21.22457
+	 loss 2: 36.23011
+	 loss 3: -99.99825
+	 loss 4: -98.48147
+Final Loss is -141.02504
+data: 2b5c_ziqi1
+latent_dim: 10
+batch_size: 0.1
+run: 1
+Epoch 5000, Validating Loss: -136.1442
+	 loss 1: 23.65131
+	 loss 2: 37.59734
+	 loss 3: -99.99525
+	 loss 4: -97.39759
+Epoch 10000, Validating Loss: -140.4067
+	 loss 1: 21.37645
+	 loss 2: 36.40914
+	 loss 3: -99.99764
+	 loss 4: -98.19461
+Final Loss is -140.40666
+data: 2b5c_ziqi1
+latent_dim: 10
+batch_size: 0.1
+run: 2
+Epoch 5000, Validating Loss: -138.4215
+	 loss 1: 22.33046
+	 loss 2: 37.03174
+	 loss 3: -99.99291
+	 loss 4: -97.79081
+Epoch 10000, Validating Loss: -140.8945
+	 loss 1: 21.31282
+	 loss 2: 36.09994
+	 loss 3: -99.99872
+	 loss 4: -98.30849
+Final Loss is -140.89445
+data: 2b5c_ziqi1
+latent_dim: 10
+batch_size: 0.5
+run: 0
+Epoch 5000, Validating Loss: -143.4610
+	 loss 1: 20.12883
+	 loss 2: 35.57127
+	 loss 3: -99.99887
+	 loss 4: -99.16220
+Epoch 10000, Validating Loss: -144.1269
+	 loss 1: 19.93535
+	 loss 2: 35.31673
+	 loss 3: -99.99960
+	 loss 4: -99.37933
+Final Loss is -144.12686
+data: 2b5c_ziqi1
+latent_dim: 10
+batch_size: 0.5
+run: 1
+Epoch 5000, Validating Loss: -142.8970
+	 loss 1: 20.45082
+	 loss 2: 35.63705
+	 loss 3: -99.99689
+	 loss 4: -98.98798
+Epoch 10000, Validating Loss: -143.9893
+	 loss 1: 19.94466
+	 loss 2: 35.35281
+	 loss 3: -99.99889
+	 loss 4: -99.28789
+Final Loss is -143.98929
+data: 2b5c_ziqi1
+latent_dim: 10
+batch_size: 0.5
+run: 2
+Epoch 5000, Validating Loss: -143.4138
+	 loss 1: 20.12213
+	 loss 2: 35.55763
+	 loss 3: -99.99912
+	 loss 4: -99.09442
+Epoch 10000, Validating Loss: -144.0802
+	 loss 1: 19.93450
+	 loss 2: 35.34484
+	 loss 3: -99.99962
+	 loss 4: -99.35992
+Final Loss is -144.08020
+data: 2b5c_ziqi1
+latent_dim: 10
+batch_size: 1
+run: 0
+Epoch 5000, Validating Loss: -145.4020
+	 loss 1: 19.53500
+	 loss 2: 34.77666
+	 loss 3: -99.99966
+	 loss 4: -99.71397
+Epoch 10000, Validating Loss: -145.9485
+	 loss 1: 19.33804
+	 loss 2: 34.53375
+	 loss 3: -99.99993
+	 loss 4: -99.82037
+Final Loss is -145.94852
+data: 2b5c_ziqi1
+latent_dim: 10
+batch_size: 1
+run: 1
+Epoch 5000, Validating Loss: -145.3540
+	 loss 1: 19.60177
+	 loss 2: 34.75932
+	 loss 3: -99.99936
+	 loss 4: -99.71578
+Epoch 10000, Validating Loss: -145.9487
+	 loss 1: 19.34684
+	 loss 2: 34.52062
+	 loss 3: -99.99988
+	 loss 4: -99.81630
+Final Loss is -145.94872
+data: 2b5c_ziqi1
+latent_dim: 10
+batch_size: 1
+run: 2
+Epoch 5000, Validating Loss: -145.4267
+	 loss 1: 19.50384
+	 loss 2: 34.79243
+	 loss 3: -99.99947
+	 loss 4: -99.72346
+Epoch 10000, Validating Loss: -145.9722
+	 loss 1: 19.33558
+	 loss 2: 34.52143
+	 loss 3: -99.99996
+	 loss 4: -99.82927
+Final Loss is -145.97223
+data: 2b5c_ziqi2
+latent_dim: 3
+batch_size: 0.1
+run: 0
+Epoch 5000, Validating Loss: -127.8332
+	 loss 1: 20.45082
+	 loss 2: 49.74906
+	 loss 3: -99.99924
+	 loss 4: -98.03387
+Epoch 10000, Validating Loss: -128.8786
+	 loss 1: 20.34620
+	 loss 2: 49.60222
+	 loss 3: -99.99983
+	 loss 4: -98.82716
+Final Loss is -128.87857
+data: 2b5c_ziqi2
+latent_dim: 3
+batch_size: 0.1
+run: 1
+Epoch 5000, Validating Loss: -128.4451
+	 loss 1: 20.47826
+	 loss 2: 49.78555
+	 loss 3: -99.99966
+	 loss 4: -98.70920
+Epoch 10000, Validating Loss: -129.0302
+	 loss 1: 20.43292
+	 loss 2: 49.67218
+	 loss 3: -99.99892
+	 loss 4: -99.13631
+Final Loss is -129.03015
+data: 2b5c_ziqi2
+latent_dim: 3
+batch_size: 0.1
+run: 2
+Epoch 5000, Validating Loss: -127.7810
+	 loss 1: 20.62084
+	 loss 2: 49.75643
+	 loss 3: -99.99946
+	 loss 4: -98.15883
+Epoch 10000, Validating Loss: -128.9218
+	 loss 1: 20.43603
+	 loss 2: 49.54577
+	 loss 3: -99.99756
+	 loss 4: -98.90604
+Final Loss is -128.92181
+data: 2b5c_ziqi2
+latent_dim: 3
+batch_size: 0.5
+run: 0
+Epoch 5000, Validating Loss: -138.1453
+	 loss 1: 18.11394
+	 loss 2: 42.88367
+	 loss 3: -99.99978
+	 loss 4: -99.14310
+Epoch 10000, Validating Loss: -138.4538
+	 loss 1: 18.09394
+	 loss 2: 42.84923
+	 loss 3: -99.99989
+	 loss 4: -99.39703
+Final Loss is -138.45377
+data: 2b5c_ziqi2
+latent_dim: 3
+batch_size: 0.5
+run: 1
+Epoch 5000, Validating Loss: -137.6880
+	 loss 1: 18.48447
+	 loss 2: 42.92316
+	 loss 3: -99.99989
+	 loss 4: -99.09570
+Epoch 10000, Validating Loss: -138.4040
+	 loss 1: 18.16835
+	 loss 2: 42.83691
+	 loss 3: -99.99996
+	 loss 4: -99.40926
+Final Loss is -138.40396
+data: 2b5c_ziqi2
+latent_dim: 3
+batch_size: 0.5
+run: 2
+Epoch 5000, Validating Loss: -137.9188
+	 loss 1: 18.41097
+	 loss 2: 42.87043
+	 loss 3: -99.99993
+	 loss 4: -99.20026
+Epoch 10000, Validating Loss: -138.4722
+	 loss 1: 18.10493
+	 loss 2: 42.83564
+	 loss 3: -99.99997
+	 loss 4: -99.41280
+Final Loss is -138.47220
+data: 2b5c_ziqi2
+latent_dim: 3
+batch_size: 1
+run: 0
+Epoch 5000, Validating Loss: -138.4634
+	 loss 1: 18.06669
+	 loss 2: 42.80635
+	 loss 3: -99.99996
+	 loss 4: -99.33652
+Epoch 10000, Validating Loss: -138.6679
+	 loss 1: 18.05187
+	 loss 2: 42.77822
+	 loss 3: -99.99999
+	 loss 4: -99.49796
+Final Loss is -138.66786
+data: 2b5c_ziqi2
+latent_dim: 3
+batch_size: 1
+run: 1
+Epoch 5000, Validating Loss: -138.5283
+	 loss 1: 18.06620
+	 loss 2: 42.80347
+	 loss 3: -99.99998
+	 loss 4: -99.39796
+Epoch 10000, Validating Loss: -138.7131
+	 loss 1: 18.04951
+	 loss 2: 42.77558
+	 loss 3: -100.00002
+	 loss 4: -99.53819
+Final Loss is -138.71313
+data: 2b5c_ziqi2
+latent_dim: 3
+batch_size: 1
+run: 2
+Epoch 5000, Validating Loss: -138.6423
+	 loss 1: 18.06122
+	 loss 2: 42.78616
+	 loss 3: -99.99998
+	 loss 4: -99.48971
+Epoch 10000, Validating Loss: -138.7631
+	 loss 1: 18.04733
+	 loss 2: 42.77171
+	 loss 3: -100.00000
+	 loss 4: -99.58215
+Final Loss is -138.76311
+data: 2b5c_ziqi2
+latent_dim: 5
+batch_size: 0.1
+run: 0
+Epoch 5000, Validating Loss: -135.3590
+	 loss 1: 19.71408
+	 loss 2: 43.28623
+	 loss 3: -99.99628
+	 loss 4: -98.36304
+Epoch 10000, Validating Loss: -142.8808
+	 loss 1: 16.65226
+	 loss 2: 38.88053
+	 loss 3: -99.99977
+	 loss 4: -98.41379
+Final Loss is -142.88077
+data: 2b5c_ziqi2
+latent_dim: 5
+batch_size: 0.1
+run: 1
+Epoch 5000, Validating Loss: -134.6931
+	 loss 1: 20.02583
+	 loss 2: 43.66568
+	 loss 3: -99.99918
+	 loss 4: -98.38548
+Epoch 10000, Validating Loss: -142.6840
+	 loss 1: 16.65197
+	 loss 2: 38.88037
+	 loss 3: -99.99860
+	 loss 4: -98.21774
+Final Loss is -142.68399
+data: 2b5c_ziqi2
+latent_dim: 5
+batch_size: 0.1
+run: 2
+Epoch 5000, Validating Loss: -135.4867
+	 loss 1: 18.76708
+	 loss 2: 43.29504
+	 loss 3: -99.99922
+	 loss 4: -97.54957
+Epoch 10000, Validating Loss: -142.0766
+	 loss 1: 16.65379
+	 loss 2: 39.03759
+	 loss 3: -99.99886
+	 loss 4: -97.76917
+Final Loss is -142.07663
+data: 2b5c_ziqi2
+latent_dim: 5
+batch_size: 0.5
+run: 0
+Epoch 5000, Validating Loss: -144.2514
+	 loss 1: 16.39176
+	 loss 2: 38.52789
+	 loss 3: -99.99988
+	 loss 4: -99.17117
+Epoch 10000, Validating Loss: -144.5780
+	 loss 1: 16.37324
+	 loss 2: 38.50435
+	 loss 3: -99.99987
+	 loss 4: -99.45568
+Final Loss is -144.57796
+data: 2b5c_ziqi2
+latent_dim: 5
+batch_size: 0.5
+run: 1
+Epoch 5000, Validating Loss: -144.2906
+	 loss 1: 16.39483
+	 loss 2: 38.51781
+	 loss 3: -99.99982
+	 loss 4: -99.20341
+Epoch 10000, Validating Loss: -144.5865
+	 loss 1: 16.37135
+	 loss 2: 38.49623
+	 loss 3: -99.99978
+	 loss 4: -99.45427
+Final Loss is -144.58647
+data: 2b5c_ziqi2
+latent_dim: 5
+batch_size: 0.5
+run: 2
+Epoch 5000, Validating Loss: -144.2215
+	 loss 1: 16.40140
+	 loss 2: 38.52950
+	 loss 3: -99.99973
+	 loss 4: -99.15266
+Epoch 10000, Validating Loss: -144.5829
+	 loss 1: 16.36984
+	 loss 2: 38.49807
+	 loss 3: -99.99991
+	 loss 4: -99.45094
+Final Loss is -144.58295
+data: 2b5c_ziqi2
+latent_dim: 5
+batch_size: 1
+run: 0
+Epoch 5000, Validating Loss: -146.0960
+	 loss 1: 15.63254
+	 loss 2: 37.87287
+	 loss 3: -99.99992
+	 loss 4: -99.60149
+Epoch 10000, Validating Loss: -146.7021
+	 loss 1: 15.39484
+	 loss 2: 37.44141
+	 loss 3: -99.99984
+	 loss 4: -99.53856
+Final Loss is -146.70215
+data: 2b5c_ziqi2
+latent_dim: 5
+batch_size: 1
+run: 1
+Epoch 5000, Validating Loss: -146.3312
+	 loss 1: 15.42847
+	 loss 2: 37.69488
+	 loss 3: -99.99988
+	 loss 4: -99.45470
+Epoch 10000, Validating Loss: -146.6980
+	 loss 1: 15.38436
+	 loss 2: 37.43587
+	 loss 3: -99.99976
+	 loss 4: -99.51842
+Final Loss is -146.69797
+data: 2b5c_ziqi2
+latent_dim: 5
+batch_size: 1
+run: 2
+Epoch 5000, Validating Loss: -146.2457
+	 loss 1: 15.46219
+	 loss 2: 37.77657
+	 loss 3: -99.99986
+	 loss 4: -99.48462
+Epoch 10000, Validating Loss: -146.6820
+	 loss 1: 15.38864
+	 loss 2: 37.44202
+	 loss 3: -99.99818
+	 loss 4: -99.51444
+Final Loss is -146.68198
+data: 2b5c_ziqi2
+latent_dim: 7
+batch_size: 0.1
+run: 0
+Epoch 5000, Validating Loss: -140.8343
+	 loss 1: 17.35242
+	 loss 2: 38.97450
+	 loss 3: -99.99348
+	 loss 4: -97.16776
+Epoch 10000, Validating Loss: -143.8809
+	 loss 1: 15.73996
+	 loss 2: 38.39262
+	 loss 3: -99.99887
+	 loss 4: -98.01463
+Final Loss is -143.88092
+data: 2b5c_ziqi2
+latent_dim: 7
+batch_size: 0.1
+run: 1
+Epoch 5000, Validating Loss: -140.4901
+	 loss 1: 18.54890
+	 loss 2: 38.96523
+	 loss 3: -99.99903
+	 loss 4: -98.00520
+Epoch 10000, Validating Loss: -143.1373
+	 loss 1: 16.60868
+	 loss 2: 38.81316
+	 loss 3: -99.99886
+	 loss 4: -98.56025
+Final Loss is -143.13727
+data: 2b5c_ziqi2
+latent_dim: 7
+batch_size: 0.1
+run: 2
+Epoch 5000, Validating Loss: -139.6837
+	 loss 1: 18.34125
+	 loss 2: 39.99934
+	 loss 3: -99.99513
+	 loss 4: -98.02916
+Epoch 10000, Validating Loss: -143.8646
+	 loss 1: 16.06808
+	 loss 2: 38.36165
+	 loss 3: -99.99841
+	 loss 4: -98.29597
+Final Loss is -143.86464
+data: 2b5c_ziqi2
+latent_dim: 7
+batch_size: 0.5
+run: 0
+Epoch 5000, Validating Loss: -146.3151
+	 loss 1: 15.40619
+	 loss 2: 37.46179
+	 loss 3: -99.99970
+	 loss 4: -99.18336
+Epoch 10000, Validating Loss: -146.8942
+	 loss 1: 15.13253
+	 loss 2: 37.30037
+	 loss 3: -99.99950
+	 loss 4: -99.32762
+Final Loss is -146.89423
+data: 2b5c_ziqi2
+latent_dim: 7
+batch_size: 0.5
+run: 1
+Epoch 5000, Validating Loss: -145.9717
+	 loss 1: 15.51362
+	 loss 2: 37.58182
+	 loss 3: -99.99931
+	 loss 4: -99.06779
+Epoch 10000, Validating Loss: -146.5271
+	 loss 1: 15.39949
+	 loss 2: 37.42541
+	 loss 3: -99.99975
+	 loss 4: -99.35222
+Final Loss is -146.52707
+data: 2b5c_ziqi2
+latent_dim: 7
+batch_size: 0.5
+run: 2
+Epoch 5000, Validating Loss: -145.9452
+	 loss 1: 15.49534
+	 loss 2: 37.61179
+	 loss 3: -99.99944
+	 loss 4: -99.05286
+Epoch 10000, Validating Loss: -146.5466
+	 loss 1: 15.40042
+	 loss 2: 37.40446
+	 loss 3: -99.99970
+	 loss 4: -99.35174
+Final Loss is -146.54657
+data: 2b5c_ziqi2
+latent_dim: 7
+batch_size: 1
+run: 0
+Epoch 5000, Validating Loss: -147.4550
+	 loss 1: 15.08093
+	 loss 2: 37.11140
+	 loss 3: -99.99680
+	 loss 4: -99.65051
+Epoch 10000, Validating Loss: -147.9910
+	 loss 1: 14.99638
+	 loss 2: 36.85611
+	 loss 3: -99.99959
+	 loss 4: -99.84390
+Final Loss is -147.99101
+data: 2b5c_ziqi2
+latent_dim: 7
+batch_size: 1
+run: 1
+Epoch 5000, Validating Loss: -147.7365
+	 loss 1: 15.03509
+	 loss 2: 36.95970
+	 loss 3: -99.99957
+	 loss 4: -99.73177
+Epoch 10000, Validating Loss: -148.0585
+	 loss 1: 14.95854
+	 loss 2: 36.82610
+	 loss 3: -99.99995
+	 loss 4: -99.84321
+Final Loss is -148.05852
+data: 2b5c_ziqi2
+latent_dim: 7
+batch_size: 1
+run: 2
+Epoch 5000, Validating Loss: -147.6684
+	 loss 1: 15.01748
+	 loss 2: 37.04816
+	 loss 3: -99.99960
+	 loss 4: -99.73446
+Epoch 10000, Validating Loss: -148.0587
+	 loss 1: 14.95910
+	 loss 2: 36.82974
+	 loss 3: -99.99998
+	 loss 4: -99.84752
+Final Loss is -148.05865
+data: 2b5c_ziqi2
+latent_dim: 10
+batch_size: 0.1
+run: 0
+Epoch 5000, Validating Loss: -141.2386
+	 loss 1: 16.77585
+	 loss 2: 38.88535
+	 loss 3: -99.99815
+	 loss 4: -96.90163
+Epoch 10000, Validating Loss: -144.2091
+	 loss 1: 15.72571
+	 loss 2: 37.98288
+	 loss 3: -99.99801
+	 loss 4: -97.91971
+Final Loss is -144.20914
+data: 2b5c_ziqi2
+latent_dim: 10
+batch_size: 0.1
+run: 1
+Epoch 5000, Validating Loss: -140.0004
+	 loss 1: 18.24599
+	 loss 2: 39.01598
+	 loss 3: -99.98875
+	 loss 4: -97.27364
+Epoch 10000, Validating Loss: -143.9119
+	 loss 1: 15.77245
+	 loss 2: 38.21549
+	 loss 3: -99.99716
+	 loss 4: -97.90265
+Final Loss is -143.91187
+data: 2b5c_ziqi2
+latent_dim: 10
+batch_size: 0.1
+run: 2
+Epoch 5000, Validating Loss: -141.1990
+	 loss 1: 17.04223
+	 loss 2: 38.95774
+	 loss 3: -99.99683
+	 loss 4: -97.20219
+Epoch 10000, Validating Loss: -143.4048
+	 loss 1: 16.54805
+	 loss 2: 38.35799
+	 loss 3: -99.99729
+	 loss 4: -98.31351
+Final Loss is -143.40477
+data: 2b5c_ziqi2
+latent_dim: 10
+batch_size: 0.5
+run: 0
+Epoch 5000, Validating Loss: -146.5692
+	 loss 1: 15.17229
+	 loss 2: 37.38245
+	 loss 3: -99.99941
+	 loss 4: -99.12453
+Epoch 10000, Validating Loss: -147.2158
+	 loss 1: 15.03180
+	 loss 2: 37.09836
+	 loss 3: -99.99947
+	 loss 4: -99.34645
+Final Loss is -147.21576
+data: 2b5c_ziqi2
+latent_dim: 10
+batch_size: 0.5
+run: 1
+Epoch 5000, Validating Loss: -146.3925
+	 loss 1: 15.21907
+	 loss 2: 37.38242
+	 loss 3: -99.99757
+	 loss 4: -98.99642
+Epoch 10000, Validating Loss: -147.1791
+	 loss 1: 15.02672
+	 loss 2: 37.13091
+	 loss 3: -99.99935
+	 loss 4: -99.33739
+Final Loss is -147.17912
+data: 2b5c_ziqi2
+latent_dim: 10
+batch_size: 0.5
+run: 2
+Epoch 5000, Validating Loss: -146.6454
+	 loss 1: 15.18010
+	 loss 2: 37.28563
+	 loss 3: -99.99831
+	 loss 4: -99.11284
+Epoch 10000, Validating Loss: -147.3141
+	 loss 1: 15.02708
+	 loss 2: 37.03657
+	 loss 3: -99.99935
+	 loss 4: -99.37836
+Final Loss is -147.31406
+data: 2b5c_ziqi2
+latent_dim: 10
+batch_size: 1
+run: 0
+Epoch 5000, Validating Loss: -148.4027
+	 loss 1: 14.87591
+	 loss 2: 36.45218
+	 loss 3: -99.99958
+	 loss 4: -99.73120
+Epoch 10000, Validating Loss: -149.0817
+	 loss 1: 14.60593
+	 loss 2: 36.13685
+	 loss 3: -99.99979
+	 loss 4: -99.82472
+Final Loss is -149.08174
+data: 2b5c_ziqi2
+latent_dim: 10
+batch_size: 1
+run: 1
+Epoch 5000, Validating Loss: -148.4899
+	 loss 1: 14.78961
+	 loss 2: 36.43557
+	 loss 3: -99.99942
+	 loss 4: -99.71566
+Epoch 10000, Validating Loss: -149.1015
+	 loss 1: 14.60895
+	 loss 2: 36.12413
+	 loss 3: -99.99977
+	 loss 4: -99.83479
+Final Loss is -149.10149
+data: 2b5c_ziqi2
+latent_dim: 10
+batch_size: 1
+run: 2
+Epoch 5000, Validating Loss: -148.4812
+	 loss 1: 14.82513
+	 loss 2: 36.43467
+	 loss 3: -99.99922
+	 loss 4: -99.74178
+Epoch 10000, Validating Loss: -149.0971
+	 loss 1: 14.60313
+	 loss 2: 36.13125
+	 loss 3: -99.99991
+	 loss 4: -99.83155
+Final Loss is -149.09708
+---------------------------------------
+Begin PBS Epilogue Fri May  7 05:42:33 EDT 2021
+Job ID:     6744248.sched-hive.pace.gatech.edu
+User ID:    zzhang834
+Job name:   test_cfrm
+Resources:  nodes=1:ppn=4:gpus=1,walltime=10:20:00,neednodes=1:ppn=4:gpus=1
+Rsrc Used:  cput=05:25:46,vmem=144653084kb,walltime=05:13:28,mem=133211764kb,energy_used=0
+Queue:      hive-gpu-short
+Nodes:     
+atl1-1-01-018-31.pace.gatech.edu
+End PBS Epilogue Fri May  7 05:42:33 EDT 2021
+---------------------------------------

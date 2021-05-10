@@ -1,0 +1,174 @@
+---------------------------------------
+Begin PBS Prologue Sun May  9 23:06:42 EDT 2021
+Job ID:     6745114.sched-hive.pace.gatech.edu
+User ID:    zzhang834
+Job name:   test_cfrm
+Queue:      hive-gpu-short
+End PBS Prologue Sun May  9 23:06:42 EDT 2021
+---------------------------------------
+../src/utils.py:121: RuntimeWarning: More than 20 figures have been opened. Figures created through the pyplot interface (`matplotlib.pyplot.figure`) are retained until explicitly closed and may consume too much memory. (To control this warning, see the rcParam `figure.max_open_warning`).
+  fig = plt.figure(figsize = figsize)
+data: 2b5c_ziqi1
+init: SVD
+batch_size: 0.5
+run: 1
+Final Loss is -136.35779
+
+data: 2b5c_ziqi1
+init: SVD
+batch_size: 0.5
+run: 2
+Final Loss is -136.45107
+
+data: 2b5c_ziqi1
+init: SVD
+batch_size: 0.5
+run: 3
+Final Loss is -136.38458
+
+data: 2b5c_ziqi1
+init: SVD
+batch_size: 0.5
+run: 4
+Final Loss is -136.46735
+
+data: 2b5c_ziqi1
+init: NMF
+batch_size: 0.5
+run: 1
+iteration: 0, loss1: 0.059398550540208817, loss2: 0.07714065164327621
+Final Loss is -142.00198
+
+data: 2b5c_ziqi1
+init: NMF
+batch_size: 0.5
+run: 2
+iteration: 0, loss1: 0.059398550540208817, loss2: 0.07714065164327621
+Final Loss is -142.00174
+
+data: 2b5c_ziqi1
+init: NMF
+batch_size: 0.5
+run: 3
+iteration: 0, loss1: 0.059398550540208817, loss2: 0.07714065164327621
+Final Loss is -142.00237
+
+data: 2b5c_ziqi1
+init: NMF
+batch_size: 0.5
+run: 4
+iteration: 0, loss1: 0.059398550540208817, loss2: 0.07714065164327621
+Final Loss is -142.00189
+
+data: 2b5c_ziqi1
+init: random
+batch_size: 0.5
+run: 1
+Final Loss is -141.17401
+
+data: 2b5c_ziqi1
+init: random
+batch_size: 0.5
+run: 2
+Final Loss is -142.23087
+
+data: 2b5c_ziqi1
+init: random
+batch_size: 0.5
+run: 3
+Final Loss is -142.92210
+
+data: 2b5c_ziqi1
+init: random
+batch_size: 0.5
+run: 4
+Final Loss is -142.49022
+
+data: 2b5c_ziqi2
+init: SVD
+batch_size: 0.5
+run: 1
+Final Loss is -136.98424
+
+data: 2b5c_ziqi2
+init: SVD
+batch_size: 0.5
+run: 2
+Final Loss is -137.14511
+
+data: 2b5c_ziqi2
+init: SVD
+batch_size: 0.5
+run: 3
+Final Loss is -136.95952
+
+data: 2b5c_ziqi2
+init: SVD
+batch_size: 0.5
+run: 4
+Final Loss is -136.94882
+
+data: 2b5c_ziqi2
+init: NMF
+batch_size: 0.5
+run: 1
+iteration: 0, loss1: 0.08018159866333008, loss2: 0.08038871735334396
+Final Loss is -145.68916
+
+data: 2b5c_ziqi2
+init: NMF
+batch_size: 0.5
+run: 2
+iteration: 0, loss1: 0.08018159866333008, loss2: 0.08038871735334396
+Final Loss is -145.69910
+
+data: 2b5c_ziqi2
+init: NMF
+batch_size: 0.5
+run: 3
+iteration: 0, loss1: 0.08018159866333008, loss2: 0.08038871735334396
+Final Loss is -145.70068
+
+data: 2b5c_ziqi2
+init: NMF
+batch_size: 0.5
+run: 4
+iteration: 0, loss1: 0.08018159866333008, loss2: 0.08038871735334396
+Final Loss is -145.70151
+
+data: 2b5c_ziqi2
+init: random
+batch_size: 0.5
+run: 1
+Final Loss is -144.58600
+
+data: 2b5c_ziqi2
+init: random
+batch_size: 0.5
+run: 2
+Final Loss is -144.62457
+
+data: 2b5c_ziqi2
+init: random
+batch_size: 0.5
+run: 3
+Final Loss is -146.32278
+
+data: 2b5c_ziqi2
+init: random
+batch_size: 0.5
+run: 4
+Final Loss is -144.72409
+
+---------------------------------------
+Begin PBS Epilogue Mon May 10 00:53:00 EDT 2021
+Job ID:     6745114.sched-hive.pace.gatech.edu
+User ID:    zzhang834
+Job name:   test_cfrm
+Resources:  nodes=1:ppn=4:gpus=1,walltime=10:20:00,neednodes=1:ppn=4:gpus=1
+Rsrc Used:  cput=01:50:39,vmem=144624316kb,walltime=01:46:18,mem=134012852kb,energy_used=0
+Queue:      hive-gpu-short
+Nodes:     
+atl1-1-01-018-31.pace.gatech.edu
+End PBS Epilogue Mon May 10 00:53:00 EDT 2021
+---------------------------------------

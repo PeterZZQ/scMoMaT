@@ -16,8 +16,110 @@ import utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-class cfrm_test(Module):
-    def __init__(self, dir = "../data/simulated/2b3c_ziqi1/", N=3, batch_size=1.0, interval=10, lr=1e-3, alpha = [1, 1, 0.01, 1, 1e-2]):
+        
+############################################################################################################################### 
+class classicCFRM(Module):
+    def __init__(self, counts, N=3, alpha = [1,1,1], init = "random"):
+        super().__init__()
+        self.alpha = alpha
+        self.N = N
+        # data
+        counts_rna = counts["rna"][0]
+        counts_atac = counts["atac"][0]
+        gact = counts["gact"][0]
+
+        counts_rna = utils.preprocess(counts_rna, mode = "quantile", modality = "RNA")
+        counts_atac = utils.preprocess(counts_atac, mode = "quantile", modality = "ATAC")
+
+        # necessary, to force them into the same scale, make it easier for A.
+        counts_rna = counts_rna/np.max(counts_rna)
+        counts_atac = counts_atac/np.max(counts_atac)
+
+        # sum of all regions within a gene to be one
+        assert gact.shape[0] < gact.shape[1]
+        gact = utils.preprocess(gact, mode = "gact")
+
+        self.G = torch.FloatTensor(counts_rna)
+        self.R = torch.FloatTensor(counts_atac)
+        self.A = torch.FloatTensor(gact).T
+        
+        # learnable parameters
+        if init == "svd":
+            u_g, s_g, v_g = torch.svd(self.G)
+            self.C_1 = u_g[:, :N]
+            self.C_g = v_g[:, :N]        
+
+            u_r, s_r, v_r = torch.svd(self.R)
+            self.C_2 = u_r[:, :N]
+            self.C_r = v_r[:, :N]
+
+        if init == "random":
+            self.C_1, _ = torch.qr(torch.randn((self.G.shape[0],N)))
+            self.C_2, _ = torch.qr(torch.randn((self.R.shape[0],N)))
+            self.C_g, _ = torch.qr(torch.randn((self.G.shape[1],N)))
+            self.C_r, _ = torch.qr(torch.randn((self.R.shape[1],N)))
+
+
+        self.A_1g = self.C_1.t() @ self.G @ self.C_g
+        self.A_2r = self.C_2.t() @ self.R @ self.C_r
+        self.A_rg = self.C_r.t() @ self.A @ self.C_g
+
+        loss = self.loss()
+        for l in loss:
+            print(l.item())
+        
+       
+    def loss(self):
+        loss1 = (self.G - self.C_1 @ self.A_1g @ self.C_g.t()).pow(2).mean()
+        loss2 = (self.R - self.C_2 @ self.A_2r @ self.C_r.t()).pow(2).mean()
+        loss3 = (self.A - self.C_r @ self.A_rg @ self.C_g.t()).pow(2).mean()
+        loss = self.alpha[0] * loss1 + self.alpha[1] * loss2 + self.alpha[2] * loss3
+
+        return loss, self.alpha[0] * loss1, self.alpha[1] * loss2, self.alpha[2] * loss3
+
+    def train_func(self, T):
+        for t in range(T):
+            for mode in ['C_1', 'C_2', 'C_r', 'C_g']:
+                if mode == 'C_1':
+                    M = self.alpha[0] * (self.G @ self.C_g @ self.C_g.t() @ self.G.t())
+                    s_g, u_g = torch.eig(M, eigenvectors=True)
+                    self.C_1 = u_g[:, :self.N]
+
+                elif mode == 'C_2':
+                    M = self.alpha[1] * (self.R @ self.C_r @ self.C_r.t() @ self.R.t())
+                    s_g, u_g = torch.eig(M, eigenvectors=True)
+                    self.C_2 = u_g[:, :self.N]
+
+                elif mode == 'C_r':
+                    M = self.alpha[1] * (self.R.t() @ self.C_2 @ self.C_2.t() @ self.R) + self.alpha[2] * (self.A @ self.C_g @ self.C_g.t() @ self.A.t())
+                    s_g, u_g = torch.eig(M, eigenvectors=True)
+                    self.C_r = u_g[:, :self.N]
+
+                elif mode == 'C_g':
+                    M = self.alpha[0] * (self.G.t() @ self.C_1 @ self.C_1.t() @ self.G) + self.alpha[2] * (self.A.t() @ self.C_r @ self.C_r.t() @ self.A)
+                    s_g, u_g = torch.eig(M, eigenvectors=True)
+                    self.C_g = u_g[:, :self.N]
+            
+            self.A_1g = self.C_1.t() @ self.G @ self.C_g
+            self.A_2r = self.C_2.t() @ self.R @ self.C_r
+            self.A_rg = self.C_r.t() @ self.A @ self.C_g
+            
+            loss, loss1, loss2, loss3 = self.loss()
+            print('Epoch {}, Training Loss: {:.4f}'.format(t+1, loss.item()))
+            info = [
+                'loss RNA: {:.5f}'.format(loss1.item()),
+                'loss ATAC: {:.5f}'.format(loss2.item()),
+                'loss gene act: {:.5f}'.format(loss3.item())
+            ]
+            for i in info:
+                print("\t", i)
+
+
+
+
+"""    
+class cfrm_best(Module):
+    def __init__(self, counts, N=3, batch_size=1.0, interval=10, lr=1e-3, alpha = [1000, 1000, 100, 0.0, 0.0], binarize = False):
         super().__init__()
         self.N = N
         self.batch_size = batch_size
@@ -25,15 +127,19 @@ class cfrm_test(Module):
         self.alpha = torch.FloatTensor(alpha).to(device)
 
         # data
-        counts_rna = pd.read_csv(dir + "GxC1.txt", sep = "\t", header = None).values.T
-        counts_atac = pd.read_csv(dir + "RxC2.txt", sep = "\t", header = None).values.T
-        gact = pd.read_csv(dir + "region2gene.txt", sep = "\t", header = None).values.T
+        counts_rna = counts["rna"][0]
+        counts_atac = counts["atac"][0]
+        gact = counts["gact"][0]
 
-        counts_rna = utils.preprocess(counts_rna, mode = "quantile", modality = "RNA")
+        if binarize:
+            k = np.int(0.9 * counts_rna.shape[1])
+            kth_index = np.argpartition(counts_rna, kth = k - 1, axis = 1)[:,(k-1)]
+            kth_dist = np.take_along_axis(counts_rna, kth_index[:,None], axis = 1)
+            counts_rna = ((counts_rna - kth_dist) >= 0).astype(np.float)
+        else:
+            counts_rna = utils.preprocess(counts_rna, mode = "quantile", modality = "RNA")
         counts_atac = utils.preprocess(counts_atac, mode = "quantile", modality = "ATAC")
-#         counts_atac = counts_atac/np.sum(counts_atac, axis = 1)[:,None]
-#         counts_rna = counts_rna/np.sum(counts_rna, axis = 1)[:,None]
-        gact = utils.preprocess(gact, mode = "gact")
+        # gact = utils.preprocess(gact, mode = "gact")
 
         # non-negative, don't use standard scaler
         counts_rna = counts_rna/np.max(counts_rna)
@@ -43,62 +149,30 @@ class cfrm_test(Module):
         self.R = torch.FloatTensor(counts_atac).to(device)
         self.A = torch.FloatTensor(gact).to(device)
 
-        # self.Ar = torch.eye(N).to(device)
-        # self.Ar = Parameter(torch.randn((N,N)))        
-        # self.Ag = torch.eye(N).to(device) 
-        self.Ag = Parameter(torch.randn((N,N)))
-        self.Ar = self.Ag
+        self.Ai = Parameter(torch.randn((N,N)))        
 
         self.C_1 = Parameter(torch.rand(self.G.shape[0], N))
         self.C_2 = Parameter(torch.rand(self.R.shape[0], N))
         self.C_g = Parameter(torch.rand(self.G.shape[1], N))
         self.C_r = Parameter(torch.rand(self.R.shape[1], N))
         
-#         self.b_g = torch.zeros(1, self.G.shape[1]).to(device)
-#         self.b_r = torch.zeros(1, self.R.shape[1]).to(device)
-#         self.b_1 = torch.zeros(self.G.shape[0],1).to(device)
-#         self.b_2 = torch.zeros(self.R.shape[0],1).to(device)
-
-        self.b_g = Parameter(torch.rand(1, self.G.shape[1]))
-        self.b_r = Parameter(torch.rand(1, self.R.shape[1]))
-        self.b_1 = Parameter(torch.rand(self.G.shape[0],1))
-        self.b_2 = Parameter(torch.rand(self.R.shape[0],1))
+        self.b_g = torch.zeros(1, self.G.shape[1]).to(device)
+        self.b_r = torch.zeros(1, self.R.shape[1]).to(device)
+        self.b_1 = torch.zeros(self.G.shape[0],1).to(device)
+        self.b_2 = torch.zeros(self.R.shape[0],1).to(device)
         
-        
-        # low rank decomp
-        self.Pl = Parameter(torch.randn(self.G.shape[0], N))
-        self.Pr = Parameter(torch.randn(N, self.R.shape[0]))
-        
-        self.meta_rna = pd.read_csv(os.path.join(dir, "cell_label1.txt"), sep = "\t")
-        self.meta_atac = pd.read_csv(os.path.join(dir, "cell_label2.txt"), sep = "\t")
-
         self.optimizer = opt.Adam(self.parameters(), lr=lr)
     
     @staticmethod
     def softmax(X: Tensor):
-        # return torch.relu(X)
         return torch.softmax(X, dim = 1)
     
     @staticmethod
-    def act(X: Tensor):
-        # not necessarily positive, so gene possibly negatively regulate the cell
-        # return torch.relu(X)
-        return X
-    @staticmethod
     def entropy_loss(C):
-#         loss = - F.softmax(C, dim=1) * F.log_softmax(C, dim=1)
-#         loss = loss.sum(dim=1).mean()
-        # loss = torch.sum(C, dim = 1).pow(2).sum()
-        
-        # New
         loss = - (F.softmax(C, dim=1) - 0.5).pow(2).mean()
+        
         return loss
     
-    @staticmethod
-    def cross_entropy(C, C_hat):
-        loss = - C * torch.log(C_hat/torch.max(C_hat)) - (1 - C) * torch.log(1 - C_hat/(torch.max(C_hat) + 1e-6))
-        return torch.sum(loss)
-
     def batch_loss(self, mode='C_c'):
         if mode != 'valid':
             mask_1 = np.random.choice(self.G.shape[0], int(self.G.shape[0] * self.batch_size), replace=False)
@@ -107,91 +181,85 @@ class cfrm_test(Module):
             mask_r = np.random.choice(self.R.shape[1], int(self.R.shape[1] * self.batch_size), replace=False)
             
         if mode == 'C_12':
-            loss1 = (self.G[np.ix_(mask_1, mask_g)] - (self.softmax(self.Pl[mask_1,:] @ self.Pr[:,mask_2]) @ self.softmax(self.C_2[mask_2,:]) @ self.act(self.Ag.detach()) @ self.softmax(self.C_g[mask_g, :].detach()).t()) - self.b_g[:, mask_g] - self.b_1[mask_1,:]).pow(2).mean()
+            loss1 = (self.G[np.ix_(mask_1, mask_g)] - (self.softmax(self.C_1[mask_1,:]) @ self.Ai.detach() @ self.softmax(self.C_g[mask_g, :].detach()).t()) - self.b_g[:, mask_g] - self.b_1[mask_1,:]).pow(2).mean()
             
-            loss2 = (self.R[np.ix_(mask_2, mask_r)] - (self.softmax(self.C_2[mask_2,:]) @ self.act(self.Ar.detach()) @ self.softmax(self.C_r[mask_r,:].detach()).t()) - self.b_r[:, mask_r] - self.b_2[mask_2,:]).pow(2).mean()    
+            loss2 = (self.R[np.ix_(mask_2, mask_r)] - (self.softmax(self.C_2[mask_2,:]) @ self.Ai.detach() @ self.softmax(self.C_r[mask_r,:].detach()).t()) - self.b_r[:, mask_r] - self.b_2[mask_2,:]).pow(2).mean()    
             
             loss3 = 0
-            loss4 = 0 
-            loss5 = 0 * self.entropy_loss(self.C_1[mask_1,:]) + 0 * self.entropy_loss(self.C_2[mask_2,:]) + 0 * self.entropy_loss(self.C_g[mask_g,:].detach()) + 0 * self.entropy_loss(self.C_r[mask_r,:].detach()) + self.entropy_loss(self.softmax(self.Pl[mask_1,:] @ self.Pr[:,mask_2]))
+
+            loss4 = self.entropy_loss(self.C_1[mask_1,:]) + self.entropy_loss(self.C_2[mask_2,:]) + self.entropy_loss(self.C_g[mask_g,:].detach()) + self.entropy_loss(self.C_r[mask_r,:].detach())
             
-            # + self.b_1[mask_1,:].pow(2).mean() + self.b_2[mask_2,:].pow(2).mean() + self.b_g[:,mask_g].pow(2).mean() + self.b_r[:,mask_r].pow(2).mean()
                 
         elif mode == 'C_gr':
-            loss1 = (self.G[np.ix_(mask_1, mask_g)] - (self.softmax(self.Pl[mask_1,:].detach() @ self.Pr[:,mask_2].detach()) @ self.softmax(self.C_2[mask_2,:].detach()) @ self.act(self.Ag.detach()) @ self.softmax(self.C_g[mask_g, :]).t()) - self.b_g[:, mask_g] - self.b_1[mask_1,:]).pow(2).mean()
+            loss1 = (self.G[np.ix_(mask_1, mask_g)] - (self.softmax(self.C_1[mask_1,:].detach()) @ self.Ai.detach() @ self.softmax(self.C_g[mask_g, :]).t()) - self.b_g[:, mask_g] - self.b_1[mask_1,:]).pow(2).mean()
     
-            loss2 = (self.R[np.ix_(mask_2, mask_r)] - (self.softmax(self.C_2[mask_2,:].detach()) @ self.act(self.Ar.detach()) @ self.softmax(self.C_r[mask_r, :]).t()) - self.b_r[:, mask_r] - self.b_2[mask_2,:]).pow(2).mean()
+            loss2 = (self.R[np.ix_(mask_2, mask_r)] - (self.softmax(self.C_2[mask_2,:].detach()) @ self.Ai.detach() @ self.softmax(self.C_r[mask_r, :]).t()) - self.b_r[:, mask_r] - self.b_2[mask_2,:]).pow(2).mean()
             
-            loss3 = - torch.trace((self.softmax(self.C_g[mask_g,:]) / torch.norm(self.softmax(self.C_g[mask_g,:]))).t() @ self.A[np.ix_(mask_g, mask_r)] @ (self.softmax(self.C_r[mask_r,:]) / torch.norm(self.softmax(self.C_r[mask_r,:]))))
-#             loss3 = (self.A[np.ix_(mask_g, mask_r)].t() @ self.softmax(self.C_g[mask_g,:]) - self.softmax(self.C_r[mask_r,:])).pow(2).mean()
+            # loss3 = - torch.trace((self.softmax(self.C_g[mask_g,:]) / torch.norm(self.softmax(self.C_g[mask_g,:]))).t() @ self.A[np.ix_(mask_g, mask_r)] @ (self.softmax(self.C_r[mask_r,:]) / torch.norm(self.softmax(self.C_r[mask_r,:]))))
             
-            loss4 = 0 
-            loss5 = 0 * self.entropy_loss(self.C_1[mask_1,:].detach()) + 0 * self.entropy_loss(self.C_2[mask_2,:].detach()) + 0 * self.entropy_loss(self.C_g[mask_g,:]) + self.entropy_loss(self.C_r[mask_r,:]) + self.entropy_loss(self.softmax(self.Pl[mask_1,:].detach() @ self.Pr[:,mask_2].detach())) # + self.b_1[mask_1,:].pow(2).mean() + self.b_2[mask_2,:].pow(2).mean() + self.b_g[:,mask_g].pow(2).mean() + self.b_r[:,mask_r].pow(2).mean() 
+            loss3 = - torch.trace(self.softmax(self.C_g[mask_g,:]).t() @ self.A[np.ix_(mask_g, mask_r)] @ self.softmax(self.C_r[mask_r,:])) / torch.norm(self.softmax(self.C_g[mask_g,:]))/ torch.norm(self.A[np.ix_(mask_g, mask_r)] @ self.softmax(self.C_r[mask_r,:]))
+            
+            loss4 = self.entropy_loss(self.C_1[mask_1,:].detach()) + self.entropy_loss(self.C_2[mask_2,:].detach()) + self.entropy_loss(self.C_g[mask_g,:]) + self.entropy_loss(self.C_r[mask_r,:])
             
         
         elif mode == "A":
-            loss1 = (self.G[np.ix_(mask_1, mask_g)] - (self.softmax(self.Pl[mask_1,:].detach() @ self.Pr[:,mask_2].detach()) @ self.softmax(self.C_2[mask_2,:].detach()) @ self.act(self.Ag) @ self.softmax(self.C_g[mask_g, :].detach()).t()) - self.b_g[:, mask_g] - self.b_1[mask_1,:]).pow(2).mean()
+            loss1 = (self.G[np.ix_(mask_1, mask_g)] - (self.softmax(self.C_1[mask_1,:].detach()) @ self.Ai @ self.softmax(self.C_g[mask_g, :].detach()).t()) - self.b_g[:, mask_g] - self.b_1[mask_1,:]).pow(2).mean()
             
-            loss2 = (self.R[np.ix_(mask_2, mask_r)] - (self.softmax(self.C_2[mask_2,:].detach()) @ self.act(self.Ar) @ self.softmax(self.C_r[mask_r, :].detach()).t()) - self.b_r[:, mask_r] - self.b_2[mask_2,:]).pow(2).mean()
+            loss2 = (self.R[np.ix_(mask_2, mask_r)] - (self.softmax(self.C_2[mask_2,:].detach()) @ self.Ai @ self.softmax(self.C_r[mask_r, :].detach()).t()) - self.b_r[:, mask_r] - self.b_2[mask_2,:]).pow(2).mean()
             
             loss3 = 0
-            # loss4 = -torch.trace((self.Ar/torch.norm(self.Ar)).t() @ (self.Ag)/torch.norm(self.Ag)) 
-            loss4 = (self.Ar - self.Ag).pow(2).mean()
-            loss5 = 0
+            
+            loss4 = 0
        
-        elif mode == 'b':
+        elif mode == "b":
             with torch.no_grad():
-                self.b_g[:, mask_g] = torch.sum(self.G[np.ix_(mask_1, mask_g)] - self.softmax(self.Pl[mask_1,:] @ self.Pr[:,mask_2]) @ self.softmax(self.C_2[mask_2,:]) @ self.Ag @ self.softmax(self.C_g[mask_g, :]).t() - self.b_1[mask_1,:], dim = 0)[None,:]/mask_1.shape[0]
-                self.b_r[:, mask_r] = torch.sum(self.R[np.ix_(mask_2, mask_r)] - self.softmax(self.C_2[mask_2,:]) @ self.Ar @ self.softmax(self.C_r[mask_r, :]).t() - self.b_2[mask_2,:], dim = 0)[None,:]/mask_2.shape[0]
-                self.b_1[mask_1, :] = torch.sum(self.G[np.ix_(mask_1, mask_g)] - self.softmax(self.Pl[mask_1,:] @ self.Pr[:,mask_2]) @ self.softmax(self.C_2[mask_2,:]) @ self.Ag @ self.softmax(self.C_g[mask_g, :]).t() - self.b_g[:, mask_g], dim = 1)[:,None]/mask_g.shape[0]
-                self.b_2[mask_2, :] = torch.sum(self.R[np.ix_(mask_2, mask_r)] - self.softmax(self.C_2[mask_2,:]) @ self.Ar @ self.softmax(self.C_r[mask_r, :]).t() - self.b_r[:, mask_r], dim = 1)[:,None]/mask_r.shape[0]
+                self.b_g[:, mask_g] = torch.sum(self.G[np.ix_(mask_1, mask_g)] - self.softmax(self.C_1[mask_1,:]) @ self.Ai @ self.softmax(self.C_g[mask_g, :]).t() - self.b_1[mask_1,:], dim = 0)[None,:]/mask_1.shape[0]
+                self.b_r[:, mask_r] = torch.sum(self.R[np.ix_(mask_2, mask_r)] - self.softmax(self.C_2[mask_2,:]) @ self.Ai @ self.softmax(self.C_r[mask_r, :]).t() - self.b_2[mask_2,:], dim = 0)[None,:]/mask_2.shape[0]
+                self.b_1[mask_1, :] = torch.sum(self.G[np.ix_(mask_1, mask_g)] - self.softmax(self.C_1[mask_1,:]) @ self.Ai @ self.softmax(self.C_g[mask_g, :]).t() - self.b_g[:, mask_g], dim = 1)[:,None]/mask_g.shape[0]
+                self.b_2[mask_2, :] = torch.sum(self.R[np.ix_(mask_2, mask_r)] - self.softmax(self.C_2[mask_2,:]) @ self.Ai @ self.softmax(self.C_r[mask_r, :]).t() - self.b_r[:, mask_r], dim = 1)[:,None]/mask_r.shape[0]
             
                 loss1 = 0
                 loss2 = 0
                 loss3 = 0
-                loss4 = 0       
-                loss5 = 0
-   
+                loss4 = 0
+                
         elif mode == 'valid':
             with torch.no_grad():
-                loss1 = (self.G - (self.softmax(self.Pl @ self.Pr) @ self.softmax(self.C_2) @ self.act(self.Ag) @ self.softmax(self.C_g).t()) - self.b_g - self.b_1).pow(2).mean()
+                
+                loss1 = (self.G - (self.softmax(self.C_1) @ self.Ai @ self.softmax(self.C_g).t()) - self.b_g - self.b_1).pow(2).mean()
                      
-                loss2 = (self.R - (self.softmax(self.C_2) @ self.act(self.Ar) @ self.softmax(self.C_r).t()) - self.b_r - self.b_2).pow(2).mean()
+                loss2 = (self.R - (self.softmax(self.C_2) @ self.Ai @ self.softmax(self.C_r).t()) - self.b_r - self.b_2).pow(2).mean()
                 
-                loss3 = - torch.trace((self.softmax(self.C_g) / torch.norm(self.softmax(self.C_g))).t() @ self.A @ (self.softmax(self.C_r) / torch.norm(self.softmax(self.C_r))))
-#                 loss3 = (self.A.t() @ self.softmax(self.C_g) - self.softmax(self.C_r)).pow(2).mean()
+                # loss3 = - torch.trace((self.softmax(self.C_g) / torch.norm(self.softmax(self.C_g))).t() @ self.A @ (self.softmax(self.C_r) / torch.norm(self.softmax(self.C_r))))
+                loss3 = - torch.trace(self.softmax(self.C_g).t() @ self.A @ self.softmax(self.C_r)) / torch.norm(self.softmax(self.C_g))/ torch.norm(self.A @ self.softmax(self.C_r))
                 
-                # loss4 = - torch.trace((self.Ar/torch.norm(self.Ar)).t() @ (self.Ag)/torch.norm(self.Ag))
-                loss4 = (self.Ar - self.Ag).pow(2).mean()
-                loss5 = 0 * self.entropy_loss(self.C_1) + 0 * self.entropy_loss(self.C_2) + 0 * self.entropy_loss(self.C_g) + self.entropy_loss(self.C_r) + self.entropy_loss(self.softmax(self.Pl @ self.Pr)) 
-                # + self.b_1.pow(2).mean() + self.b_2.pow(2).mean() + self.b_g.pow(2).mean() + self.b_r.pow(2).mean() 
+                loss4 = self.entropy_loss(self.C_1) + self.entropy_loss(self.C_2) + self.entropy_loss(self.C_g) + self.entropy_loss(self.C_r)
                      
         else:
             raise NotImplementedError
-        loss = self.alpha[0] * loss1 + self.alpha[1] * loss2 + self.alpha[2] * loss3 + self.alpha[3] * loss4 + self.alpha[4] * loss5
+        loss = self.alpha[0] * loss1 + self.alpha[1] * loss2 + self.alpha[2] * loss3 + self.alpha[3] * loss4
                
-        return loss, self.alpha[0] * loss1, self.alpha[1] * loss2, self.alpha[2] * loss3, self.alpha[3] * loss4, self.alpha[4] * loss5
-    #
+        return loss, self.alpha[0] * loss1, self.alpha[1] * loss2, self.alpha[2] * loss3, self.alpha[3] * loss4
+    
     def train_func(self, T):
         best_loss = 1e12
         count = 0
         for t in range(T):
             self.optimizer.zero_grad()
-            for mode in ['C_12', 'C_gr', 'A']:
+            for mode in ['C_12', 'C_gr', 'A', 'b']:
                 loss, *_ = self.batch_loss(mode)
                 if mode != 'b':
                     loss.backward()
                     self.optimizer.step()
-               
+                    
             if (t+1) % self.interval == 0:
-                loss, loss1, loss2, loss3, loss4, loss5 = self.batch_loss('valid')
+                loss, loss1, loss2, loss3, loss4 = self.batch_loss('valid')
                 print('Epoch {}, Validating Loss: {:.4f}'.format(t + 1, loss.item()))
                 info = [
                     'loss 1: {:.5f}'.format(loss1.item()),
                     'loss 2: {:.5f}'.format(loss2.item()),
                     'loss 3: {:.5f}'.format(loss3.item()),
-                    'loss 4: {:.5f}'.format(loss4.item()),
-                    'loss 5: {:.5f}'.format(loss5.item())
+                    'loss 4: {:.5f}'.format(loss4.item())
                 ]
                 for i in info:
                     print("\t", i)
@@ -201,18 +269,17 @@ class cfrm_test(Module):
                     count = 0
                 else:
                     count += 1
-                    if count % 20 == 0:
+                    if count % 100 == 0:
                         self.optimizer.param_groups[0]['lr'] *= 0.5
                         print('Epoch: {}, shrink lr to {:.4f}'.format(t + 1, self.optimizer.param_groups[0]['lr']))
-                        if self.optimizer.param_groups[0]['lr'] < 1e-4:
+                        if self.optimizer.param_groups[0]['lr'] < 1e-6:
                             break
                         else:
                             self.load_state_dict(torch.load(f'../check_points/real_{self.N}.pt'))
                             count = 0
-        
-        
-############################################################################################################################### 
-class cfrm_best(Module):
+
+
+class cfrm_best_old(Module):
     def __init__(self, dir = "../data/simulated/2b3c_ziqi1/", N=3, batch_size=1.0, interval=10, lr=1e-3, alpha = [1000, 1000, 100, 0.0]):
         super().__init__()
         self.N = N
@@ -385,107 +452,6 @@ class cfrm_best(Module):
                             count = 0
 
 
-                            
-    
-class classicCFRM(Module):
-    def __init__(self, dir, N=3, batch_size=100, lr=1e-3, dropout=0.1, init = "random"):
-        super().__init__()
-        self.batch_size = batch_size
-        self.alpha = torch.FloatTensor([1, 1, 1])
-        self.dropout = dropout
-        self.N = N
-        # data
-        counts_rna = np.loadtxt(os.path.join(dir, 'GxC1.txt')).T
-        counts_atac = np.loadtxt(os.path.join(dir, 'RxC2.txt')).T
-        
-        counts_rna = utils.preprocess(counts = counts_rna, mode = "quantile", modality = "RNA")
-        counts_atac = utils.preprocess(counts = counts_atac, mode = "quantile", modality= "ATAC")
-
-        self.G = torch.FloatTensor(counts_rna)
-        self.R = torch.FloatTensor(counts_atac)
-        self.A = torch.FloatTensor(np.loadtxt(os.path.join(dir, 'RxG.txt')))
-        assert self.A.shape[0] == self.R.shape[1]
-        assert self.A.shape[1] == self.G.shape[1]
-        self.label_g = torch.LongTensor(np.loadtxt(os.path.join(dir, 'gene_label.txt')))
-        self.label_c1 = torch.LongTensor(np.loadtxt(os.path.join(dir, 'cell_label_C1.txt'), skiprows=1, usecols=[1]))
-        self.label_c2 = torch.LongTensor(np.loadtxt(os.path.join(dir, 'cell_label_C2.txt'), skiprows=1, usecols=[1]))
-
-        # learnable parameters
-        if init == "svd":
-            u_g, s_g, v_g = torch.svd(self.G)
-            self.C_1 = u_g[:, :N]
-            self.C_g = v_g[:, :N]        
-
-            u_r, s_r, v_r = torch.svd(self.R)
-            self.C_2 = u_r[:, :N]
-            self.C_r = v_r[:, :N]
-
-        if init == "random":
-            self.C_1, _ = torch.qr(torch.randn((self.G.shape[0],N)))
-            self.C_2, _ = torch.qr(torch.randn((self.R.shape[0],N)))
-            self.C_g, _ = torch.qr(torch.randn((self.G.shape[1],N)))
-            self.C_r, _ = torch.qr(torch.randn((self.R.shape[1],N)))
-
-
-        self.A_1g = self.C_1.t() @ self.G @ self.C_g
-        self.A_2r = self.C_2.t() @ self.R @ self.C_r
-        self.A_rg = self.C_r.t() @ self.A @ self.C_g
-
-        loss = self.loss()
-        for l in loss:
-            print(l.item())
-        
-       
-    def loss(self):
-        loss1 = (self.G - self.C_1 @ self.A_1g @ self.C_g.t()).pow(2).mean()
-        loss2 = (self.R - self.C_2 @ self.A_2r @ self.C_r.t()).pow(2).mean()
-        loss3 = (self.A - self.C_r @ self.A_rg @ self.C_g.t()).pow(2).mean()
-        loss = self.alpha[0] * loss1 + self.alpha[1] * loss2 + self.alpha[2] * loss3
-
-        return loss, self.alpha[0] * loss1, self.alpha[1] * loss2, self.alpha[2] * loss3
-
-    def train_func(self, T):
-        for t in range(T):
-            for mode in ['C_1', 'C_2', 'C_r', 'C_g']:
-                if mode == 'C_1':
-                    M = self.alpha[0] * (self.G @ self.C_g @ self.C_g.t() @ self.G.t())
-                    s_g, u_g = torch.eig(M, eigenvectors=True)
-                    self.C_1 = u_g[:, :self.N]
-
-                elif mode == 'C_2':
-                    M = self.alpha[1] * (self.R @ self.C_r @ self.C_r.t() @ self.R.t())
-                    s_g, u_g = torch.eig(M, eigenvectors=True)
-                    self.C_2 = u_g[:, :self.N]
-
-                elif mode == 'C_r':
-                    M = self.alpha[1] * (self.R.t() @ self.C_2 @ self.C_2.t() @ self.R) + self.alpha[2] * (self.A @ self.C_g @ self.C_g.t() @ self.A.t())
-                    s_g, u_g = torch.eig(M, eigenvectors=True)
-                    self.C_r = u_g[:, :self.N]
-
-                elif mode == 'C_g':
-                    M = self.alpha[0] * (self.G.t() @ self.C_1 @ self.C_1.t() @ self.G) + self.alpha[2] * (self.A.t() @ self.C_r @ self.C_r.t() @ self.A)
-                    s_g, u_g = torch.eig(M, eigenvectors=True)
-                    self.C_g = u_g[:, :self.N]
-            
-            self.A_1g = self.C_1.t() @ self.G @ self.C_g
-            self.A_2r = self.C_2.t() @ self.R @ self.C_r
-            self.A_rg = self.C_r.t() @ self.A @ self.C_g
-            
-            loss, loss1, loss2, loss3 = self.loss()
-            print('Epoch {}, Training Loss: {:.4f}'.format(t+1, loss.item()))
-            info = [
-                'loss RNA: {:.5f}'.format(loss1.item()),
-                'loss ATAC: {:.5f}'.format(loss2.item()),
-                'loss gene act: {:.5f}'.format(loss3.item())
-            ]
-            for i in info:
-                print("\t", i)
-
-
-
-
-                
-"""
 class cfrmModel(Module):
     def __init__(self, dir, N=3, batch_size=100, lr=1e-3, dropout=0.1):
         super().__init__()
