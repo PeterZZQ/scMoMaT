@@ -9,6 +9,42 @@ from scipy import stats
 
 import torch.nn.functional as F
 
+def lsi_ATAC(X, k = 100, use_first = False):
+    """\
+    Description:
+    ------------
+        Compute LSI with TF-IDF transform, i.e. SVD on document matrix, can do tsne on the reduced dimension
+
+    Parameters:
+    ------------
+        X: cell by feature(region) count matrix
+        k: number of latent dimensions
+        use_first: since we know that the first LSI dimension is related to sequencing depth, we just ignore the first dimension since, and only pass the 2nd dimension and onwards for t-SNE
+    
+    Returns:
+    -----------
+        latent: cell latent matrix
+    """    
+    from sklearn.feature_extraction.text import TfidfTransformer
+    from sklearn.decomposition import TruncatedSVD
+
+    # binarize the scATAC-Seq count matrix
+    bin_X = np.where(X < 1, 0, 1)
+    
+    # perform Latent Semantic Indexing Analysis
+    # get TF-IDF matrix
+    tfidf = TfidfTransformer(norm='l2', sublinear_tf=True)
+    normed_count = tfidf.fit_transform(bin_X)
+
+    # perform SVD on the sparse matrix
+    lsi = TruncatedSVD(n_components = k, random_state=42)
+    lsi_r = lsi.fit_transform(normed_count)
+    
+    # use the first component or not
+    if use_first:
+        return lsi_r
+    else:
+        return lsi_r[:, 1:]
 
 def kl_div(C):
     C_uni = torch.ones_like(C)
