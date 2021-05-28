@@ -201,7 +201,7 @@ def plot_latent(z1, z2, anno1 = None, anno2 = None, mode = "joint", save = None,
             if index.shape[0] != 0:
                 axs[0].scatter(z1[index,0], z1[index,1], color = colormap(i), label = cluster_type, **_kwargs)
         # axs[0].legend(fontsize = font_size)
-        # axs[0].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+        axs[0].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(0.94, 1), markerscale=4)
         axs[0].set_title("scRNA-Seq", fontsize = 25)
 
         axs[0].tick_params(axis = "both", which = "major", labelsize = 15)
@@ -220,7 +220,7 @@ def plot_latent(z1, z2, anno1 = None, anno2 = None, mode = "joint", save = None,
             if index.shape[0] != 0:
                 axs[1].scatter(z2[index,0], z2[index,1], color = colormap(i), label = cluster_type, **_kwargs)
         # axs[1].axis("off")
-        axs[1].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+        axs[1].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), markerscale=4)
         axs[1].set_title("scATAC-Seq", fontsize = 25)
 
         axs[1].tick_params(axis = "both", which = "major", labelsize = 15)
@@ -255,7 +255,7 @@ def plot_latent(z1, z2, anno1 = None, anno2 = None, mode = "joint", save = None,
         colormap = plt.cm.get_cmap("tab10")
         axs[0].scatter(z1[:,0], z1[:,1], color = colormap(1), label = "scRNA-Seq", **_kwargs)
         axs[0].scatter(z2[:,0], z2[:,1], color = colormap(2), label = "scATAC-Seq", **_kwargs)
-        axs[0].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(0.54, 1), markerscale=4)
+        axs[0].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(0.74, 1), markerscale=4)
         
         axs[0].tick_params(axis = "both", which = "major", labelsize = 15)
 
