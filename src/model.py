@@ -35,7 +35,7 @@ class cfrm(Module):
     def __init__(self, counts, Ns, K, N_feat = None, batch_size=0.3, interval=10, lr=1e-3, alpha = [1000, 1000, 100, 100, 0.0, 0.0, 0.0, 0.1], seed = None):
         super().__init__()
         
-        # init parameters, first for counts["rna"], then for counts["atac"]
+        # init parameters, Ns is a list with length the number of batches
         self.Ns = Ns
         self.K = K
         self.N_cell = sum(self.Ns) - (len(self.Ns) - 1) * self.K
@@ -51,61 +51,92 @@ class cfrm(Module):
         if seed is not None:
             np.random.seed(seed)
             torch.manual_seed(seed)
-
+        
+        # sanity check
+        assert len(counts["rna"]) == len(counts["atac"])
+        assert len(self.Ns) == len(counts["rna"])
+        for i in range(len(self.Ns)):
+            if (counts["rna"][i] is not None) and (counts["atac"][i] is not None):
+                assert counts["rna"][i].shape[0] == counts["atac"][i].shape[0]
+        
+        
         # preprocessing data
         self.Gs = []
         for counts_rna in counts["rna"]:
-            counts_rna = utils.preprocess(counts_rna, mode = "quantile", modality = "RNA")
-            counts_rna = counts_rna/np.max(counts_rna)
-            self.Gs.append(torch.FloatTensor(counts_rna).to(device))
+            if counts_rna is not None:
+                counts_rna = utils.preprocess(counts_rna, mode = "quantile", modality = "RNA")
+                counts_rna = counts_rna/np.max(counts_rna)
+                self.Gs.append(torch.FloatTensor(counts_rna).to(device))
+            else:
+                # if corresponding batch doesn't have scRNA-Seq, give None
+                self.Gs.append(None)
             
         self.Rs = []
         for counts_atac in counts["atac"]:
-            counts_atac = utils.preprocess(counts_atac, mode = "quantile", modality = "ATAC")
-            counts_atac = counts_atac/np.max(counts_atac)
-            self.Rs.append(torch.FloatTensor(counts_atac).to(device))
+            if counts_atac is not None:
+                counts_atac = utils.preprocess(counts_atac, mode = "quantile", modality = "ATAC")
+                counts_atac = counts_atac/np.max(counts_atac)
+                self.Rs.append(torch.FloatTensor(counts_atac).to(device))
+            else:
+                # if corresponding batch doesn't have scATAC-Seq, give None
+                self.Rs.append(None)
         
         # only one gene activity matrix for multi-batches scRNA-Seq and scATAC-Seq datasets.
-        gact = counts["gact"][0]
-        assert gact.shape[0] < gact.shape[1]
-        gact = utils.preprocess(gact, mode = "gact")
-        self.A = torch.FloatTensor(gact).to(device)
+        if counts["gact"] is not None:
+            gact = counts["gact"]
+            assert gact.shape[0] < gact.shape[1]
+            gact = utils.preprocess(gact, mode = "gact")
+            self.A = torch.FloatTensor(gact).to(device)
+        
+        else:
+            if (len(counts["atac"]) != 0) and (len(counts["rna"]) != 0):
+                raise ValueError("gene activity matrix must be provided")
         
         # create parameters
-        self.C1s = ParameterList([])
+        self.Cs = ParameterList([])        
         self.b1s = []
         self.bgs = []
 
-        self.C2s = ParameterList([])
         self.b2s = []
         self.brs = []
         
-        if len(self.Gs) != 0:
-            for G in self.Gs:
-                self.C1s.append(Parameter(torch.rand(G.shape[0], self.N_cell)))
-                # not shared?
-                self.b1s.append(torch.zeros(G.shape[0],1).to(device))
-                self.bgs.append(torch.zeros(1, G.shape[1]).to(device))
-                
-            self.Cg = Parameter(torch.rand(self.Gs[0].shape[1], self.N_feat))
-            self.Ag = Parameter(torch.rand((self.N_cell, self.N_feat)))
-            
-        else:
-            self.Cg = None
-            self.Ag = None
+        self.Cg = None
+        self.Cr = None
+        self.Ag = None
+        self.Ar = None
         
-        if len(self.Rs) != 0:
-            for R in self.Rs:
-                self.C2s.append(Parameter(torch.rand(R.shape[0], self.N_cell)))
-                # not shared?
-                self.b2s.append(torch.zeros(R.shape[0], 1).to(device))
-                self.brs.append(torch.zeros(1, R.shape[1]).to(device))
+        for idx in range(len(self.Ns)):
+            if self.Gs[idx] is not None:
+                self.Cs.append(Parameter(torch.rand(self.Gs[idx].shape[0], self.N_cell)))
+                    
+            elif self.Rs[idx] is not None:
+                self.Cs.append(Parameter(torch.rand(self.Rs[idx].shape[0], self.N_cell)))
 
-            self.Cr = Parameter(torch.rand(self.Rs[0].shape[1], self.N_feat))
-            self.Ar = Parameter(torch.rand((self.N_cell, self.N_feat))) 
-        else:
-            self.Cr = None
-            self.Ar = None
+            else:
+                raise ValueError("counts_rna and counts_atac cannot be both None")
+                
+            if self.Gs[idx] is not None:
+                self.b1s.append(torch.zeros(self.Gs[idx].shape[0], 1).to(device))
+                self.bgs.append(torch.zeros(1, self.Gs[idx].shape[1]).to(device))
+                if self.Cg is None:
+                    self.Cg = Parameter(torch.rand(self.Gs[idx].shape[1], self.N_feat))
+                if self.Ag is None:
+                    self.Ag = Parameter(torch.rand((self.N_cell, self.N_feat)))
+            else:
+                self.b1s.append(None)
+                self.bgs.append(None)
+                
+            if self.Rs[idx] is not None:
+                self.b2s.append(torch.zeros(self.Rs[idx].shape[0], 1).to(device))
+                self.brs.append(torch.zeros(1, self.Rs[idx].shape[1]).to(device))
+                if self.Cr is None:
+                    self.Cr = Parameter(torch.rand(self.Rs[idx].shape[1], self.N_feat))
+                if self.Ar is None:
+                    self.Ar = Parameter(torch.rand((self.N_cell, self.N_feat))) 
+            else:
+                self.b2s.append(None)
+                self.brs.append(None)
+        
         
         # missing masks
         self.dims = []
@@ -124,10 +155,14 @@ class cfrm(Module):
         
         self.optimizer = opt.Adam(self.parameters(), lr=lr)
         
-        self.orders = ['C_12']*1 + ['C_gr']*1
-        if (len(self.Gs) != 0): 
+        self.orders = ['C_12']*1 
+        if self.Cg is not None:
+            self.orders += ['C_g']*1
+        if self.Cr is not None:
+            self.orders += ['C_r']*1
+        if self.Ag is not None:
             self.orders += ['A_g']*1
-        if (len(self.Rs) != 0):
+        if self.Ar is not None:
             self.orders += ['A_r']*1
         self.orders += ['b']* 1 
     
@@ -147,145 +182,162 @@ class cfrm(Module):
         loss8 = 0
 
         if mode != 'valid':
-            mask_1s = batch_indices[0]
+            masks = batch_indices[0]
             mask_g = batch_indices[1]
-            mask_2s = batch_indices[2]
-            mask_r = batch_indices[3]
+            mask_r = batch_indices[2]
 
         if mode == 'C_12':
-
-            # if no G, skip
-            for i, G in enumerate(self.Gs):
-                self.C1s[i].requires_grad = True
+            if self.Cg is not None:
                 self.Cg.requires_grad = False
-                self.Ag.requires_grad = False
-                
-                loss1 += (G[np.ix_(mask_1s[i], mask_g)] - self.softmax(self.C1s[i][mask_1s[i],:]) @ self.Ag @ self.softmax(self.Cg[mask_g, :]).t() - self.bgs[i][:, mask_g] - self.b1s[i][mask_1s[i],:]).pow(2).mean()
-                
-                if len(self.missing_dims[i]) > 0: 
-                    loss5 += (self.softmax(self.C1s[i][mask_1s[i],:])[:,self.missing_dims[i]]).mean()
-                
-                if alpha[5] != 0:
-                    Corr1 = self.softmax(self.C1s[i][mask_1s[i],:])[:,self.dims[i]].t() @ self.softmax(self.C1s[i][mask_1s[i], :])[:,self.dims[i]]
-                    loss6 -= torch.norm(Corr1 * self.mask_diags[i]) / torch.norm(Corr1)
-                 
-            # if no R, skip
-            for i, R in enumerate(self.Rs):
-                self.C2s[i].requires_grad = True
+            if self.Cr is not None:
                 self.Cr.requires_grad = False
-                self.Ar.requires_grad = False
-                
-                loss2 += (R[np.ix_(mask_2s[i], mask_r)] - self.softmax(self.C2s[i][mask_2s[i],:]) @ self.Ar @ self.softmax(self.Cr[mask_r, :]).t() - self.brs[i][:, mask_r] - self.b2s[i][mask_2s[i],:]).pow(2).mean() 
-                
-                if len(self.missing_dims[i + len(self.Gs)]) > 0: 
-                    loss5 += (self.softmax(self.C2s[i][mask_2s[i],:])[:,self.missing_dims[i + len(self.Gs)]]).mean()
-                
-                if alpha[5] != 0:
-                    Corr2 = self.softmax(self.C2s[i][mask_2s[i],:])[:,self.dims[i + len(self.Gs)]].t() @ self.softmax(self.C2s[i][mask_2s[i], :])[:,self.dims[i + len(self.Gs)]]
-                    loss6 -= torch.trace(Corr2 * self.mask_diags[i + len(self.Gs)]) / torch.norm(Corr2)
-
-        
-            
-        elif mode == 'C_gr':
-            
-            for i, G in enumerate(self.Gs):
-                self.C1s[i].requires_grad = False
-                self.Cg.requires_grad = True
+            if self.Ag is not None:
                 self.Ag.requires_grad = False
-                
-                loss1 += (G[np.ix_(mask_1s[i], mask_g)] - self.softmax(self.C1s[i][mask_1s[i],:]) @ self.Ag @ self.softmax(self.Cg[mask_g, :]).t() - self.bgs[i][:, mask_g] - self.b1s[i][mask_1s[i],:]).pow(2).mean()
-                
-            for i, R in enumerate(self.Rs):
-                self.C2s[i].requires_grad = False
-                self.Cr.requires_grad = True
+            if self.Ar is not None:
                 self.Ar.requires_grad = False
+            
+            for i in range(len(self.Ns)):
+                self.Cs[i].requires_grad = True
+                if self.Gs[i] is not None:
+                    loss1 += (self.Gs[i][np.ix_(masks[i], mask_g)] - self.softmax(self.Cs[i][masks[i],:]) @ self.Ag @ self.softmax(self.Cg[mask_g, :]).t() - self.bgs[i][:, mask_g] - self.b1s[i][masks[i],:]).pow(2).mean()
                 
-                loss2 += (R[np.ix_(mask_2s[i], mask_r)] - self.softmax(self.C2s[i][mask_2s[i],:]) @ self.Ar @ self.softmax(self.Cr[mask_r, :]).t() - self.brs[i][:, mask_r] - self.b2s[i][mask_2s[i],:]).pow(2).mean()
+            
+                if self.Rs[i] is not None:
+                    loss2 += (self.Rs[i][np.ix_(masks[i], mask_r)] - self.softmax(self.Cs[i][masks[i],:]) @ self.Ar @ self.softmax(self.Cr[mask_r, :]).t() - self.brs[i][:, mask_r] - self.b2s[i][masks[i],:]).pow(2).mean() 
+                    
+            
+                if len(self.missing_dims[i]) > 0: 
+                    loss5 += (self.softmax(self.Cs[i][masks[i],:])[:,self.missing_dims[i]]).mean()
 
+                if alpha[5] != 0:
+                    Corr1 = self.softmax(self.Cs[i][masks[i],:])[:,self.dims[i]].t() @ self.softmax(self.Cs[i][masks[i], :])[:,self.dims[i]]
+                    loss6 -= torch.norm(Corr1 * self.mask_diags[i]) / torch.norm(Corr1)
+            
+            
+        elif mode == 'C_g':
+            if self.Cg is not None:
+                self.Cg.requires_grad = True
+            if self.Cr is not None:
+                self.Cr.requires_grad = False
+            if self.Ag is not None:
+                self.Ag.requires_grad = False
+            if self.Ar is not None:
+                self.Ar.requires_grad = False
+            
+            for i in range(len(self.Ns)):
+                self.Cs[i].requires_grad = False
+                if self.Gs[i] is not None:
+                    loss1 += (self.Gs[i][np.ix_(masks[i], mask_g)] - self.softmax(self.Cs[i][masks[i],:]) @ self.Ag @ self.softmax(self.Cg[mask_g, :]).t() - self.bgs[i][:, mask_g] - self.b1s[i][masks[i],:]).pow(2).mean()
+                
             
             if (self.Cg is not None) and (self.Cr is not None):
                 loss4 = - torch.trace(self.softmax(self.Cg[mask_g,:]).t() @ self.A[np.ix_(mask_g, mask_r)] @ self.softmax(self.Cr[mask_r,:])) /torch.norm(self.softmax(self.Cg[mask_g,:])) / torch.norm(self.A[np.ix_(mask_g, mask_r)] @ self.softmax(self.Cr[mask_r,:]))
-            
+                    
             if (alpha[6] != 0) and (self.Cg is not None):
                 Corrg = self.softmax(self.Cg[mask_g,:]).t() @ self.softmax(self.Cg[mask_g,:])
-                loss7 -= torch.norm(Corrg * self.mask_diagg) / torch.norm(Corrg) 
+                loss7 -= torch.norm(Corrg * self.mask_diagg) / torch.norm(Corrg)                 
+                
+                
+        elif mode == 'C_r':
+            if self.Cg is not None:
+                self.Cg.requires_grad = False
+            if self.Cr is not None:
+                self.Cr.requires_grad = True
+            if self.Ag is not None:
+                self.Ag.requires_grad = False
+            if self.Ar is not None:
+                self.Ar.requires_grad = False
+            
+            for i in range(len(self.Ns)):
+                self.Cs[i].requires_grad = False
+                if self.Rs[i] is not None:
+                    loss2 += (self.Rs[i][np.ix_(masks[i], mask_r)] - self.softmax(self.Cs[i][masks[i],:]) @ self.Ar @ self.softmax(self.Cr[mask_r, :]).t() - self.brs[i][:, mask_r] - self.b2s[i][masks[i],:]).pow(2).mean()
+            
+            
+            if (self.Cg is not None) and (self.Cr is not None):
+                loss4 = - torch.trace(self.softmax(self.Cg[mask_g,:]).t() @ self.A[np.ix_(mask_g, mask_r)] @ self.softmax(self.Cr[mask_r,:])) /torch.norm(self.softmax(self.Cg[mask_g,:])) / torch.norm(self.A[np.ix_(mask_g, mask_r)] @ self.softmax(self.Cr[mask_r,:]))               
                 
             if (alpha[6] != 0) and (self.Cr is not None):    
                 Corrr = self.softmax(self.Cr[mask_r,:]).t() @ self.softmax(self.Cr[mask_r,:])
                 loss7 -= torch.norm(Corrr * self.mask_diagr) / torch.norm(Corrr)
-
             
             
         elif mode == "A_g":
-            
-            for i, G in enumerate(self.Gs):
-                self.C1s[i].requires_grad = False
+            if self.Cg is not None:
                 self.Cg.requires_grad = False
+            if self.Cr is not None:
+                self.Cr.requires_grad = False
+            if self.Ag is not None:
                 self.Ag.requires_grad = True
-                if self.Ar is not None:
-                    self.Ar.requires_grad = False
-                
-                loss1 += (G[np.ix_(mask_1s[i], mask_g)] - self.softmax(self.C1s[i][mask_1s[i],:]) @ self.Ag @ self.softmax(self.Cg[mask_g,:]).t() - self.bgs[i][:, mask_g] - self.b1s[i][mask_1s[i],:]).pow(2).mean()
+            if self.Ar is not None:
+                self.Ar.requires_grad = False
             
+            for i in range(len(self.Ns)):
+                self.Cs[i].requires_grad = False 
+                if self.Gs[i] is not None:
+                    loss1 += (self.Gs[i][np.ix_(masks[i], mask_g)] - self.softmax(self.Cs[i][masks[i],:]) @ self.Ag @ self.softmax(self.Cg[mask_g,:]).t() - self.bgs[i][:, mask_g] - self.b1s[i][masks[i],:]).pow(2).mean()
+                    
+                
             if (self.Ag is not None) and (self.Ar is not None):
                 loss3 = - torch.trace(self.Ar @ self.Ag.t())/torch.norm(self.Ar)/torch.norm(self.Ag)
-                
-            loss8 = self.Ag.abs().sum()
+            
+            if self.Ag is not None:
+                loss8 = self.Ag.abs().sum()
 
         
         elif mode == "A_r":
-
-            for i, R in enumerate(self.Rs): 
-                self.C2s[i].requires_grad = False
+            if self.Cg is not None:
+                self.Cg.requires_grad = False
+            if self.Cr is not None:
                 self.Cr.requires_grad = False
+            if self.Ag is not None:
+                self.Ag.requires_grad = False
+            if self.Ar is not None:
                 self.Ar.requires_grad = True
-                if self.Ag is not None:
-                    self.Ag.requires_grad = False
                 
-                loss2 += (R[np.ix_(mask_2s[i], mask_r)] - self.softmax(self.C2s[i][mask_2s[i],:]) @ self.Ar @ self.softmax(self.Cr[mask_r, :]).t() - self.brs[i][:, mask_r] - self.b2s[i][mask_2s[i],:]).pow(2).mean()
-
+            for i in range(len(self.Ns)):
+                self.Cs[i].requires_grad = False 
+                if self.Rs[i] is not None:
+                    loss2 += (self.Rs[i][np.ix_(masks[i], mask_r)] - self.softmax(self.Cs[i][masks[i],:]) @ self.Ar @ self.softmax(self.Cr[mask_r, :]).t() - self.brs[i][:, mask_r] - self.b2s[i][masks[i],:]).pow(2).mean()
+                    
+            
             if (self.Ag is not None) and (self.Ar is not None):                
                 loss3 = - torch.trace(self.Ar @ self.Ag.t())/torch.norm(self.Ar)/torch.norm(self.Ag)
             
-            loss8 = self.Ar.abs().sum()
+            if self.Ar is not None:
+                loss8 = self.Ar.abs().sum()
             
             
         elif mode == "b":
             with torch.no_grad():
-                for i, G in enumerate(self.Gs):
-                    self.bgs[i][:, mask_g] = torch.mean(G[np.ix_(mask_1s[i], mask_g)] - self.softmax(self.C1s[i][mask_1s[i],:]) @ self.Ag @ self.softmax(self.Cg[mask_g, :]).t() - self.b1s[i][mask_1s[i], :], dim = 0)[None,:]
-                    self.b1s[i][mask_1s[i], :] = torch.mean(G[np.ix_(mask_1s[i], mask_g)] - self.softmax(self.C1s[i][mask_1s[i],:]) @ self.Ag @ self.softmax(self.Cg[mask_g, :]).t() - self.bgs[i][:, mask_g], dim = 1)[:,None]
+                for i in range(len(self.Ns)):
+                    if self.Gs[i] is not None:
+                        self.bgs[i][:, mask_g] = torch.mean(self.Gs[i][np.ix_(masks[i], mask_g)] - self.softmax(self.Cs[i][masks[i],:]) @ self.Ag @ self.softmax(self.Cg[mask_g, :]).t() - self.b1s[i][masks[i], :], dim = 0)[None,:]
+                        self.b1s[i][masks[i], :] = torch.mean(self.Gs[i][np.ix_(masks[i], mask_g)] - self.softmax(self.Cs[i][masks[i],:]) @ self.Ag @ self.softmax(self.Cg[mask_g, :]).t() - self.bgs[i][:, mask_g], dim = 1)[:,None]
                 
-                for i, R in enumerate(self.Rs): 
-                    self.brs[i][:, mask_r] = torch.mean(R[np.ix_(mask_2s[i], mask_r)] - self.softmax(self.C2s[i][mask_2s[i],:]) @ self.Ar @ self.softmax(self.Cr[mask_r, :]).t() - self.b2s[i][mask_2s[i],:], dim = 0)[None,:]
-                    self.b2s[i][mask_2s[i], :] = torch.mean(R[np.ix_(mask_2s[i], mask_r)] - self.softmax(self.C2s[i][mask_2s[i],:]) @ self.Ar @ self.softmax(self.Cr[mask_r, :]).t() - self.brs[i][:, mask_r], dim = 1)[:,None]
+                    if self.Rs[i] is not None:
+                        self.brs[i][:, mask_r] = torch.mean(self.Rs[i][np.ix_(masks[i], mask_r)] - self.softmax(self.Cs[i][masks[i],:]) @ self.Ar @ self.softmax(self.Cr[mask_r, :]).t() - self.b2s[i][masks[i],:], dim = 0)[None,:]
+                        self.b2s[i][masks[i], :] = torch.mean(self.Rs[i][np.ix_(masks[i], mask_r)] - self.softmax(self.Cs[i][masks[i],:]) @ self.Ar @ self.softmax(self.Cr[mask_r, :]).t() - self.brs[i][:, mask_r], dim = 1)[:,None]
             
                 
         elif mode == 'valid':
             with torch.no_grad():
                 
-                for i, G in enumerate(self.Gs):
-                    loss1 += (G - self.softmax(self.C1s[i]) @ self.Ag @ self.softmax(self.Cg).t() - self.bgs[i] - self.b1s[i]).pow(2).mean()
+                for i in range(len(self.Ns)):
+                    if self.Gs[i] is not None:
+                        loss1 += (self.Gs[i] - self.softmax(self.Cs[i]) @ self.Ag @ self.softmax(self.Cg).t() - self.bgs[i] - self.b1s[i]).pow(2).mean()
+                    
+                    if self.Rs[i] is not None:
+                        loss2 += (self.Rs[i] - self.softmax(self.Cs[i]) @ self.Ar @ self.softmax(self.Cr).t() - self.brs[i] - self.b2s[i]).pow(2).mean()
                     
                     if len(self.missing_dims[i]) > 0: 
-                        loss5 += (self.softmax(self.C1s[i])[:,self.missing_dims[i]]).mean()
+                        loss5 += (self.softmax(self.Cs[i])[:,self.missing_dims[i]]).mean()
                         
                     if alpha[5] != 0:
-                        Corr1 = self.softmax(self.C1s[i])[:,self.dims[i]].t() @ self.softmax(self.C1s[i])[:,self.dims[i]]
+                        Corr1 = self.softmax(self.Cs[i])[:,self.dims[i]].t() @ self.softmax(self.Cs[i])[:,self.dims[i]]
                         loss6 -= torch.norm(Corr1 * self.mask_diags[i]) / torch.norm(Corr1)
                 
                 
-                for i, R in enumerate(self.Rs): 
-                    loss2 += (R - self.softmax(self.C2s[i]) @ self.Ar @ self.softmax(self.Cr).t() - self.brs[i] - self.b2s[i]).pow(2).mean()
-                    if len(self.missing_dims[i + len(self.Gs)]) > 0: 
-                        loss5 += (self.softmax(self.C2s[i])[:,self.missing_dims[i + len(self.Gs)]]).mean()
-                    
-                    if alpha[5] != 0:
-                        Corr2 = self.softmax(self.C2s[i])[:,self.dims[i + len(self.Gs)]].t() @ self.softmax(self.C2s[i])[:,self.dims[i + len(self.Gs)]]
-                        loss6 -= torch.trace(Corr2 * self.mask_diags[i + len(self.Gs)]) / torch.norm(Corr2)
-                    
-                
-            
                 if (self.Cg is not None) and (self.Cr is not None):
                     loss3 = - torch.trace(self.Ar @ self.Ag.t())/torch.norm(self.Ar)/torch.norm(self.Ag)
                     loss4 = - torch.trace(self.softmax(self.Cg).t() @ self.A @ self.softmax(self.Cr)) /torch.norm(self.softmax(self.Cg)) / torch.norm(self.A @ self.softmax(self.Cr))
@@ -320,22 +372,18 @@ class cfrm(Module):
 
         for t in range(T):
             # generate random masks
-            mask_1s = []
-            mask_2s = []
+            masks = []
             
-            for i, G in enumerate(self.Gs):
-                mask_1s.append(np.random.choice(self.Gs[0].shape[0], int(self.Gs[0].shape[0] * self.batch_size), replace=False))
+            for i in range(len(self.Ns)):
+                masks.append(np.random.choice(self.Cs[i].shape[0], int(self.Cs[i].shape[0] * self.batch_size), replace=False))
             
-            for i, R in enumerate(self.Rs): 
-                mask_2s.append(np.random.choice(self.Rs[0].shape[0], int(self.Rs[0].shape[0] * self.batch_size), replace=False))
-            
-            if len(self.Gs) != 0:
-                mask_g = np.random.choice(G.shape[1], int(G.shape[1] * self.batch_size), replace=False)
+            if self.Cg is not None:
+                mask_g = np.random.choice(self.Cg.shape[0], int(self.Cg.shape[0] * self.batch_size), replace=False)
             else:
                 mask_g = None
                 
-            if len(self.Rs) != 0:
-                mask_r = np.random.choice(R.shape[1], int(R.shape[1] * self.batch_size), replace=False)
+            if self.Cr is not None:
+                mask_r = np.random.choice(self.Cr.shape[0], int(self.Cr.shape[0] * self.batch_size), replace=False)
             else:
                 mask_r = None
             
@@ -344,7 +392,7 @@ class cfrm(Module):
                 alpha = self.alpha
             
             for mode in self.orders:
-                loss, *_ = self.batch_loss(mode, alpha, [mask_1s, mask_g, mask_2s, mask_r])
+                loss, *_ = self.batch_loss(mode, alpha, [masks, mask_g, mask_r])
                 
                 if mode != 'b':
                     loss.backward()
