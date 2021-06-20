@@ -61,13 +61,15 @@ def quantile_norm(Cs, min_cells = 20, max_sample = 1000, quantiles = 50, ref = N
 # import torch
 # from umap import UMAP
 # import utils
+# import importlib
+# importlib.reload(utils)
 
 # C1 = pd.read_csv("./C1.txt", index_col = 0, header = None).values
 # C2 = pd.read_csv("./C2.txt", index_col = 0, header = None).values
 
 # Cs = [C1, C2]
 
-# Cs = quantile_norm(Cs, min_cells = 0, refine = False)
+# # Cs = quantile_norm(Cs, min_cells = 0, refine = False)
 
 # dir = '../data/simulated/'
 
@@ -92,13 +94,16 @@ def quantile_norm(Cs, min_cells = 20, max_sample = 1000, quantiles = 50, ref = N
 # counts = {"rna":[counts_rna1, None], "atac": [None, counts_atac2], "gact": A}
 
 
-# Cs[0] = torch.softmax(torch.FloatTensor(Cs[0]), dim = 1).cpu().detach().numpy()
-# Cs[1] = torch.softmax(torch.FloatTensor(Cs[1]), dim = 1).cpu().detach().numpy()
+# Cs[0] = torch.softmax(torch.FloatTensor(Cs[0]), dim = 1)# .cpu().detach().numpy()
+# Cs[1] = torch.softmax(torch.FloatTensor(Cs[1]), dim = 1)# .cpu().detach().numpy()
 
 # max_rna = np.argmax(Cs[0], axis = 1).squeeze()
 # max_atac = np.argmax(Cs[1], axis = 1).squeeze()
 
-# umap_op = UMAP(n_components = 2, n_neighbors = 15, min_dist = 0.4) 
+
+# Cs[0], Cs[1] = utils.match_alignment(Cs[0], Cs[1], k = 10) 
+
+# umap_op = UMAP(n_components = 2, n_neighbors = 15, min_dist = 0.4, random_state = 0) 
 # z = umap_op.fit_transform(np.concatenate((Cs[0], Cs[1]), axis = 0))
 
 # utils.plot_latent(z[:Cs[0].shape[0],:], z[Cs[0].shape[0]:,:], max_rna, max_atac, mode= "separate", save = None)

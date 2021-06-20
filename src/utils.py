@@ -301,7 +301,7 @@ def match_alignment(z_rna, z_atac, k = 10):
     knn_index = np.argpartition(dist, kth = k - 1, axis = 1)[:,(k-1)]
     kth_dist = np.take_along_axis(dist, knn_index[:,None], axis = 1)
     
-    K = dist/(kth_dist + 1e-6) 
+    K = dist/(10 * kth_dist + 1e-6) 
     K = (dist <= kth_dist) * np.exp(-K) 
     K = K/np.sum(K, axis = 1)[:,None]
 
