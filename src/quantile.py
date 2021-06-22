@@ -37,14 +37,14 @@ def quantile_norm(Cs, min_cells = 20, max_sample = 1000, quantiles = 50, ref = N
             elif len(cell_idx) == 1:
                 Cs[batch][cell_idx, clust] = np.mean(Cs[ref][cell_ref_idx, clust]) 
             else:
-                # current batch
-                q2 = np.quantile(np.random.choice(Cs[batch][cell_idx, clust], min(len(cell_idx), max_sample)), np.arange(0,1,1/quantiles))
                 # reference batch
                 q1 = np.quantile(np.random.choice(Cs[ref][cell_ref_idx, clust], min(len(cell_ref_idx), max_sample)), np.arange(0,1,1/quantiles))
+                # current batch
+                q2 = np.quantile(np.random.choice(Cs[batch][cell_idx, clust], min(len(cell_idx), max_sample)), np.arange(0,1,1/quantiles))
 
                 # add values in order to make interp1d works
-                q1 = np.concatenate(([np.min(Cs[batch][cell_idx, clust])], q1, [np.max(Cs[batch][cell_idx, clust])]))
-                q2 = np.concatenate(([np.min(Cs[ref][cell_ref_idx, clust])], q2, [np.max(Cs[ref][cell_ref_idx, clust])]))
+                q1 = np.concatenate(([np.min(Cs[ref][cell_ref_idx, clust])], q1, [np.max(Cs[ref][cell_ref_idx, clust])]))
+                q2 = np.concatenate(([np.min(Cs[batch][cell_idx, clust])], q2, [np.max(Cs[batch][cell_idx, clust])]))
 
                 if np.sum(q1) == 0 or np.sum(q2) == 0 or len(np.unique(q1)) < 2 or len(np.unique(q2)) < 2:
                     Cs[batch][cell_idx, clust] = 0 
