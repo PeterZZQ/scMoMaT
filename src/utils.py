@@ -295,7 +295,7 @@ def _pairwise_distances(x, y = None):
 
     return torch.clamp(dist, 0.0, np.inf)
 
-def match_alignment(z_rna, z_atac, k = 10):
+def match_embed(z_rna, z_atac, k = 10):
     # note that the distance is squared version
     dist = _pairwise_distances(z_atac, z_rna).numpy()
     knn_index = np.argpartition(dist, kth = k - 1, axis = 1)[:,(k-1)]
@@ -335,6 +335,58 @@ def match_clust(z_rna, z_atac, k = 10, scale = 1):
             print("no cell in cluster {:d}".format(clust))
     return z_rna, z_atac    
 
+
+######################## Seurat MNN style #####################################
+def match_embed_seurat(z_rna, z_atac, k = 20):
+    n_rna = z_rna.shape[0]
+    n_atac = z_atac.shape[0]
+
+    # mutual nearest neighbor
+    dist1 = _pairwise_distances(z_atac, z_rna).numpy()
+    knn_index = np.argpartition(dist1, kth = k - 1, axis = 1)[:,(k-1)]
+    kth_dist = np.take_along_axis(dist1, knn_index[:,None], axis = 1)
+    knn1 = (dist1 <= kth_dist)
+
+    dist2 = _pairwise_distances(z_rna, z_atac).numpy()
+    knn_index = np.argpartition(dist2, kth = k - 1, axis = 1)[:,(k-1)]
+    kth_dist = np.take_along_axis(dist2, knn_index[:,None], axis = 1)
+    knn2 = (dist2 <= kth_dist)
+    
+    assert knn1.shape[0] == knn2.shape[1]
+    assert knn1.shape[1] == knn2.shape[0]
+    knn = knn1 * knn2.T
+    dist = knn * dist1
+
+    # scoring, calculate shared nearest neighbor
+    dist3 = _pairwise_distances(z_rna, z_rna).numpy()
+    knn_index = np.argpartition(dist3, kth = k - 1, axis = 1)[:,(k-1)]
+    kth_dist = np.take_along_axis(dist3, knn_index[:,None], axis = 1)
+    knn3 = (dist3 <= kth_dist)
+    
+    dist4 = _pairwise_distances(z_atac, z_atac).numpy()
+    knn_index = np.argpartition(dist4, kth = k - 1, axis = 1)[:,(k-1)]
+    kth_dist = np.take_along_axis(dist4, knn_index[:,None], axis = 1)
+    knn4 = (dist4 <= kth_dist)
+
+    # shape (n_rna + n_atac, n_rna + n_atac)
+    snn1 = np.concatenate((knn3, knn2), axis = 1)
+    snn2 = np.concatenate((knn1, knn4), axis = 1)
+    rows, cols = np.where(knn != 0)
+
+    snn_counts = np.zeros_like(knn)
+    for row, col in zip(rows, cols):
+        # row correspond to atac, col correspond to rna
+        n_snn = np.sum(snn1[col, :] * snn2[row,:])
+        snn_counts[row, col] = n_snn
+    
+    snn_counts = snn_counts/np.max(snn_counts)
+    scores = snn_counts * knn
+    # final 
+    scores = scores * np.exp(- (dist/10 * np.max(dist, axis = 1)[:, None]))
+    scores = scores/np.sum(scores, axis = 1)[:,None]
+    # Transform
+    z_atac = torch.FloatTensor(scores).mm(z_rna)
+    return z_rna, z_atac    
 
 
 ###############################################################################

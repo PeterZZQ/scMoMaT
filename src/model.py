@@ -89,7 +89,8 @@ class cfrm(Module):
             self.A = torch.FloatTensor(gact).to(device)
         
         else:
-            if (len(counts["atac"]) != 0) and (len(counts["rna"]) != 0):
+            # if (len(counts["atac"]) != 0) and (len(counts["rna"]) != 0):
+            if all([elem != None for elem in counts["atac"]]) and all(elem != None for elem in counts["rna"]):
                 raise ValueError("gene activity matrix must be provided")
         
         # create parameters

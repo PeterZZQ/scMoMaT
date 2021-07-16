@@ -62,6 +62,7 @@ for(path in paths){
     # ifnb_liger <- optimizeALS(ifnb_liger, k=30, use.unshared = TRUE)
     # original
     ifnb_liger <- rliger::optimizeALS(ifnb_liger, k = num_clust)
+    break
 
     # quantile normalization
     print("Writing results...")

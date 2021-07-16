@@ -67,5 +67,7 @@ for(path in paths){
     # visualize
     scAI_outs <- reducedDims(scAI_outs, method = "umap")
     cellVisualization(scAI_outs, scAI_outs@embed$umap, color.by = "cluster")
+    # cell loading, of the shape (ncells, k)
+    H <- t(scAI_outs@fit$H)
 
 }

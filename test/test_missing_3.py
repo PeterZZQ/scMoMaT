@@ -25,7 +25,6 @@ import seaborn as sns
 import diffmodel
 import coupleNMF
 
-import model
 import utils
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -70,7 +69,7 @@ paths = ['2b3c_sigma0.1_b1_1/', '2b3c_sigma0.1_b1_2/', '2b3c_sigma0.2_b1_1/', '2
 
 # In[1]
 
-alphas = [[1000, 1000, 100, 100, 1, 100, 100, 0], [1000, 1000, 100, 100, 1, 0, 0, 0]]
+alphas = [[1000, 1000, 100, 100, 1, 100, 100, 0, 0], [1000, 1000, 100, 100, 1, 0, 0, 0, 0]]
 for path in paths:
     for missing in range(2):
         #hyper parameters
@@ -109,11 +108,11 @@ for path in paths:
         
         for i, alpha in enumerate(alphas):
             ari_cfrm = []
+            losses = []
             for run in range(runs):
                 print("CFRM...")
                 # our model
-                model1 = diffmodel.cfrm_diff(counts, N1 = N1, N2 = N2, K = K, batch_size = batchsize, interval = 1000, lr = lr, 
-                                                alpha = alpha, seed = run, learn_gact = False).to(device)
+                model1 = diffmodel.cfrm_diff(counts, N1 = N1, N2 = N2, K = K, batch_size = batchsize, interval = 1000, lr = lr, alpha = alpha, seed = run, learn_gact = False).to(device)
 
                 model1.train_func(T = 10000)
 
@@ -123,6 +122,7 @@ for path in paths:
                     print('Final Loss is {:.5f}'.format(loss.item()))
                     print()
 
+                losses.append(loss.item())
                 
                 # plotsz
                 umap_op = UMAP(n_components = 2, n_neighbors = 15, min_dist = 0.4) 
@@ -148,6 +148,7 @@ for path in paths:
                 ari_cfrm.append(adjusted_rand_score(labels_pred = np.concatenate((max_rna, max_atac), axis = 0), labels_true = np.concatenate((label_rna, label_atac), axis = 0)))
                 
             np.save( "./results_missing/" + path[:-1] + "_" + str(missing) + "_" + str(i) + "_ari_cfrm.npy", np.array(ari_cfrm))
+            np.save( "./results_missing/" + path[:-1] + "_" + str(missing) + "_" + str(i) + "_losses.npy", np.array(losses))
         
         #######################################################################################################
 
