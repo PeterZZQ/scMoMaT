@@ -95,7 +95,7 @@ def quantile_norm_log(X):
     logXn = quantile_norm(logX)
     return logXn
 
-def preprocess(counts, mode = "standard", modality = "RNA"):
+def preprocess_old(counts, mode = "standard", modality = "RNA"):
     """\
     Description:
     ------------
@@ -126,6 +126,28 @@ def preprocess(counts, mode = "standard", modality = "RNA"):
 
 
     return counts
+
+def preprocess(counts, modality = "RNA"):
+    """\
+    Description:
+    ------------
+    Preprocess the dataset, for count, interaction matrices
+    """
+    if modality == "ATAC":
+        # make binary
+        counts = (counts > 0).astype(np.float) 
+
+    elif modality == "interaction":
+        # gene by region matrix
+        counts = counts/(np.sum(counts, axis = 1)[:,None] + 1e-6)
+    
+    else:
+        # other cases, e.g. Protein, RNA, etc
+        counts = quantile_norm_log(counts)
+        counts = counts/np.max(counts)
+
+    return counts
+
 
 def plot_latent(z1, z2, anno1 = None, anno2 = None, mode = "joint", save = None, figsize = (20,10), axis_label = "Latent", **kwargs):
     """\
@@ -267,7 +289,103 @@ def plot_latent(z1, z2, anno1 = None, anno2 = None, mode = "joint", save = None,
         
     if save:
         fig.savefig(save, bbox_inches = "tight")
-    
+
+def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20,10), axis_label = "Latent", **kwargs):
+    """\
+    Description
+        Plot latent space
+    Parameters
+        z1
+            the latent space of first data batch, of the shape (n_samples, n_dimensions)
+        z2
+            the latent space of the second data batch, of the shape (n_samples, n_dimensions)
+        anno1
+            the cluster annotation of the first data batch, of the  shape (n_samples,)
+        anno2
+            the cluster annotation of the second data batch, of the  shape (n_samples,)
+        mode
+            "joint": plot two latent spaces(from two batches) into one figure
+            "separate" plot two latent spaces separately
+        save
+            file name for the figure
+        figsize
+            figure size
+    """
+    _kwargs = {
+        "s": 10,
+        "alpha": 0.9,
+    }
+    _kwargs.update(kwargs)
+
+    fig = plt.figure(figsize = figsize)
+    if mode == "modality":
+        colormap = plt.cm.get_cmap("tab20", len(zs))
+        ax = fig.add_subplot()
+        
+        for batch in range(len(zs)):
+            ax.scatter(zs[batch][:,0], zs[batch][:,1], color = colormap(batch), label = "batch " + str(batch), **_kwargs)
+        ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+        ax.tick_params(axis = "both", which = "major", labelsize = 15)
+
+        ax.set_xlabel(axis_label + " 1", fontsize = 19)
+        ax.set_ylabel(axis_label + " 2", fontsize = 19)
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)  
+
+    elif mode == "joint":
+        ax = fig.add_subplot()
+        cluster_types = set()
+        for batch in range(len(zs)):
+            cluster_types = cluster_types.union(set([x for x in np.unique(annos[batch])]))
+        colormap = plt.cm.get_cmap("tab20", len(cluster_types))
+
+        for i, cluster_type in enumerate(cluster_types):
+            z_clust = []
+            for batch in range(len(zs)):
+                index = np.where(annos[batch] == cluster_type)[0]
+                z_clust.append(zs[batch][index,:])
+            ax.scatter(np.concatenate(z_clust, axis = 0)[:,0], np.concatenate(z_clust, axis = 0)[:,1], color = colormap(i), label = cluster_type, **_kwargs)
+        
+        ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+        
+        ax.tick_params(axis = "both", which = "major", labelsize = 15)
+
+        ax.set_xlabel(axis_label + " 1", fontsize = 19)
+        ax.set_ylabel(axis_label + " 2", fontsize = 19)
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)  
+
+
+    elif mode == "separate":
+        axs = fig.subplots(len(zs),1)
+        cluster_types = set()
+        for batch in range(len(zs)):
+            cluster_types = cluster_types.union(set([x for x in np.unique(annos[batch])]))
+        colormap = plt.cm.get_cmap("tab20", len(cluster_types))
+
+
+        for batch in range(len(zs)):
+            z_clust = []
+            for i, cluster_type in enumerate(cluster_types):
+                index = np.where(annos[batch] == cluster_type)[0]
+                axs[batch].scatter(zs[batch][index,0], zs[batch][index,1], color = colormap(i), label = cluster_type, **_kwargs)
+            
+            axs[batch].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(0.94, 1), markerscale=4)
+            axs[batch].set_title("batch " + str(batch), fontsize = 25)
+
+            axs[batch].tick_params(axis = "both", which = "major", labelsize = 15)
+
+            axs[batch].set_xlabel(axis_label + " 1", fontsize = 19)
+            axs[batch].set_ylabel(axis_label + " 2", fontsize = 19)
+            # axs[batch].set_xlim(np.min(np.concatenate((z1[:,0], z2[:,0]))), np.max(np.concatenate((z1[:,0], z2[:,0]))))
+            # axs[batch].set_ylim(np.min(np.concatenate((z1[:,1], z2[:,1]))), np.max(np.concatenate((z1[:,1], z2[:,1]))))
+            axs[batch].spines['right'].set_visible(False)
+            axs[batch].spines['top'].set_visible(False)  
+        
+        
+    if save:
+        fig.savefig(save, bbox_inches = "tight")
+
 
 # def csr2st(A):
 #     A = A.tocoo()
@@ -301,7 +419,7 @@ def match_embed(z_rna, z_atac, k = 10):
     knn_index = np.argpartition(dist, kth = k - 1, axis = 1)[:,(k-1)]
     kth_dist = np.take_along_axis(dist, knn_index[:,None], axis = 1)
     
-    K = dist/(10 * kth_dist + 1e-6) 
+    K = dist/(100 * kth_dist + 1e-6) 
     K = (dist <= kth_dist) * np.exp(-K) 
     K = K/np.sum(K, axis = 1)[:,None]
 
@@ -379,7 +497,7 @@ def match_embed_seurat(z_rna, z_atac, k = 20):
         n_snn = np.sum(snn1[col, :] * snn2[row,:])
         snn_counts[row, col] = n_snn
     
-    snn_counts = snn_counts/np.max(snn_counts)
+    snn_counts = snn_counts/np.max(snn_counts+ 1e-6)
     scores = snn_counts * knn
     # final 
     scores = scores * np.exp(- (dist/10 * np.max(dist, axis = 1)[:, None]))
