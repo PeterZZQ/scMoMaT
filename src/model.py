@@ -23,14 +23,11 @@ class cfrm_new(Module):
     """\
         Gene clusters more than cell clusters, force A_r and A_g to be sparse:
         
-        alpha[0]: the weight of the scRNA-Seq tri-factorization
-        alpha[1]: the weight of the scATAC-Seq tri-factorization
-        alpha[2]: the weight of the association relationship between A_r and A_g
-        alpha[3]: the weight of the gene activity matrix
-        alpha[4]: the missing clusters
-        alpha[5]: the orthogonality of the cell embedding
-        alpha[6]: the orthogonality of the feature embedding
-        alpha[7]: the sparsity of A_r and A_g
+        alpha[0]: the weight of the tri-factorization term
+        alpha[1]: the weight of the missing dimension term
+        alpha[2]: the weight of the association relationship between modalities
+        alpha[3]: the weight of the interaction matrix
+        alpha[4]: the sparsity of A_r and A_g
         
     """
     def __init__(self, counts, interacts, Ns, K, N_feat = None, batch_size=0.3, interval=10, lr=1e-3, alpha = [1000, 0, 100, 100, 0.1], seed = None):
@@ -249,10 +246,8 @@ class cfrm_new(Module):
                 if len(self.mods) == 1:
                     loss3 += 0
                 elif idx_mod != len(self.mods) - 1:
-                    # loss3 -= torch.trace(self.A_assos[idx_mod] @ self.A_assos[idx_mod+1].t())/torch.norm(self.A_assos[idx_mod])/torch.norm(self.A_assos[idx_mod+1])
                     loss3 += self.cosine_loss(self.A_assos[idx_mod+1], self.A_assos[idx_mod])
                 else:
-                    # loss3 -= torch.trace(self.A_assos[idx_mod] @ self.A_assos[0].t())/torch.norm(self.A_assos[idx_mod])/torch.norm(self.A_assos[0])
                     loss3 += self.cosine_loss(self.A_assos[0], self.A_assos[idx_mod])
                 
                 loss5 += self.A_assos[idx_mod].abs().sum()        
@@ -266,7 +261,6 @@ class cfrm_new(Module):
                 batch_A = self.As[mods][np.ix_(mask_feats[idx_mod1], mask_feats[idx_mod2])]
                 batch_C_feats1 = self.C_feats[idx_mod1][mask_feats[idx_mod1],:]
                 batch_C_feats2 = self.C_feats[idx_mod2][mask_feats[idx_mod2],:]
-                # loss4 -= torch.trace(self.softmax(batch_C_feats1).t() @ batch_A @ self.softmax(batch_C_feats2)) /torch.norm(self.softmax(batch_C_feats1)) / torch.norm(self.softmax(batch_C_feats2))
                 loss4 += self.cosine_loss(self.softmax(batch_C_feats1), batch_A @ self.softmax(batch_C_feats2))
             elif mode == "C_feats":
                 loss4 += self.cosine_loss(self.softmax(self.C_feats[idx_mod1]), batch_A @ self.softmax(self.C_feats[idx_mod2]))
@@ -279,6 +273,7 @@ class cfrm_new(Module):
     def train_func(self, T):
         best_loss = 1e12
         count = 0
+        losses = []
 
         for t in range(T):
             mask_cells, mask_feats = self.sample_mini_batch()
@@ -350,7 +345,9 @@ class cfrm_new(Module):
                 ]
                 for i in info:
                     print("\t", i)
-
+                
+                losses.append(loss.item())
+                
                 if loss.item() < best_loss:
                     best_loss = loss.item()
                     torch.save(self.state_dict(), f'../check_points/real_{self.N_cell}.pt')
@@ -365,8 +362,8 @@ class cfrm_new(Module):
                         else:
                             self.load_state_dict(torch.load(f'../check_points/real_{self.N_cell}.pt'))
                             count = 0                            
-                            
-                            
+         
+        # return losses                            
 
 class cfrm(Module):
     """\
