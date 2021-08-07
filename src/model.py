@@ -224,7 +224,9 @@ class cfrm_new(Module):
                 if self.Xs[mod][batch] is not None:
                     if mode == "validation":
                         loss1 += self.recon_loss(self.Xs[mod][batch], self.softmax(self.C_cells[batch]), self.softmax(self.C_feats[idx_mod]), self.A_assos[idx_mod], self.b_cells[mod][batch], self.b_feats[mod][batch])
-                    
+                        Corr = self.softmax(self.C_feats[idx_mod]).t() @ self.softmax(self.C_feats[idx_mod])
+                        loss5 = torch.norm(Corr * (1 - torch.eye(Corr.shape[0]).to(device)))
+                        
                     elif (mode == "C_cells") or (mode != "C_cells" and mode[8:] == mod):
                         batch_X = self.Xs[mod][batch][np.ix_(mask_cells[batch], mask_feats[idx_mod])]
                         batch_C_cells = self.C_cells[batch][mask_cells[batch],:]
@@ -233,6 +235,11 @@ class cfrm_new(Module):
                         batch_b_cells = self.b_cells[mod][batch][mask_cells[batch],:]
                         batch_b_feats = self.b_feats[mod][batch][:, mask_feats[idx_mod]]
                         loss1 += self.recon_loss(batch_X, self.softmax(batch_C_cells), self.softmax(batch_C_feats), batch_A_asso, batch_b_cells, batch_b_feats)
+                        
+                        if mode[:7] == "C_feats":
+                            Corr = self.softmax(batch_C_feats).t() @ self.softmax(batch_C_feats)
+                            loss5 = torch.norm(Corr * (1 - torch.eye(Corr.shape[0]).to(device)))
+                        
                         del batch_X, batch_C_cells, batch_C_feats, batch_A_asso, batch_b_cells, batch_b_feats
             
             # for missing clusters, calculate when there is missing clusters, mode = "validation" or "C_cells"
@@ -252,7 +259,7 @@ class cfrm_new(Module):
                 else:
                     loss3 += self.cosine_loss(self.A_assos[0], self.A_assos[idx_mod])
                 
-                loss5 += self.A_assos[idx_mod].abs().sum()        
+      
         
         # modality connection loss, calculate when mode is "validation" or "C_feats"    
         for mod_pair in self.As.keys():
@@ -264,6 +271,7 @@ class cfrm_new(Module):
                 batch_C_feats1 = self.C_feats[idx_mod1][mask_feats[idx_mod1],:]
                 batch_C_feats2 = self.C_feats[idx_mod2][mask_feats[idx_mod2],:]
                 loss4 += self.cosine_loss(self.softmax(batch_C_feats1), batch_A @ self.softmax(batch_C_feats2))
+                
                 del batch_A, batch_C_feats1, batch_C_feats2
                 
             elif mode == "validation": # validation
@@ -352,13 +360,16 @@ class cfrm_new(Module):
                 
                 losses.append(loss.item())
                 
-                if loss.item() < best_loss:
+                # update for early stopping 
+                if loss.item() < best_loss:# - 0.01 * abs(best_loss):
+                    
                     best_loss = loss.item()
                     torch.save(self.state_dict(), f'../check_points/real_{self.N_cell}.pt')
                     count = 0
                 else:
                     count += 1
-                    if count % 20 == 0:
+                    print(count)
+                    if count % int(0.1 * (T/self.interval)) == 0:
                         self.optimizer.param_groups[0]['lr'] *= 0.5
                         print('Epoch: {}, shrink lr to {:.4f}'.format(t + 1, self.optimizer.param_groups[0]['lr']))
                         if self.optimizer.param_groups[0]['lr'] < 1e-6:
@@ -876,8 +887,6 @@ class cfrm_new(Module):
                 else:
                     self.b_cells[mod].append(None)
                     self.b_feats[mod].append(None)
-
-
         
         # missing masks
         self.dims = []
@@ -911,7 +920,6 @@ class cfrm_new(Module):
             if np.all(np.array(n_features[mod]) == n_features[mod][0]) == False:
                 raise ValueError("Number of features not match for modality " + mod)
         
-
         for batch in range(len(self.Ns)):
             # cell number of each batch should be the same
             n_cells = np.array([self.Xs[mod][batch].shape[0] for mod in self.Xs.keys() if self.Xs[mod][batch] is not None])
@@ -956,7 +964,6 @@ class cfrm_new(Module):
     @staticmethod
     def cosine_loss(A, B):
         return -torch.trace(A.t() @ B)/(torch.norm(A) + 1e-6)/(torch.norm(B) + 1e-6)
-
     def sample_mini_batch(self):
         """\
         Sample mini batch
@@ -972,7 +979,6 @@ class cfrm_new(Module):
             mask_feats.append(np.random.choice(self.C_feats[idx_mod].shape[0], int(self.C_feats[idx_mod].shape[0] * self.batch_size), replace=False))
         
         return mask_cells, mask_feats
-
     def batch_loss(self, mode, alpha, batch_indices = None):
         """\
             Calculate overall loss term
@@ -983,11 +989,9 @@ class cfrm_new(Module):
         loss3 = 0
         loss4 = 0
         loss5 = 0
-
         if mode != 'valid':
             mask_cells = batch_indices["cells"]
             mask_feats = batch_indices["feats"]
-
         # reconstruction loss    
         for batch in range(len(self.Ns)):
             for idx_mod, mod in enumerate(self.mods):
@@ -1009,7 +1013,6 @@ class cfrm_new(Module):
                     loss2 += (self.softmax(self.C_cells[batch][mask_cells[batch],:])[:,self.missing_dims[batch]]).mean()
                 elif mode == "C_cells":
                     loss2 += (self.softmax(self.C_cells[batch])[:,self.missing_dims[batch]]).mean()
-
         # association loss, calculate when mode is "valid" or "A_assos"
         if (mode in ["A_assos", "valid"]):
             for idx_mod, mod in enumerate(self.mods):
@@ -1034,17 +1037,13 @@ class cfrm_new(Module):
                 loss4 += self.cosine_loss(self.softmax(batch_C_feats1), batch_A @ self.softmax(batch_C_feats2))
             else:
                 loss4 += self.cosine_loss(self.softmax(self.C_feats[idx_mod1]), self.As[mods] @ self.softmax(self.C_feats[idx_mod2]))
-
         loss = alpha[0] * loss1 + alpha[1] * loss2 + alpha[2] * loss3 + alpha[3] * loss4 + alpha[4] * loss5 
-
         return loss, alpha[0] * loss1, alpha[1] * loss2, alpha[2] * loss3, alpha[3] * loss4, alpha[4] * loss5
     
-
     def train_func(self, T):
         best_loss = 1e12
         count = 0
         losses = []
-
         for t in range(T):
             mask_cells, mask_feats = self.sample_mini_batch()
             
@@ -1058,7 +1057,6 @@ class cfrm_new(Module):
             loss.backward()
             self.optimizer.step()
             self.optimizer.zero_grad()
-
             # update C_feats
             for batch in range(len(self.Ns)):
                 self.C_cells[batch].requires_grad = False
@@ -1071,7 +1069,6 @@ class cfrm_new(Module):
                 loss.backward()
                 self.optimizer.step()
                 self.optimizer.zero_grad()
-
             # update A_assos:
             self.C_feats[-1].requires_grad = False
             for i, mod in enumerate(self.mods):
@@ -1098,7 +1095,6 @@ class cfrm_new(Module):
                             self.b_cells[mod][batch][mask_cells[batch], :] = torch.mean(batch_X - self.softmax(batch_C_cells) @ batch_A_asso @ self.softmax(batch_C_feats).t() - batch_b_feats, dim = 1)[:,None]
                             batch_b_cells = self.b_cells[mod][batch][mask_cells[batch],:]
                             self.b_feats[mod][batch][:, mask_feats[idx_mod]] = torch.mean(batch_X - self.softmax(batch_C_cells) @ batch_A_asso @ self.softmax(batch_C_feats).t() - batch_b_cells, dim = 0)[None,:]
-
             
             # validation       
             if (t+1) % self.interval == 0:
@@ -1134,10 +1130,8 @@ class cfrm_new(Module):
                             count = 0                            
          
         return losses                            
-
                             
                             
-
 class cfrm_new(Module):
     """\
         Gene clusters more than cell clusters, force A_r and A_g to be sparse:
@@ -1229,7 +1223,6 @@ class cfrm_new(Module):
                     
             elif self.Rs[idx] is not None:
                 self.Cs.append(Parameter(torch.rand(self.Rs[idx].shape[0], self.N_cell)))
-
             else:
                 raise ValueError("counts_rna and counts_atac cannot be both None")
                 
@@ -1250,7 +1243,6 @@ class cfrm_new(Module):
                     self.Ar = Parameter(torch.rand((self.N_cell, self.N_feat))) 
             else:
                 self.Vr.append(None)
-
         
         
         # missing masks
@@ -1295,12 +1287,10 @@ class cfrm_new(Module):
         loss7 = 0
         loss8 = 0
         loss9 = 0
-
         if mode != 'valid':
             masks = batch_indices[0]
             mask_g = batch_indices[1]
             mask_r = batch_indices[2]
-
         if mode == 'C_12':
             if self.Cg is not None:
                 self.Cg.requires_grad = False
@@ -1333,7 +1323,6 @@ class cfrm_new(Module):
             
                 if len(self.missing_dims[i]) > 0: 
                     loss5 += (self.softmax(self.Cs[i][masks[i],:])[:,self.missing_dims[i]]).mean()
-
             
         elif mode == 'C_g':
             if self.Cg is not None:
@@ -1404,7 +1393,6 @@ class cfrm_new(Module):
             
             if self.Ag is not None:
                 loss8 = self.Ag.abs().sum()
-
         
         elif mode == "A_r":
             if self.Cg is not None:
@@ -1449,7 +1437,6 @@ class cfrm_new(Module):
                 if (self.Cg is not None) and (self.Cr is not None):
                     loss3 = - torch.trace(self.Ar @ self.Ag.t())/torch.norm(self.Ar)/torch.norm(self.Ag)
                     loss4 = - torch.trace(self.softmax(self.Cg).t() @ self.A @ self.softmax(self.Cr)) /torch.norm(self.softmax(self.Cg)) / torch.norm(self.A @ self.softmax(self.Cr))
-
                 
                 if self.Cg is not None:
                     loss8 += self.Ag.abs().sum()
@@ -1461,13 +1448,11 @@ class cfrm_new(Module):
             raise NotImplementedError
         
         loss = alpha[0] * loss1 + alpha[1] * loss2 + alpha[2] * loss3 + alpha[3] * loss4 + alpha[4] * loss5 + alpha[5] * loss6 + alpha[6] * loss7 + alpha[7] * loss8
-
         return loss, alpha[0] * loss1, alpha[1] * loss2, alpha[2] * loss3, alpha[3] * loss4, alpha[4] * loss5, alpha[5] * loss6, alpha[6] * loss7, alpha[7] * loss8
     
     def train_func(self, T):
         best_loss = 1e12
         count = 0
-
         for t in range(T):
             # generate random masks
             masks = []
@@ -1512,7 +1497,6 @@ class cfrm_new(Module):
                 ]
                 for i in info:
                     print("\t", i)
-
                 if loss.item() < best_loss:
                     best_loss = loss.item()
                     torch.save(self.state_dict(), f'../check_points/real_{self.N_cell}.pt')

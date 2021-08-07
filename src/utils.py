@@ -386,16 +386,27 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
     if save:
         fig.savefig(save, bbox_inches = "tight")
 
+#####################################################################
 
-# def csr2st(A):
-#     A = A.tocoo()
-#     col = torch.LongTensor(A.col)
-#     row = torch.LongTensor(A.row)
-#     value = torch.FloatTensor(A.data)
-#     sparse_sizes = A.shape
-#     return SparseTensor(row=row, col=col, value=value, sparse_sizes=sparse_sizes)
+def segment1d(x):
+    """\
+    Description:
+    ------------
+        Segmenting 1d array x
+    Parameter:
+    ------------
+        x: 1d array
+    """
+    
+    from sklearn.neighbors import KernelDensity
+    x = x.reshape(-1,1)
+    kde = KernelDensity(kernel='gaussian', bandwidth=np.max(x)/30).fit(x)
+    s = np.linspace(0,np.max(x))
+    e = kde.score_samples(s.reshape(-1,1))
+    cutoff = s[np.argmin(e)]
+    return cutoff
 
-
+#####################################################################
 def _pairwise_distances(x, y = None):
     x_norm = (x**2).sum(1).view(-1, 1)
     # calculate the pairwise distance between two datasets
