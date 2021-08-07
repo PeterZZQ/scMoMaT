@@ -30,7 +30,7 @@ class cfrm_new(Module):
         alpha[4]: the sparsity of A_r and A_g
         
     """
-    def __init__(self, counts, interacts, Ns, K, N_feat = None, batch_size = 0.3, interval = 10, lr = 5e-3, alpha = [1000, 0, 100, 100, 0.1], seed = None):
+    def __init__(self, counts, interacts, Ns, K, N_feat = None, batch_size = 0.3, interval = 10, lr = 1e-2, alpha = [1000, 0, 100, 100, 0.02], seed = None):
         super().__init__()
         
         # init parameters, Ns is a list with length the number of batches
@@ -224,8 +224,6 @@ class cfrm_new(Module):
                 if self.Xs[mod][batch] is not None:
                     if mode == "validation":
                         loss1 += self.recon_loss(self.Xs[mod][batch], self.softmax(self.C_cells[batch]), self.softmax(self.C_feats[idx_mod]), self.A_assos[idx_mod], self.b_cells[mod][batch], self.b_feats[mod][batch])
-                        Corr = self.softmax(self.C_feats[idx_mod]).t() @ self.softmax(self.C_feats[idx_mod])
-                        loss5 = torch.norm(Corr * (1 - torch.eye(Corr.shape[0]).to(device)))
                         
                     elif (mode == "C_cells") or (mode != "C_cells" and mode[8:] == mod):
                         batch_X = self.Xs[mod][batch][np.ix_(mask_cells[batch], mask_feats[idx_mod])]
@@ -235,13 +233,8 @@ class cfrm_new(Module):
                         batch_b_cells = self.b_cells[mod][batch][mask_cells[batch],:]
                         batch_b_feats = self.b_feats[mod][batch][:, mask_feats[idx_mod]]
                         loss1 += self.recon_loss(batch_X, self.softmax(batch_C_cells), self.softmax(batch_C_feats), batch_A_asso, batch_b_cells, batch_b_feats)
-                        
-                        if mode[:7] == "C_feats":
-                            Corr = self.softmax(batch_C_feats).t() @ self.softmax(batch_C_feats)
-                            loss5 = torch.norm(Corr * (1 - torch.eye(Corr.shape[0]).to(device)))
-                        
-                        del batch_X, batch_C_cells, batch_C_feats, batch_A_asso, batch_b_cells, batch_b_feats
-            
+                        del batch_X, batch_C_cells, batch_C_feats, batch_A_asso, batch_b_cells, batch_b_feats       
+
             # for missing clusters, calculate when there is missing clusters, mode = "validation" or "C_cells"
             if len(self.missing_dims[batch]) > 0: 
                 if mode != "validation":
@@ -276,13 +269,25 @@ class cfrm_new(Module):
                 
             elif mode == "validation": # validation
                 loss4 += self.cosine_loss(self.softmax(self.C_feats[idx_mod1]), self.As[mod_pair] @ self.softmax(self.C_feats[idx_mod2]))
+        
+        # feature orthogonality
+        for idx_mod, mod in enumerate(self.mods):
+            if mode[:7] == "C_feats":
+                batch_C_feats = self.C_feats[idx_mod][mask_feats[idx_mod], :]
+                Corr = self.softmax(batch_C_feats).t() @ self.softmax(batch_C_feats)
+                loss5 += torch.norm(Corr * (1 - torch.eye(Corr.shape[0]).to(device)))
+                del batch_C_feats
+            elif mode == "validation":
+                Corr = self.softmax(self.C_feats[idx_mod]).t() @ self.softmax(self.C_feats[idx_mod])
+                loss5 += torch.norm(Corr * (1 - torch.eye(Corr.shape[0]).to(device)))
+                        
 
         loss = alpha[0] * loss1 + alpha[1] * loss2 + alpha[2] * loss3 + alpha[3] * loss4 + alpha[4] * loss5 
 
         return loss, alpha[0] * loss1, alpha[1] * loss2, alpha[2] * loss3, alpha[3] * loss4, alpha[4] * loss5
     
 
-    def train_func(self, T):
+    def train_func(self, T, T1 = None):
         best_loss = 1e12
         count = 0
         losses = []
@@ -294,12 +299,13 @@ class cfrm_new(Module):
             for i, mod in enumerate(self.mods):
                 self.C_feats[i].requires_grad = False
                 self.A_assos[i].requires_grad = False
-            for batch in range(len(self.Ns)):
-                self.C_cells[batch].requires_grad = True
-            loss, *_ = self.batch_loss(mode = "C_cells", alpha = self.alpha, batch_indices = {"cells": mask_cells, "feats": mask_feats})
-            loss.backward()
-            self.optimizer.step()
-            self.optimizer.zero_grad()
+            if(T1 is None) or (t < T1):
+                for batch in range(len(self.Ns)):
+                    self.C_cells[batch].requires_grad = True
+                loss, *_ = self.batch_loss(mode = "C_cells", alpha = self.alpha, batch_indices = {"cells": mask_cells, "feats": mask_feats})
+                loss.backward()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
 
             # update C_feats
             for batch in range(len(self.Ns)):
@@ -325,9 +331,9 @@ class cfrm_new(Module):
                 loss.backward()
                 self.optimizer.step()
                 self.optimizer.zero_grad()
-                
+            self.A_assos[-1].requires_grad = False
+
             # update bias term:
-            
             with torch.no_grad():
                 for batch in range(len(self.Ns)):
                     for idx_mod, mod in enumerate(self.mods):
