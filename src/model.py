@@ -122,6 +122,8 @@ class cfrm_new(Module):
             point += K_comp
         
         self.optimizer = opt.Adam(self.parameters(), lr=lr)
+        # without post-processing
+        self.C_cells_post = None
         
     
     def sanity_check(self):
@@ -386,7 +388,44 @@ class cfrm_new(Module):
          
         return losses                            
 
+    def postprocess(self):
+        # currently using Liger method
+        C_cells = [x.data.cpu().numpy() for x in self.C_cells]
+        self.C_cells_post = utils.quantile_norm(C_cells, min_cells = 20, max_sample = 1000, quantiles = 50, ref = None, refine = False)
+        pass
 
+
+    def assign_clusters(self, relocate_empty = False, n_relocate = 10):
+        # assign cell cluster
+        print("assigning cell clusters...")
+        self.cell_clusts = []
+
+        # use original, rather than post-processing result
+        for C_cell in self.C_cells:
+            if C_cell is not None:
+                self.cell_clusts.append(utils.assign_cluster(X = C_cell.data.cpu().numpy(), relocate_empty = False))
+            else:
+                self.cell_clusts.append(None)    
+        
+        # assign feature cluster 
+        print("assigning feature clusters...")
+        self.feat_clusts = []   
+        for C_feat in self.C_feats:
+            if C_feat is not None:
+                if n_relocate is None:
+                    n_relocate = int(0.1 * C_feat.shape[1])
+                self.feat_clusts.append(utils.assign_cluster(X = C_feat.data.cpu().numpy(), relocate_empty = relocate_empty, n_relocate = n_relocate))
+
+        # binarize association matrix
+        print("binarizing association matrix...")
+        self.binary_A_assos = []
+        for A_asso in self.A_assos:
+            A_asso = A_asso.data.cpu().numpy()
+            cutoffs = []
+            for i in range(A_asso.shape[0]):
+                cutoffs.append(utils.segment1d(A_asso[i,:]))
+            cutoffs = np.array(cutoffs).reshape(-1,1)
+            self.binary_A_assos.append(A_asso > cutoffs)
 
 
 class cfrm(Module):

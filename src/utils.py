@@ -9,49 +9,11 @@ from scipy import stats
 
 import torch.nn.functional as F
 
-def lsi_ATAC(X, k = 100, use_first = False):
-    """\
-    Description:
-    ------------
-        Compute LSI with TF-IDF transform, i.e. SVD on document matrix, can do tsne on the reduced dimension
+# ----------------------------------------------------- # 
 
-    Parameters:
-    ------------
-        X: cell by feature(region) count matrix
-        k: number of latent dimensions
-        use_first: since we know that the first LSI dimension is related to sequencing depth, we just ignore the first dimension since, and only pass the 2nd dimension and onwards for t-SNE
-    
-    Returns:
-    -----------
-        latent: cell latent matrix
-    """    
-    from sklearn.feature_extraction.text import TfidfTransformer
-    from sklearn.decomposition import TruncatedSVD
+# Preprocessing
 
-    # binarize the scATAC-Seq count matrix
-    bin_X = np.where(X < 1, 0, 1)
-    
-    # perform Latent Semantic Indexing Analysis
-    # get TF-IDF matrix
-    tfidf = TfidfTransformer(norm='l2', sublinear_tf=True)
-    normed_count = tfidf.fit_transform(bin_X)
-
-    # perform SVD on the sparse matrix
-    lsi = TruncatedSVD(n_components = k, random_state=42)
-    lsi_r = lsi.fit_transform(normed_count)
-    
-    # use the first component or not
-    if use_first:
-        return lsi_r
-    else:
-        return lsi_r[:, 1:]
-
-def kl_div(C):
-    C_uni = torch.ones_like(C)
-    C_uni = C_uni/torch.sum(C_uni, dim = 1)[:,None]
-    return torch.median(torch.sum(C * torch.log(C/C_uni), dim = 1))
-    
-
+# ----------------------------------------------------- # 
 
 def quantile_norm(X):
     """Normalize the columns of X to each have the same distribution.
@@ -147,6 +109,13 @@ def preprocess(counts, modality = "RNA"):
         counts = counts/np.max(counts)
 
     return counts
+
+
+# ----------------------------------------------------- # 
+
+# Plot
+
+# ----------------------------------------------------- # 
 
 
 def plot_latent(z1, z2, anno1 = None, anno2 = None, mode = "joint", save = None, figsize = (20,10), axis_label = "Latent", **kwargs):
@@ -386,27 +355,12 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
     if save:
         fig.savefig(save, bbox_inches = "tight")
 
-#####################################################################
 
-def segment1d(x):
-    """\
-    Description:
-    ------------
-        Segmenting 1d array x
-    Parameter:
-    ------------
-        x: 1d array
-    """
-    
-    from sklearn.neighbors import KernelDensity
-    x = x.reshape(-1,1)
-    kde = KernelDensity(kernel='gaussian', bandwidth=np.max(x)/30).fit(x)
-    s = np.linspace(0,np.max(x))
-    e = kde.score_samples(s.reshape(-1,1))
-    cutoff = s[np.argmin(e)]
-    return cutoff
+# ----------------------------------------------------- # 
 
-#####################################################################
+# Post-processing steps
+
+# ----------------------------------------------------- # 
 def _pairwise_distances(x, y = None):
     x_norm = (x**2).sum(1).view(-1, 1)
     # calculate the pairwise distance between two datasets
@@ -437,7 +391,6 @@ def match_embed(z_rna, z_atac, k = 10):
     z_atac = torch.FloatTensor(K).mm(z_rna)
     return z_rna, z_atac
 
-
 def match_clust(z_rna, z_atac, k = 10, scale = 1):
     # note that the distance is squared version
     clust_rna = np.argmax(z_rna, axis = 1).squeeze()
@@ -464,9 +417,11 @@ def match_clust(z_rna, z_atac, k = 10, scale = 1):
             print("no cell in cluster {:d}".format(clust))
     return z_rna, z_atac    
 
-
-######################## Seurat MNN style #####################################
 def match_embed_seurat(z_rna, z_atac, k = 20):
+    """\
+        Seurat MNN style 
+    """
+
     n_rna = z_rna.shape[0]
     n_atac = z_atac.shape[0]
 
@@ -518,35 +473,57 @@ def match_embed_seurat(z_rna, z_atac, k = 20):
     return z_rna, z_atac    
 
 
-###############################################################################
+# ----------------------------------------------------- # 
 
+# Others
 
-def compute_pairwise_distances(x, y):
-    x_norm = (x**2).sum(1).view(-1, 1)
-    y_t = torch.transpose(y, 0, 1)
-    y_norm = (y**2).sum(1).view(1, -1)
+# ----------------------------------------------------- # 
+def assign_cluster(X, relocate_empty = False, n_relocate = 10):
+    """\
+    Description:
+    ------------
+        Select the largest element as cluster assignment
+    Parameter:
+    ------------
+        X: (n_cells, n_clusters)
+        relocate_empty: relocate empty clusters or not
+        n_relocate: number of clusters for relocation
+    """
+    # raw cluster assignment
+    clusts = np.argmax(X, axis = 1)
+    empty_clusts = set([x for x in range(X.shape[1])]) - set([x for x in np.unique(clusts)])
+
+    # find relocation, useful when finding feature clusters
+    if (relocate_empty == True) and len(empty_clusts) != 0:
+        flag_relocated = np.zeros_like(clusts)
+        for empty_clust in empty_clusts:
+            count = 0
+            for reassign_idx in np.argsort(X[:,empty_clust])[::-1]:
+                if flag_relocated[reassign_idx] == 0:
+                    clusts[reassign_idx] = empty_clust
+                    flag_relocated[reassign_idx] = 1
+                    count += 1
+                if count == n_relocate:
+                    break
     
-    dist = x_norm + y_norm - 2.0 * torch.mm(x, y_t)
-    return torch.clamp(dist, 0.0, np.inf)
+    empty_clusts = set([x for x in range(X.shape[1])]) - set([x for x in np.unique(clusts)])
+    assert len(empty_clusts) == 0
+    return clusts
 
-
-def _gaussian_kernel_matrix(x, y):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    sigmas = torch.FloatTensor([1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 5, 10, 15, 20, 25, 30, 35, 100, 1e3, 1e4, 1e5, 1e6]).to(device)
-    dist = compute_pairwise_distances(x, y)
-    beta = 1. / (2. * sigmas[:,None])
-    s = - beta.mm(dist.reshape((1, -1)) )
-    result =  torch.sum(torch.exp(s), dim = 0)
-    return result
-
-
-def maximum_mean_discrepancy(x, y): #Function to calculate MMD value
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    cost = torch.mean(_gaussian_kernel_matrix(x, x))
-    cost += torch.mean(_gaussian_kernel_matrix(y, y))
-    cost -= 2.0 * torch.mean(_gaussian_kernel_matrix(x, y))
-    cost = torch.sqrt(cost ** 2 + 1e-9)
-    if cost.data.item()<0:
-        cost = torch.FloatTensor([0.0]).to(device)
-
-    return cost
+def segment1d(x):
+    """\
+    Description:
+    ------------
+        Clustering 1d array x, not just selecting the largest
+    Parameter:
+    ------------
+        x: 1d array
+    """
+    
+    from sklearn.neighbors import KernelDensity
+    x = x.reshape(-1,1)
+    kde = KernelDensity(kernel='gaussian', bandwidth=np.max(x)/30).fit(x)
+    s = np.linspace(0,np.max(x))
+    e = kde.score_samples(s.reshape(-1,1))
+    cutoff = s[np.argmin(e)]
+    return cutoff
