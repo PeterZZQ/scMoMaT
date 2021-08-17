@@ -19,6 +19,7 @@ import quantile
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+# To be added, include the sparse model, check the biclustering result on scRNA-Seq, scATAC-Seq and protein
 
 # In[1] read data
 dir = '../data/real/ASAP-PBMC/'
@@ -59,12 +60,265 @@ A2 = np.array(A2.todense())
 
 interacts = {"rna_atac": A2, "rna_protein": A1}
 
-torch.cuda.empty_cache()
+# hyper parameters
+Ns = [10] * 4
+K = 10
+N_feat = Ns[0] + 1
+interval = 20000
+T = 10000
+lr = 1e-3
+run = 0
+batchsize = 0.3
+
+print("not using interaction")
+print("entropy")
+
+for alpha in ([[1000, 1, 100, 100, 0.00], [1000, 1, 100, 100, 0.10], [1000, 1, 100, 100, 0.50], [1000, 1, 100, 100, 1.00]]):
+    print("alpha: " + str(alpha))
+    model1 = model.cfrm_new(counts = counts, interacts = None, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
+    losses1 = model1.train_func(T = T)
+    model1.assign_clusters(relocate_empty = True, n_relocate = None)
+
+    # calculate the assignment accuracy 
+    within_connects1 = np.zeros_like(interacts["rna_atac"])
+    within_connects2 = np.zeros_like(interacts["rna_protein"])
+        
+    for clust in range(model1.binary_C_feats[0].shape[1]):
+        clust_feats_rna = np.where(model1.binary_C_feats[0][:,clust] == True)[0]
+        clust_feats_atac = np.where(model1.binary_C_feats[1][:,clust] == True)[0]
+        clust_feats_protein = np.where(model1.binary_C_feats[2][:,clust] == True)[0]
+        
+        within_connects1[np.ix_(clust_feats_rna, clust_feats_atac)] = 1
+        within_connects2[np.ix_(clust_feats_rna, clust_feats_protein)] = 1
+        
+    correct_conn = np.sum(within_connects1 * interacts["rna_atac"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects1)) * interacts["rna_atac"])/np.sum(1 - within_connects1)
+    print("ATAC_RNA")
+    # Precision, true positive/(true positive + false positive)
+    print("Precision: " + str(correct_conn))
+    # False omission rate (FOR): false negative/(false negative + true negative)
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
+
+    correct_conn = np.sum(within_connects2 * interacts["rna_protein"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects2)) * interacts["rna_protein"])/np.sum(1 - within_connects1)
+    print("PROTEIN_RNA")
+    print("Precision: " + str(correct_conn))
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
+
+# hyper parameters
+Ns = [10] * 4
+K = 10
+N_feat = Ns[0] + 1
+interval = 20000
+T = 10000
+lr = 1e-3
+run = 0
+batchsize = 0.3
+
+print("orthogonality")
+for alpha in ([[1000, 1, 100, 100, 0.00], [1000, 1, 100, 100, 0.02], [1000, 1, 100, 100, 0.50], [1000, 1, 100, 100, 0.10]]):
+    print("alpha: " + str(alpha))
+    model1 = model.cfrm_new2(counts = counts, interacts = None, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
+    losses1 = model1.train_func(T = T)
+    model1.assign_clusters(relocate_empty = True, n_relocate = None)
+
+    # calculate the assignment accuracy 
+    within_connects1 = np.zeros_like(interacts["rna_atac"])
+    within_connects2 = np.zeros_like(interacts["rna_protein"])
+        
+    for clust in range(model1.binary_C_feats[0].shape[1]):
+        clust_feats_rna = np.where(model1.binary_C_feats[0][:,clust] == True)[0]
+        clust_feats_atac = np.where(model1.binary_C_feats[1][:,clust] == True)[0]
+        clust_feats_protein = np.where(model1.binary_C_feats[2][:,clust] == True)[0]
+        
+        within_connects1[np.ix_(clust_feats_rna, clust_feats_atac)] = 1
+        within_connects2[np.ix_(clust_feats_rna, clust_feats_protein)] = 1
+        
+    correct_conn = np.sum(within_connects1 * interacts["rna_atac"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects1)) * interacts["rna_atac"])/np.sum(1 - within_connects1)
+    print("ATAC_RNA")
+    # Precision, true positive/(true positive + false positive)
+    print("Precision: " + str(correct_conn))
+    # False omission rate (FOR): false negative/(false negative + true negative)
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
+
+    correct_conn = np.sum(within_connects2 * interacts["rna_protein"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects2)) * interacts["rna_protein"])/np.sum(1 - within_connects1)
+    print("PROTEIN_RNA")
+    print("Precision: " + str(correct_conn))
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
+
+print("sparsemax")
+for alpha in ([[1000, 1, 100, 100, 0.00], [1000, 1, 100, 100, 0.02], [1000, 1, 100, 100, 0.50], [1000, 1, 100, 100, 0.10]]):
+    print("alpha: " + str(alpha))
+    model1 = model.cfrm_new3(counts = counts, interacts = None, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
+    losses1 = model1.train_func(T = T)
+    model1.assign_clusters(relocate_empty = True, n_relocate = None)
+
+    # calculate the assignment accuracy 
+    within_connects1 = np.zeros_like(interacts["rna_atac"])
+    within_connects2 = np.zeros_like(interacts["rna_protein"])
+        
+    for clust in range(model1.binary_C_feats[0].shape[1]):
+        clust_feats_rna = np.where(model1.binary_C_feats[0][:,clust] == True)[0]
+        clust_feats_atac = np.where(model1.binary_C_feats[1][:,clust] == True)[0]
+        clust_feats_protein = np.where(model1.binary_C_feats[2][:,clust] == True)[0]
+        
+        within_connects1[np.ix_(clust_feats_rna, clust_feats_atac)] = 1
+        within_connects2[np.ix_(clust_feats_rna, clust_feats_protein)] = 1
+        
+    correct_conn = np.sum(within_connects1 * interacts["rna_atac"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects1)) * interacts["rna_atac"])/np.sum(1 - within_connects1)
+    print("ATAC_RNA")
+    # Precision, true positive/(true positive + false positive)
+    print("Precision: " + str(correct_conn))
+    # False omission rate (FOR): false negative/(false negative + true negative)
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
+
+    correct_conn = np.sum(within_connects2 * interacts["rna_protein"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects2)) * interacts["rna_protein"])/np.sum(1 - within_connects1)
+    print("PROTEIN_RNA")
+    print("Precision: " + str(correct_conn))
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
+
+print("using interaction")
+print("entropy")
+for alpha in ([[1000, 1, 100, 100, 0.00], [1000, 1, 100, 100, 0.10], [1000, 1, 100, 100, 0.50], [1000, 1, 100, 100, 1.00]]):
+    print("alpha: " + str(alpha))
+    model1 = model.cfrm_new(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
+    losses1 = model1.train_func(T = T)
+    model1.assign_clusters(relocate_empty = True, n_relocate = None)
+
+    # calculate the assignment accuracy 
+    within_connects1 = np.zeros_like(interacts["rna_atac"])
+    within_connects2 = np.zeros_like(interacts["rna_protein"])
+        
+    for clust in range(model1.binary_C_feats[0].shape[1]):
+        clust_feats_rna = np.where(model1.binary_C_feats[0][:,clust] == True)[0]
+        clust_feats_atac = np.where(model1.binary_C_feats[1][:,clust] == True)[0]
+        clust_feats_protein = np.where(model1.binary_C_feats[2][:,clust] == True)[0]
+        
+        within_connects1[np.ix_(clust_feats_rna, clust_feats_atac)] = 1
+        within_connects2[np.ix_(clust_feats_rna, clust_feats_protein)] = 1
+        
+    correct_conn = np.sum(within_connects1 * interacts["rna_atac"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects1)) * interacts["rna_atac"])/np.sum(1 - within_connects1)
+    print("ATAC_RNA")
+    # Precision, true positive/(true positive + false positive)
+    print("Precision: " + str(correct_conn))
+    # False omission rate (FOR): false negative/(false negative + true negative)
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
+
+    correct_conn = np.sum(within_connects2 * interacts["rna_protein"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects2)) * interacts["rna_protein"])/np.sum(1 - within_connects1)
+    print("PROTEIN_RNA")
+    print("Precision: " + str(correct_conn))
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
+
+
+# hyper parameters
+Ns = [10] * 4
+K = 10
+N_feat = Ns[0] + 1
+interval = 20000
+T = 10000
+lr = 1e-3
+run = 0
+batchsize = 0.3
+
+print("orthogonality")
+for alpha in ([[1000, 1, 100, 100, 0.00], [1000, 1, 100, 100, 0.02], [1000, 1, 100, 100, 0.50], [1000, 1, 100, 100, 0.10]]):
+    print("alpha: " + str(alpha))
+    model1 = model.cfrm_new2(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
+    losses1 = model1.train_func(T = T)
+    model1.assign_clusters(relocate_empty = True, n_relocate = None)
+
+    # calculate the assignment accuracy 
+    within_connects1 = np.zeros_like(interacts["rna_atac"])
+    within_connects2 = np.zeros_like(interacts["rna_protein"])
+        
+    for clust in range(model1.binary_C_feats[0].shape[1]):
+        clust_feats_rna = np.where(model1.binary_C_feats[0][:,clust] == True)[0]
+        clust_feats_atac = np.where(model1.binary_C_feats[1][:,clust] == True)[0]
+        clust_feats_protein = np.where(model1.binary_C_feats[2][:,clust] == True)[0]
+        
+        within_connects1[np.ix_(clust_feats_rna, clust_feats_atac)] = 1
+        within_connects2[np.ix_(clust_feats_rna, clust_feats_protein)] = 1
+        
+    correct_conn = np.sum(within_connects1 * interacts["rna_atac"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects1)) * interacts["rna_atac"])/np.sum(1 - within_connects1)
+    print("ATAC_RNA")
+    # Precision, true positive/(true positive + false positive)
+    print("Precision: " + str(correct_conn))
+    # False omission rate (FOR): false negative/(false negative + true negative)
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
+
+    correct_conn = np.sum(within_connects2 * interacts["rna_protein"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects2)) * interacts["rna_protein"])/np.sum(1 - within_connects1)
+    print("PROTEIN_RNA")
+    print("Precision: " + str(correct_conn))
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
+
+print("sparsemax")
+for alpha in ([[1000, 1, 100, 100, 0.00]]):
+    print("alpha: " + str(alpha))
+    model1 = model.cfrm_new3(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
+    losses1 = model1.train_func(T = T)
+    model1.assign_clusters(relocate_empty = True, n_relocate = None)
+
+    # calculate the assignment accuracy 
+    within_connects1 = np.zeros_like(interacts["rna_atac"])
+    within_connects2 = np.zeros_like(interacts["rna_protein"])
+        
+    for clust in range(model1.binary_C_feats[0].shape[1]):
+        clust_feats_rna = np.where(model1.binary_C_feats[0][:,clust] == True)[0]
+        clust_feats_atac = np.where(model1.binary_C_feats[1][:,clust] == True)[0]
+        clust_feats_protein = np.where(model1.binary_C_feats[2][:,clust] == True)[0]
+        
+        within_connects1[np.ix_(clust_feats_rna, clust_feats_atac)] = 1
+        within_connects2[np.ix_(clust_feats_rna, clust_feats_protein)] = 1
+        
+    correct_conn = np.sum(within_connects1 * interacts["rna_atac"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects1)) * interacts["rna_atac"])/np.sum(1 - within_connects1)
+    print("ATAC_RNA")
+    # Precision, true positive/(true positive + false positive)
+    print("Precision: " + str(correct_conn))
+    # False omission rate (FOR): false negative/(false negative + true negative)
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
+
+    correct_conn = np.sum(within_connects2 * interacts["rna_protein"])/np.sum(within_connects1)
+    false_conn = np.sum(((1 - within_connects2)) * interacts["rna_protein"])/np.sum(1 - within_connects1)
+    print("PROTEIN_RNA")
+    print("Precision: " + str(correct_conn))
+    print("FOR: " + str(false_conn))
+    print("Ratio: " + str(correct_conn/false_conn))
+    print()
 
 # In[2]
-# train model
-# last one is the one fit into the original model
-
+# train model Check the speed
+"""
 #hyper parameters
 Ns = [10] * 4
 K = 10
@@ -181,3 +435,4 @@ ax.legend(fontsize = 15)
 ax.set_xlabel("iteration", fontsize = 15)
 ax.set_ylabel("loss", fontsize = 15)
 fig.savefig("results_speed/Multi2_loss_" + str(batchsize) + ".pdf", bbox_inches = "tight")
+"""

@@ -506,9 +506,53 @@ def assign_cluster(X, relocate_empty = False, n_relocate = 10):
                 if count == n_relocate:
                     break
     
-    empty_clusts = set([x for x in range(X.shape[1])]) - set([x for x in np.unique(clusts)])
-    assert len(empty_clusts) == 0
+    # empty_clusts = set([x for x in range(X.shape[1])]) - set([x for x in np.unique(clusts)])
+    # assert len(empty_clusts) == 0
     return clusts
+
+def binarize_factor(X, relocate_empty = False, n_relocate = 10):
+    """\
+    Description:
+    ------------
+        Binarize factor matrix
+    Parameter:
+    ------------
+        X: (n_cells, n_clusters)
+        relocate_empty: relocate empty clusters or not
+        n_relocate: number of clusters for relocation
+    """    
+    # raw cluster assignment
+    bin_X = (X == np.max(X, axis = 1)[:, None])
+    empty_clusts = set([x for x in range(X.shape[1])]) - set([x for x in np.unique(np.argmax(X, axis = 1))])
+
+    # find relocation, useful when finding feature clusters
+    if (relocate_empty == True) and len(empty_clusts) != 0:
+        for empty_clust in empty_clusts:
+            reassign_idx = np.argsort(X[:,empty_clust])[::-1]
+            bin_X[reassign_idx[:n_relocate], empty_clust] = True
+
+    return bin_X
+
+def binarize_factor2(X, n_select = 100):
+    """\
+    Description:
+    ------------
+        Binarize factor matrix, another way is to select the max (similar to scAI)
+    Parameter:
+    ------------
+        X: (n_cells, n_clusters)
+        relocate_empty: relocate empty clusters or not
+        n_relocate: number of clusters for relocation
+    """
+    bin_X = np.zeros_like(X).astype(np.bool)
+    for clust in range(X.shape[1]):
+        reassign_idx = np.argsort(X[:,clust])[::-1]
+        bin_X[reassign_idx[:n_select], clust] = True
+    
+    # remaining, give assignment
+    remain_feats = np.where(np.sum(bin_X, axis = 1) == 0)[0]
+    bin_X[remain_feats,:] = (X[remain_feats,:] == np.max(X[remain_feats,:], axis = 1)[:,None])
+    return bin_X
 
 def segment1d(x):
     """\
@@ -527,3 +571,37 @@ def segment1d(x):
     e = kde.score_samples(s.reshape(-1,1))
     cutoff = s[np.argmin(e)]
     return cutoff
+
+def infer_interaction(C1, C2, mask = None):
+    # currently not using the association matrix
+    
+    # assert that the numbers of factors are the same
+    assert C1.shape[1] == C2.shape[1]
+
+    # calculate pearson correlationship
+    factor_mean1 = np.mean(C1, axis = 1)[:, None]
+    factor_mean2 = np.mean(C2, axis = 1)[:, None]
+    var1 = np.sqrt(np.sum((C1 - factor_mean1) ** 2, axis = 1))
+    var2 = np.sqrt(np.sum((C2 - factor_mean2) ** 2, axis = 1))
+    cov = (C1 - factor_mean1) @ (C2 - factor_mean2).T
+    p = cov/var1[:,None]/var2[None,:]
+
+    # should be absolute value
+    p = np.abs(p)
+
+    # add the mask
+    if mask is not None:
+        p = mask * p
+    return p
+
+
+    # cannot filter correlationship using specific features
+    # # select factor specific features
+    # cutoff = 0.33
+    # bin_C1 = np.zeros_like(C1)
+    # bin_C2 = np.zeros_like(C2)
+    # for factor_id in range(C1.shape[1]):
+    #     # bin_C1[C1[:,factor_id] > cutoff, factor_id] = 1
+    #     # bin_C2[C2[:,factor_id] > cutoff, factor_id] = 1
+    #     feats1 = np.where(C1[:,factor_id] > cutoff)[0]
+    #     feats2 = np.where(C2[:,factor_id] > cutoff)[0]
