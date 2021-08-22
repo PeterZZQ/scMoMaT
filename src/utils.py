@@ -117,148 +117,6 @@ def preprocess(counts, modality = "RNA"):
 
 # ----------------------------------------------------- # 
 
-
-def plot_latent(z1, z2, anno1 = None, anno2 = None, mode = "joint", save = None, figsize = (20,10), axis_label = "Latent", **kwargs):
-    """\
-    Description
-        Plot latent space
-    Parameters
-        z1
-            the latent space of first data batch, of the shape (n_samples, n_dimensions)
-        z2
-            the latent space of the second data batch, of the shape (n_samples, n_dimensions)
-        anno1
-            the cluster annotation of the first data batch, of the  shape (n_samples,)
-        anno2
-            the cluster annotation of the second data batch, of the  shape (n_samples,)
-        mode
-            "joint": plot two latent spaces(from two batches) into one figure
-            "separate" plot two latent spaces separately
-        save
-            file name for the figure
-        figsize
-            figure size
-    """
-    _kwargs = {
-        "s": 10,
-        "alpha": 0.9,
-    }
-    _kwargs.update(kwargs)
-
-    fig = plt.figure(figsize = figsize)
-    if mode == "modality":
-        colormap = plt.cm.get_cmap("tab10")
-        ax = fig.add_subplot()
-        ax.scatter(z1[:,0], z1[:,1], color = colormap(1), label = "scRNA-Seq", **_kwargs)
-        ax.scatter(z2[:,0], z2[:,1], color = colormap(2), label = "scATAC-Seq", **_kwargs)
-        ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
-        
-        ax.tick_params(axis = "both", which = "major", labelsize = 15)
-
-        ax.set_xlabel(axis_label + " 1", fontsize = 19)
-        ax.set_ylabel(axis_label + " 2", fontsize = 19)
-        ax.spines['right'].set_visible(False)
-        ax.spines['top'].set_visible(False)  
-
-    elif mode == "joint":
-        ax = fig.add_subplot()
-        cluster_types = set([x for x in np.unique(anno1)]).union(set([x for x in np.unique(anno2)]))
-        colormap = plt.cm.get_cmap("tab20", len(cluster_types))
-
-        for i, cluster_type in enumerate(cluster_types):
-            index = np.where(anno1 == cluster_type)[0]
-            index2 = np.where(anno2 == cluster_type)[0]
-            ax.scatter(np.concatenate((z1[index,0], z2[index2,0])), np.concatenate((z1[index,1],z2[index2,1])), color = colormap(i), label = cluster_type, **_kwargs)
-        
-        ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
-        
-        ax.tick_params(axis = "both", which = "major", labelsize = 15)
-
-        ax.set_xlabel(axis_label + " 1", fontsize = 19)
-        ax.set_ylabel(axis_label + " 2", fontsize = 19)
-        ax.spines['right'].set_visible(False)
-        ax.spines['top'].set_visible(False)  
-
-
-    elif mode == "separate":
-        axs = fig.subplots(1,2)
-        cluster_types = set([x for x in np.unique(anno1)]).union(set([x for x in np.unique(anno2)]))
-        colormap = plt.cm.get_cmap("tab20", len(cluster_types))
-
-        
-        for i, cluster_type in enumerate(cluster_types):
-            index = np.where(anno1 == cluster_type)[0]
-
-            if index.shape[0] != 0:
-                axs[0].scatter(z1[index,0], z1[index,1], color = colormap(i), label = cluster_type, **_kwargs)
-        # axs[0].legend(fontsize = font_size)
-        axs[0].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(0.94, 1), markerscale=4)
-        axs[0].set_title("scRNA-Seq", fontsize = 25)
-
-        axs[0].tick_params(axis = "both", which = "major", labelsize = 15)
-
-        axs[0].set_xlabel(axis_label + " 1", fontsize = 19)
-        axs[0].set_ylabel(axis_label + " 2", fontsize = 19)
-        axs[0].set_xlim(np.min(np.concatenate((z1[:,0], z2[:,0]))), np.max(np.concatenate((z1[:,0], z2[:,0]))))
-        axs[0].set_ylim(np.min(np.concatenate((z1[:,1], z2[:,1]))), np.max(np.concatenate((z1[:,1], z2[:,1]))))
-        axs[0].spines['right'].set_visible(False)
-        axs[0].spines['top'].set_visible(False)  
-
-
-        for i, cluster_type in enumerate(cluster_types):
-            index = np.where(anno2 == cluster_type)[0]
-
-            if index.shape[0] != 0:
-                axs[1].scatter(z2[index,0], z2[index,1], color = colormap(i), label = cluster_type, **_kwargs)
-        # axs[1].axis("off")
-        axs[1].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), markerscale=4)
-        axs[1].set_title("scATAC-Seq", fontsize = 25)
-
-        axs[1].tick_params(axis = "both", which = "major", labelsize = 15)
-
-        axs[1].set_xlabel(axis_label + " 1", fontsize = 19)
-        axs[1].set_ylabel(axis_label + " 2", fontsize = 19)
-        axs[1].set_xlim(np.min(np.concatenate((z1[:,0], z2[:,0]))), np.max(np.concatenate((z1[:,0], z2[:,0]))))
-        axs[1].set_ylim(np.min(np.concatenate((z1[:,1], z2[:,1]))), np.max(np.concatenate((z1[:,1], z2[:,1]))))
-        axs[1].spines['right'].set_visible(False)
-        axs[1].spines['top'].set_visible(False)
-        
-    
-    elif mode == "hybrid":
-        axs = fig.subplots(1,2)
-        cluster_types = set([x for x in np.unique(anno1)]).union(set([x for x in np.unique(anno2)]))
-        colormap = plt.cm.get_cmap("tab20", len(cluster_types))
-
-        for i, cluster_type in enumerate(cluster_types):
-            index = np.where(anno1 == cluster_type)[0]
-            index2 = np.where(anno2 == cluster_type)[0]
-            axs[1].scatter(np.concatenate((z1[index,0], z2[index2,0])), np.concatenate((z1[index,1],z2[index2,1])), color = colormap(i), label = cluster_type, **_kwargs)
-        
-        axs[1].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), markerscale=4)
-        
-        axs[1].tick_params(axis = "both", which = "major", labelsize = 15)
-
-        axs[1].set_xlabel(axis_label + " 1", fontsize = 19)
-        axs[1].set_ylabel(axis_label + " 2", fontsize = 19)
-        axs[1].spines['right'].set_visible(False)
-        axs[1].spines['top'].set_visible(False)          
-
-        colormap = plt.cm.get_cmap("tab10")
-        axs[0].scatter(z1[:,0], z1[:,1], color = colormap(1), label = "scRNA-Seq", **_kwargs)
-        axs[0].scatter(z2[:,0], z2[:,1], color = colormap(2), label = "scATAC-Seq", **_kwargs)
-        axs[0].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(0.74, 1), markerscale=4)
-        
-        axs[0].tick_params(axis = "both", which = "major", labelsize = 15)
-
-        axs[0].set_xlabel(axis_label + " 1", fontsize = 19)
-        axs[0].set_ylabel(axis_label + " 2", fontsize = 19)
-        axs[0].spines['right'].set_visible(False)
-        axs[0].spines['top'].set_visible(False) 
-        
-        
-    if save:
-        fig.savefig(save, bbox_inches = "tight")
-
 def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20,10), axis_label = "Latent", **kwargs):
     """\
     Description
@@ -340,7 +198,7 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
                 axs[batch].scatter(zs[batch][index,0], zs[batch][index,1], color = colormap(i), label = cluster_type, **_kwargs)
             
             axs[batch].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(0.94, 1), markerscale=4)
-            axs[batch].set_title("batch " + str(batch), fontsize = 25)
+            axs[batch].set_title("batch " + str(batch + 1), fontsize = 25)
 
             axs[batch].tick_params(axis = "both", which = "major", labelsize = 15)
 
@@ -355,13 +213,126 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
     if save:
         fig.savefig(save, bbox_inches = "tight")
 
+def plot_feat_score(C_feats, n_feats = 10, figsize= (20,20), save_as = None, title = None, **kwargs):
+    """\
+    Description:
+    ------------
+        Plot feature scoring curve.
+    
+    Parameters:
+    ------------
+        C_feats:
+            Dataframe of the shape (n_features, n_clusters).
+        n_feats:
+            Number of marked features.
+    """
+    
+    _kwargs = {
+        "s": 5,
+        "alpha": 0.9,
+        "fontsize": 15
+    }
+    _kwargs.update(kwargs)
+    
+    n_clusts = C_feats.shape[1]
+    
+    if n_clusts >= 2:
+        nrows = np.ceil(n_clusts/2).astype('int32')
+        ncols = 2
+    elif n_clusts == 1:
+        nrows = 1
+        ncols = 1        
+        
+    if n_feats > 10:
+        legend_cols = 2
+    else:
+        legend_cols = 1
+
+    fig, axs = plt.subplots(nrows = nrows, ncols = ncols, figsize = figsize)
+    
+    if title:
+        fig.suptitle("feature factor loadings", fontsize = 18)
+
+
+    for clust in range(n_clusts):
+        feat_factor = C_feats.iloc[:, clust].values.squeeze()
+        # sort the value from the largest to the smallest
+        indices = np.argsort(feat_factor)
+        
+        de_indices = indices[-1:-n_feats:-1]
+        
+        if nrows != 1:
+            axs[clust%nrows, clust//nrows].scatter(np.arange(0, 1, 1/feat_factor.shape[0]), 
+                                           feat_factor[indices], color = "gray", alpha = _kwargs["alpha"], s =_kwargs["s"])
+            
+            for i, de_idx in enumerate(de_indices):
+                axs[clust%nrows, clust//nrows].scatter(np.arange(0, 1, 1/feat_factor.shape[0])[-i -1], 
+                                                       feat_factor[de_idx], c = "red", s = _kwargs["s"], 
+                                                       label = C_feats.index.values[de_idx])
+                
+
+            axs[clust%nrows, clust//nrows].set_title("factor " + str(clust), fontsize = 25)
+            axs[clust%nrows, clust//nrows].set_ylabel("factor value", fontsize = 19)
+            axs[clust%nrows, clust//nrows].set_xticks([])
+            axs[clust%nrows, clust//nrows].spines['right'].set_visible(False)
+            axs[clust%nrows, clust//nrows].spines['top'].set_visible(False)
+
+            leg = axs[clust%nrows, clust//nrows].legend(bbox_to_anchor=(0.9,1), ncol = legend_cols, loc="upper left", fontsize = _kwargs["fontsize"], frameon=False)
+            for item in leg.legendHandles:
+                item.set_visible(False)
+          
+        elif nrows == 1 and ncols == 1:
+           
+            axs.scatter(np.arange(0, 1, 1/feat_factor.shape[0]), feat_factor[indices], color = 'gray', alpha = _kwargs["alpha"], s =_kwargs["s"])
+
+            for i, de_idx in enumerate(de_indices):
+                axs.scatter(np.arange(0, 1, 1/feat_factor.shape[0])[-i -1], 
+                            feat_factor[de_idx], c = "red", s = _kwargs["s"], 
+                            label = C_feats.index.values[de_idx])
+                
+            axs.set_title("factor " + str(clust), fontsize = 25)
+            axs.set_ylabel("factor value", fontsize = 19)
+            axs.set_xticks([])
+            axs.spines['right'].set_visible(False)
+            axs.spines['top'].set_visible(False)
+            leg = axs.legend(bbox_to_anchor=(0.9,1), ncol = legend_cols, loc="upper left", fontsize = _kwargs["fontsize"], frameon=False)
+            for item in leg.legendHandles:
+                item.set_visible(False)
+
+        else:
+            axs[clust].scatter(np.arange(0, 1, 1/feat_factor.shape[0]), feat_factor[indices], color = 'gray', alpha = _kwargs["alpha"], s =_kwargs["s"])
+
+            for i, de_idx in enumerate(de_indices):
+                axs[clust].scatter(np.arange(0, 1, 1/feat_factor.shape[0])[-i -1], 
+                                   feat_factor[de_idx], c = "red", s = _kwargs["s"], 
+                                   label = C_feats.index.values[de_idx])
+                
+            axs[clust].set_title("factor " + str(i), fontsize = 25)
+            axs[clust].set_ylabel("factor value", fontsize = 19)
+            axs[clust].set_xticks([])
+            axs[clust].spines['right'].set_visible(False)
+            axs[clust].spines['top'].set_visible(False)
+            leg = axs[clust].legend(bbox_to_anchor=(0.9,1), ncol = legend_cols, loc="upper left", fontsize = _kwargs["fontsize"], frameon=False)
+            for item in leg.legendHandles:
+                item.set_visible(False)
+ 
+    fig.tight_layout(pad=0.0)
+    if save_as!= None:
+        fig.savefig(save_as, bbox_inches = 'tight')
+    
+    plt.show()     
 
 # ----------------------------------------------------- # 
 
 # Post-processing steps
 
 # ----------------------------------------------------- # 
-def _pairwise_distances(x, y = None):
+def _pairwise_distances_torch(x, y = None):
+    """\
+    Description:
+    ------------
+        Calculate pairwise distance torch version
+    """
     x_norm = (x**2).sum(1).view(-1, 1)
     # calculate the pairwise distance between two datasets
     if y is not None:
@@ -378,18 +349,27 @@ def _pairwise_distances(x, y = None):
 
     return torch.clamp(dist, 0.0, np.inf)
 
-def match_embed(z_rna, z_atac, k = 10):
-    # note that the distance is squared version
-    dist = _pairwise_distances(z_atac, z_rna).numpy()
-    knn_index = np.argpartition(dist, kth = k - 1, axis = 1)[:,(k-1)]
-    kth_dist = np.take_along_axis(dist, knn_index[:,None], axis = 1)
-    
-    K = dist/(100 * kth_dist + 1e-6) 
-    K = (dist <= kth_dist) * np.exp(-K) 
-    K = K/np.sum(K, axis = 1)[:,None]
 
-    z_atac = torch.FloatTensor(K).mm(z_rna)
-    return z_rna, z_atac
+def _pairwise_distances(x, y = None):
+    """\
+    Description:
+    ------------
+        Calculate pairwise distance numpy version
+    """
+    x_norm = (x ** 2).sum(1).reshape(-1, 1)
+    if y is not None:
+        y_t = y.T
+        y_norm = (y ** 2).sum(1).reshape(1, -1)
+    else:
+        y_t = x.T
+        y_norm = x_norm.reshape(1, -1)
+    
+    dist = x_norm + y_norm - 2.0 * x @ y_t 
+    if y is None:
+        dist = dist - np.diag(np.diag(dist))
+    
+    dist[dist < 0] = 0
+    return dist
 
 def match_clust(z_rna, z_atac, k = 10, scale = 1):
     # note that the distance is squared version
@@ -416,6 +396,124 @@ def match_clust(z_rna, z_atac, k = 10, scale = 1):
         else:
             print("no cell in cluster {:d}".format(clust))
     return z_rna, z_atac    
+
+
+
+def match_embeds(C_cells, k = 10, reference = None, bandwidth = 40):
+    """\
+    Description:
+    ------------
+        Matching the cell factors, multi-batches
+    Parameters:
+    ------------
+        C_cells:
+            The cell factors
+        k:
+            k-nearest neighbors
+        reference:
+            reference batch No., default None
+    Return:
+    ------------
+        C_cells:
+            The cell factors
+    """
+    # select reference
+    if reference is None:
+        batchsize = np.array([x.shape[0] for x in C_cells])
+        reference = np.argmax(batchsize)
+    
+    C_cells_ref = C_cells[reference]
+
+    for batch in range(len(C_cells)):
+
+        if batch != reference:
+            dist = _pairwise_distances(C_cells[batch], C_cells_ref)
+            # find the index of each cell's k-th nearest neighbor
+            knn_index = np.argpartition(dist, kth = k - 1, axis = 1)[:,(k-1)]
+            # find the value of the k-th distance
+            kth_dist = np.take_along_axis(dist, knn_index[:,None], axis = 1)
+
+            # divide the distance by bandwidth * kth_distance, such that the K value is within the range of (0 (itself), 1/bandwidth (k-th neighbor)]
+            K = dist/(bandwidth * kth_dist + 1e-6) 
+            # construct knn graph with Gaussian kernel K, such that the K value is within the range of [np.exp(-1/bandwidth^2), 1 (itself)), 
+            # the larger the bandwidth is, the smaller the difference is between weight of the nearest and the k-th neighbor
+            K = (dist <= kth_dist) * np.exp(-K) 
+            # weight sum up to 1, match batch to reference
+            K = K/np.sum(K, axis = 1)[:, None]
+
+            C_cells[batch] = K @ C_cells_ref
+    
+    return C_cells
+        
+
+def match_embeds_clust(C_cells, k = 10, reference = None, bandwidth = 40):
+    """\
+    Description:
+    ------------
+        Matching the cell factors, multi-batches, cluster version
+    Parameters:
+    ------------
+        C_cells:
+            The cell factors
+        k:
+            k-nearest neighbors
+        reference:
+            reference batch No., default None
+    Return:
+    ------------
+        C_cells:
+            The cell factors
+    """
+    # select reference
+    if reference is None:
+        batchsize = np.array([x.shape[0] for x in C_cells])
+        reference = np.argmax(batchsize)
+    
+    C_cells_ref = C_cells[reference]
+    clusts_ref = np.argmax(C_cells_ref, axis = 1).squeeze()
+
+    for batch in range(len(C_cells)):
+        if batch != reference:
+
+            # find cells correspond to the cluster
+            clusts_batch = np.argmax(C_cells[batch], axis = 1).squeeze()
+            for clust in range(C_cells_ref.shape[1]):
+                clust_idx = np.where(clusts_batch == clust)[0]
+                clust_ref_idx = np.where(clusts_ref == clust)[0]                
+                
+                if (clust_idx.shape[0] != 0) and (clust_ref_idx.shape[0] != 0):
+                    C_clust_ref = C_cells_ref[clust_ref_idx, :]
+                    C_clust = C_cells[batch][clust_idx, :]     
+
+                elif clust_idx.shape[0] != 0: # if the reference cluster does not exist
+                    # uses all the reference data
+                    C_clust_ref = C_cells_ref
+                    C_clust = C_cells[batch][clust_idx, :]
+                
+                else: # if the batch cluster does not exist, skip
+                    continue
+
+                dist = _pairwise_distances(C_clust, C_clust_ref)
+                # find the index of each cell's k-th nearest neighbor
+                knn_index = np.argpartition(dist, kth = k - 1, axis = 1)[:,(k-1)]
+                # find the value of the k-th distance
+                kth_dist = np.take_along_axis(dist, knn_index[:,None], axis = 1)
+
+                # divide the distance by bandwidth * kth_distance, such that the K value is within the range of (0 (itself), 1/bandwidth (k-th neighbor)]
+                K = dist/(bandwidth * kth_dist + 1e-6) 
+                # construct knn graph with Gaussian kernel K, such that the K value is within the range of [np.exp(-1/bandwidth^2), 1 (itself)), 
+                # the larger the bandwidth is, the smaller the difference is between weight of the nearest and the k-th neighbor
+                K = (dist <= kth_dist) * np.exp(-K) 
+                # weight sum up to 1, match batch to reference
+                K = K/np.sum(K, axis = 1)[:, None]
+
+                C_cells[batch][clust_idx, :] = K @ C_clust_ref
+
+    
+    return C_cells
+
+
+# TODO: check Seurat version, implement graphical UMAP for post-processing
 
 def match_embed_seurat(z_rna, z_atac, k = 20):
     """\
@@ -605,3 +703,148 @@ def infer_interaction(C1, C2, mask = None):
     #     # bin_C2[C2[:,factor_id] > cutoff, factor_id] = 1
     #     feats1 = np.where(C1[:,factor_id] > cutoff)[0]
     #     feats2 = np.where(C2[:,factor_id] > cutoff)[0]
+
+
+'''
+def plot_latent(z1, z2, anno1 = None, anno2 = None, mode = "joint", save = None, figsize = (20,10), axis_label = "Latent", **kwargs):
+    """\
+    Description
+        Plot latent space
+    Parameters
+        z1
+            the latent space of first data batch, of the shape (n_samples, n_dimensions)
+        z2
+            the latent space of the second data batch, of the shape (n_samples, n_dimensions)
+        anno1
+            the cluster annotation of the first data batch, of the  shape (n_samples,)
+        anno2
+            the cluster annotation of the second data batch, of the  shape (n_samples,)
+        mode
+            "joint": plot two latent spaces(from two batches) into one figure
+            "separate" plot two latent spaces separately
+        save
+            file name for the figure
+        figsize
+            figure size
+    """
+    _kwargs = {
+        "s": 10,
+        "alpha": 0.9,
+    }
+    _kwargs.update(kwargs)
+
+    fig = plt.figure(figsize = figsize)
+    if mode == "modality":
+        colormap = plt.cm.get_cmap("tab10")
+        ax = fig.add_subplot()
+        ax.scatter(z1[:,0], z1[:,1], color = colormap(1), label = "scRNA-Seq", **_kwargs)
+        ax.scatter(z2[:,0], z2[:,1], color = colormap(2), label = "scATAC-Seq", **_kwargs)
+        ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+        
+        ax.tick_params(axis = "both", which = "major", labelsize = 15)
+
+        ax.set_xlabel(axis_label + " 1", fontsize = 19)
+        ax.set_ylabel(axis_label + " 2", fontsize = 19)
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)  
+
+    elif mode == "joint":
+        ax = fig.add_subplot()
+        cluster_types = set([x for x in np.unique(anno1)]).union(set([x for x in np.unique(anno2)]))
+        colormap = plt.cm.get_cmap("tab20", len(cluster_types))
+
+        for i, cluster_type in enumerate(cluster_types):
+            index = np.where(anno1 == cluster_type)[0]
+            index2 = np.where(anno2 == cluster_type)[0]
+            ax.scatter(np.concatenate((z1[index,0], z2[index2,0])), np.concatenate((z1[index,1],z2[index2,1])), color = colormap(i), label = cluster_type, **_kwargs)
+        
+        ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+        
+        ax.tick_params(axis = "both", which = "major", labelsize = 15)
+
+        ax.set_xlabel(axis_label + " 1", fontsize = 19)
+        ax.set_ylabel(axis_label + " 2", fontsize = 19)
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)  
+
+
+    elif mode == "separate":
+        axs = fig.subplots(1,2)
+        cluster_types = set([x for x in np.unique(anno1)]).union(set([x for x in np.unique(anno2)]))
+        colormap = plt.cm.get_cmap("tab20", len(cluster_types))
+
+        
+        for i, cluster_type in enumerate(cluster_types):
+            index = np.where(anno1 == cluster_type)[0]
+
+            if index.shape[0] != 0:
+                axs[0].scatter(z1[index,0], z1[index,1], color = colormap(i), label = cluster_type, **_kwargs)
+        # axs[0].legend(fontsize = font_size)
+        axs[0].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(0.94, 1), markerscale=4)
+        axs[0].set_title("scRNA-Seq", fontsize = 25)
+
+        axs[0].tick_params(axis = "both", which = "major", labelsize = 15)
+
+        axs[0].set_xlabel(axis_label + " 1", fontsize = 19)
+        axs[0].set_ylabel(axis_label + " 2", fontsize = 19)
+        axs[0].set_xlim(np.min(np.concatenate((z1[:,0], z2[:,0]))), np.max(np.concatenate((z1[:,0], z2[:,0]))))
+        axs[0].set_ylim(np.min(np.concatenate((z1[:,1], z2[:,1]))), np.max(np.concatenate((z1[:,1], z2[:,1]))))
+        axs[0].spines['right'].set_visible(False)
+        axs[0].spines['top'].set_visible(False)  
+
+
+        for i, cluster_type in enumerate(cluster_types):
+            index = np.where(anno2 == cluster_type)[0]
+
+            if index.shape[0] != 0:
+                axs[1].scatter(z2[index,0], z2[index,1], color = colormap(i), label = cluster_type, **_kwargs)
+        # axs[1].axis("off")
+        axs[1].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), markerscale=4)
+        axs[1].set_title("scATAC-Seq", fontsize = 25)
+
+        axs[1].tick_params(axis = "both", which = "major", labelsize = 15)
+
+        axs[1].set_xlabel(axis_label + " 1", fontsize = 19)
+        axs[1].set_ylabel(axis_label + " 2", fontsize = 19)
+        axs[1].set_xlim(np.min(np.concatenate((z1[:,0], z2[:,0]))), np.max(np.concatenate((z1[:,0], z2[:,0]))))
+        axs[1].set_ylim(np.min(np.concatenate((z1[:,1], z2[:,1]))), np.max(np.concatenate((z1[:,1], z2[:,1]))))
+        axs[1].spines['right'].set_visible(False)
+        axs[1].spines['top'].set_visible(False)
+        
+    
+    elif mode == "hybrid":
+        axs = fig.subplots(1,2)
+        cluster_types = set([x for x in np.unique(anno1)]).union(set([x for x in np.unique(anno2)]))
+        colormap = plt.cm.get_cmap("tab20", len(cluster_types))
+
+        for i, cluster_type in enumerate(cluster_types):
+            index = np.where(anno1 == cluster_type)[0]
+            index2 = np.where(anno2 == cluster_type)[0]
+            axs[1].scatter(np.concatenate((z1[index,0], z2[index2,0])), np.concatenate((z1[index,1],z2[index2,1])), color = colormap(i), label = cluster_type, **_kwargs)
+        
+        axs[1].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), markerscale=4)
+        
+        axs[1].tick_params(axis = "both", which = "major", labelsize = 15)
+
+        axs[1].set_xlabel(axis_label + " 1", fontsize = 19)
+        axs[1].set_ylabel(axis_label + " 2", fontsize = 19)
+        axs[1].spines['right'].set_visible(False)
+        axs[1].spines['top'].set_visible(False)          
+
+        colormap = plt.cm.get_cmap("tab10")
+        axs[0].scatter(z1[:,0], z1[:,1], color = colormap(1), label = "scRNA-Seq", **_kwargs)
+        axs[0].scatter(z2[:,0], z2[:,1], color = colormap(2), label = "scATAC-Seq", **_kwargs)
+        axs[0].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(0.74, 1), markerscale=4)
+        
+        axs[0].tick_params(axis = "both", which = "major", labelsize = 15)
+
+        axs[0].set_xlabel(axis_label + " 1", fontsize = 19)
+        axs[0].set_ylabel(axis_label + " 2", fontsize = 19)
+        axs[0].spines['right'].set_visible(False)
+        axs[0].spines['top'].set_visible(False) 
+        
+        
+    if save:
+        fig.savefig(save, bbox_inches = "tight")
+
+'''

@@ -857,7 +857,7 @@ class cfrm_new2(Module):
         for C_feat in self.C_feats:
             if C_feat is not None:
                 if n_relocate is None:
-                    n_select = int(0.1 * C_feat.shape[0])
+                    n_select = int(0.05 * C_feat.shape[0])
                 else:
                     n_select = n_relocate
 
