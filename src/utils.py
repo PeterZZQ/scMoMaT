@@ -141,6 +141,7 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
     _kwargs = {
         "s": 10,
         "alpha": 0.9,
+        "markerscale": 1,
     }
     _kwargs.update(kwargs)
 
@@ -150,8 +151,8 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
         ax = fig.add_subplot()
         
         for batch in range(len(zs)):
-            ax.scatter(zs[batch][:,0], zs[batch][:,1], color = colormap(batch), label = "batch " + str(batch), **_kwargs)
-        ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+            ax.scatter(zs[batch][:,0], zs[batch][:,1], color = colormap(batch), label = "batch " + str(batch), s = _kwargs["s"], alpha = _kwargs["alpha"])
+        ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), markerscale = _kwargs["markerscale"])
         ax.tick_params(axis = "both", which = "major", labelsize = 15)
 
         ax.set_xlabel(axis_label + " 1", fontsize = 19)
@@ -171,9 +172,9 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
             for batch in range(len(zs)):
                 index = np.where(annos[batch] == cluster_type)[0]
                 z_clust.append(zs[batch][index,:])
-            ax.scatter(np.concatenate(z_clust, axis = 0)[:,0], np.concatenate(z_clust, axis = 0)[:,1], color = colormap(i), label = cluster_type, **_kwargs)
+            ax.scatter(np.concatenate(z_clust, axis = 0)[:,0], np.concatenate(z_clust, axis = 0)[:,1], color = colormap(i), label = cluster_type, s = _kwargs["s"], alpha = _kwargs["alpha"])
         
-        ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+        ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), markerscale = _kwargs["markerscale"])
         
         ax.tick_params(axis = "both", which = "major", labelsize = 15)
 
@@ -195,9 +196,9 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
             z_clust = []
             for i, cluster_type in enumerate(cluster_types):
                 index = np.where(annos[batch] == cluster_type)[0]
-                axs[batch].scatter(zs[batch][index,0], zs[batch][index,1], color = colormap(i), label = cluster_type, **_kwargs)
+                axs[batch].scatter(zs[batch][index,0], zs[batch][index,1], color = colormap(i), label = cluster_type, s = _kwargs["s"], alpha = _kwargs["alpha"])
             
-            axs[batch].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(0.94, 1), markerscale=4)
+            axs[batch].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(0.94, 1), markerscale = _kwargs["markerscale"])
             axs[batch].set_title("batch " + str(batch + 1), fontsize = 25)
 
             axs[batch].tick_params(axis = "both", which = "major", labelsize = 15)
