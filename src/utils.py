@@ -350,7 +350,6 @@ def _pairwise_distances_torch(x, y = None):
 
     return torch.clamp(dist, 0.0, np.inf)
 
-
 def _pairwise_distances(x, y = None):
     """\
     Description:
@@ -371,32 +370,6 @@ def _pairwise_distances(x, y = None):
     
     dist[dist < 0] = 0
     return dist
-
-def match_clust(z_rna, z_atac, k = 10, scale = 1):
-    # note that the distance is squared version
-    clust_rna = np.argmax(z_rna, axis = 1).squeeze()
-    clust_atac = np.argmax(z_atac, axis = 1).squeeze()
-    for clust in range(np.max((z_rna.shape[1], z_atac.shape[1]))):
-        rna_idx = np.where(clust_rna == clust)[0]
-        atac_idx = np.where(clust_atac == clust)[0]
-        
-        if (rna_idx.shape[0] != 0) and (atac_idx.shape[0] != 0):
-            z_rna_clust = z_rna[rna_idx,:]
-            z_atac_clust = z_atac[atac_idx,:]
-
-            
-            dist = _pairwise_distances(z_atac_clust, z_rna_clust).numpy()
-            knn_index = np.argpartition(dist, kth = k - 1, axis = 1)[:,(k-1)]
-            kth_dist = np.take_along_axis(dist, knn_index[:,None], axis = 1)
-
-            K = dist/(kth_dist * scale)
-            K = (dist <= kth_dist) * np.exp(-K) 
-            K = K/np.sum(K, axis = 1)[:,None]
-
-            z_atac[atac_idx,:] = torch.FloatTensor(K).mm(z_rna_clust)
-        else:
-            print("no cell in cluster {:d}".format(clust))
-    return z_rna, z_atac    
 
 
 
@@ -515,7 +488,6 @@ def match_embeds_clust(C_cells, k = 10, reference = None, bandwidth = 40):
 
 
 # TODO: check Seurat version, implement graphical UMAP for post-processing
-
 def match_embed_seurat(z_rna, z_atac, k = 20):
     """\
         Seurat MNN style 

@@ -52,7 +52,7 @@ class cfrm_new(Module):
             torch.manual_seed(seed)
         
         # 1. load count matrices
-        self.mods = [mod for mod in counts.keys()]
+        self.mods = [mod for mod in counts.keys() if mod != "feats_name"]
         self.Xs = {}
         # mod include: RNA, ATAC, PROTEIN, etc.
         for mod in self.mods:
@@ -69,6 +69,12 @@ class cfrm_new(Module):
             for mods in interacts.keys():
                 self.As[mods] = torch.FloatTensor(interacts[mods]).to(device)
         
+        # name of the features
+        if "feats_name" in counts.keys():
+            self.feats_name = counts["feats_name"]
+        else:
+            self.feats_name = None
+
         # put into sanity check
         self.sanity_check()
         
@@ -143,7 +149,11 @@ class cfrm_new(Module):
             n_features[mod] = [x.shape[1] for x in self.Xs[mod] if x is not None]
             if np.all(np.array(n_features[mod]) == n_features[mod][0]) == False:
                 raise ValueError("Number of features not match for modality " + mod)
-        
+
+            # number of feats_name equals to feature dimension
+            if self.feats_name is not None:
+                if self.feats_name[mod].shape[0] != n_features[mod][0]:
+                    raise ValueError("Feature names do not match the number of features for modality " + mod)        
 
         for batch in range(len(self.Ns)):
             # cell number of each batch should be the same
@@ -405,7 +415,7 @@ class cfrm_new(Module):
         pass
 
 
-    def assign_clusters(self, relocate_empty = False, n_relocate = 10):
+    def assign_clusters(self, n_relocate = 10):
         # assign cell cluster
         print("assigning cell clusters...")
         self.cell_clusts = []
@@ -448,6 +458,31 @@ class cfrm_new(Module):
             cutoffs = np.array(cutoffs).reshape(-1,1)
             self.binary_A_assos.append(A_asso > cutoffs)
 
+    def findMarkers(self, truncate = False):
+        feat_scores = []
+        for mod in range(len(self.binary_A_assos)):    
+            try:
+                # extract the Association matrix
+                binary_A_asso = self.binary_A_assos[mod]
+                # extract the feature factor
+                binary_C_feat = self.binary_C_feats[mod]
+
+            except:
+                raise ValueError("Please run assign_clusters first.")
+            
+            if truncate:
+                # simplify
+                A_asso = binary_A_asso * self.A_assos[mod].data.cpu().numpy()
+                C_feat = binary_C_feat * self.softmax(self.C_feats[mod]).data.cpu().numpy()
+            else:
+                A_asso = self.A_assos[mod].data.cpu().numpy()
+                C_feat = self.softmax(self.C_feats[mod]).data.cpu().numpy()                
+            # output de feature list (soft method), multiply association matrix with feature factor matrix
+            feat_score = C_feat @ A_asso.T
+            feat_score = pd.DataFrame(data = feat_score, index = self.feats_name[self.mods[mod]], columns = ["factor_" + str(i) for i in range(feat_score.shape[1])])
+            feat_scores.append(feat_score)
+
+        return feat_scores
 
 class cfrm_new2(Module):
     """\
@@ -481,7 +516,7 @@ class cfrm_new2(Module):
             torch.manual_seed(seed)
         
         # 1. load count matrices
-        self.mods = [mod for mod in counts.keys()]
+        self.mods = [mod for mod in counts.keys() if mod != "feats_name"]
         self.Xs = {}
         # mod include: RNA, ATAC, PROTEIN, etc.
         for mod in self.mods:
@@ -498,6 +533,12 @@ class cfrm_new2(Module):
             for mods in interacts.keys():
                 self.As[mods] = torch.FloatTensor(interacts[mods]).to(device)
         
+        # name of the features
+        if "feats_name" in counts.keys():
+            self.feats_name = counts["feats_name"]
+        else:
+            self.feats_name = None
+
         # put into sanity check
         self.sanity_check()
         
@@ -572,7 +613,11 @@ class cfrm_new2(Module):
             n_features[mod] = [x.shape[1] for x in self.Xs[mod] if x is not None]
             if np.all(np.array(n_features[mod]) == n_features[mod][0]) == False:
                 raise ValueError("Number of features not match for modality " + mod)
-        
+
+            # number of feats_name equals to feature dimension
+            if self.feats_name is not None:
+                if self.feats_name[mod].shape[0] != n_features[mod][0]:
+                    raise ValueError("Feature names do not match the number of features for modality " + mod)
 
         for batch in range(len(self.Ns)):
             # cell number of each batch should be the same
@@ -838,7 +883,7 @@ class cfrm_new2(Module):
         pass
 
 
-    def assign_clusters(self, relocate_empty = False, n_relocate = 10):
+    def assign_clusters(self, n_relocate = 10):
         # assign cell cluster
         print("assigning cell clusters...")
         self.cell_clusts = []
@@ -881,6 +926,31 @@ class cfrm_new2(Module):
             cutoffs = np.array(cutoffs).reshape(-1,1)
             self.binary_A_assos.append(A_asso > cutoffs)
 
+    def findMarkers(self, truncate = False):
+        feat_scores = []
+        for mod in range(len(self.binary_A_assos)):    
+            try:
+                # extract the Association matrix
+                binary_A_asso = self.binary_A_assos[mod]
+                # extract the feature factor
+                binary_C_feat = self.binary_C_feats[mod]
+
+            except:
+                raise ValueError("Please run assign_clusters first.")
+            
+            if truncate:
+                # simplify
+                A_asso = binary_A_asso * self.A_assos[mod].data.cpu().numpy()
+                C_feat = binary_C_feat * self.softmax(self.C_feats[mod]).data.cpu().numpy()
+            else:
+                A_asso = self.A_assos[mod].data.cpu().numpy()
+                C_feat = self.softmax(self.C_feats[mod]).data.cpu().numpy()                
+            # output de feature list (soft method), multiply association matrix with feature factor matrix
+            feat_score = C_feat @ A_asso.T
+            feat_score = pd.DataFrame(data = feat_score, index = self.feats_name[self.mods[mod]], columns = ["factor_" + str(i) for i in range(feat_score.shape[1])])
+            feat_scores.append(feat_score)
+
+        return feat_scores
 
 class cfrm(Module):
     """\
