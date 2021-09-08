@@ -1,0 +1,10 @@
+# GREAT version 4.0.4	Species assembly: hg38	Association rule: Basal+extension: 5000 bp upstream, 1000 bp downstream, 1000000 bp max extension, curated regulatory domains included
+# Ontology	 Term Name 	 Binom Rank 	 Binom Raw P-Value 	  Binom FDR Q-Val  	 Binom Fold Enrichment 	 Binom Observed Region Hits 	 Binom Region Set Coverage 	 Hyper Rank 	  Hyper FDR Q-Val  	 Hyper Fold Enrichment 	 Hyper Observed Gene Hits 	 Hyper Total Genes 	 Hyper Gene Set Coverage
+GO Biological Process	cotranslational protein targeting to membrane	29	0.000003991742	0.0018112873440689656	3.510392	19	0.01587302	101	0.041012694386138616	2.377818	19	98	0.01241019	
+GO Biological Process	viral life cycle	33	0.000005293791	0.0021109392657272727	2.034118	48	0.04010025	89	0.02589098305730337	1.769714	43	298	0.02808622	
+GO Biological Process	DNA integrity checkpoint	34	0.000005535952	0.0021425762461176473	2.499543	31	0.02589808	70	0.006784985304428572	2.259256	28	152	0.0182887	
+GO Biological Process	DNA damage checkpoint	39	0.00001425412	0.0048094862841025635	2.463314	29	0.02422723	76	0.014667430021578947	2.229915	26	143	0.01698236	
+GO Biological Process	mitotic DNA integrity checkpoint	46	0.00002510614	0.007181993396956522	2.647001	24	0.02005013	83	0.020627176418072293	2.407058	21	107	0.01371653	
+GO Biological Process	chromatin assembly or disassembly	89	0.0002956309	0.04371019115842697	2.091408	28	0.02339181	65	0.003507962660307692	2.20486	32	178	0.02090137	
+GO Cellular Component	nucleosome	29	0.0001195535	0.007123739586206897	3.337937	14	0.01169591	33	0.005138865163636363	2.452907	21	105	0.01371653	
+GO Cellular Component	DNA packaging complex	34	0.000305298	0.015516321882352942	2.903681	15	0.01253133	32	0.00484353648	2.409105	22	112	0.01436969	
