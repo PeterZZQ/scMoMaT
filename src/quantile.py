@@ -18,7 +18,7 @@ def quantile_norm(Cs, min_cells = 20, max_sample = 1000, quantiles = 50, ref = N
     # TODO: liger SNF refine cluster assignment, construct k nearest neighbor and check the most happening neighborhood cluster assignment, as current cluster assignment
     if refine:
         for batch in range(n_batches):
-            nbrs = NearestNeighbors(n_neighbors=5).fit(Cs[batch])
+            nbrs = NearestNeighbors(n_neighbors=100).fit(Cs[batch])
             _, knn = nbrs.kneighbors(Cs[batch])
             cluster_votes = clusters[batch][knn.reshape(-1)].reshape(Cs[batch].shape[0], -1)
             clusters[batch] = []
@@ -52,7 +52,7 @@ def quantile_norm(Cs, min_cells = 20, max_sample = 1000, quantiles = 50, ref = N
                     f = interp1d(q2, q1)
                     Cs[batch][cell_idx, clust] = f(Cs[batch][cell_idx, clust])
     
-    return Cs
+    return Cs, clusters
 
 
 # In[2]
