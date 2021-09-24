@@ -1,0 +1,10 @@
+,factor_11,Cell types(II),Cell types(I),Description
+CD68,1.7459702,Macrophages,Myeloid cells,This gene encodes a 110-kD transmembrane glycoprotein that is highly expressed by human monocytes and tissue macrophages.
+S100A9,1.6826003,CD14+ monocytes,Myeloid cells,"We have identified members of the S100 protein family – S100A8, S100A9 and S100A12 – specifically expressed in CD14+ HLA-DR−/low myeloid-derived suppressor cells(MDSC)."
+LYZ,1.6604469,CD14+ monocytes,Myeloid cells,Lysozymes have primarily a bacteriolytic function; those in tissues and body fluids are associated with the monocyte-macrophage system and enhance the activity of immunoagents.
+S100A8,1.5672475,CD14+ monocytes,Myeloid cells,"Expression is highly induced in CD14(+) monocytes, neutrophils, and developing neutrophils of patients infected by SARS-COV-2"
+IL3RA,1.5651305,Plasmacytoid dendritic cells,Myeloid cells,The protein encoded by this gene is an interleukin 3 specific subunit of a heterodimeric cytokine receptor.
+CSF1R,1.4521761,Macrophages,Myeloid cells,"The protein encoded by this gene is the receptor for colony stimulating factor 1, a cytokine which controls the production, differentiation, and function of macrophages"
+S100A12,1.4085795,CD14+ monocytes,Myeloid cells,Acts as a monocyte and mast cell chemoattractant.
+NRP1,1.4042748,Plasmacytoid dendritic cells,Myeloid cells,"This gene encodes one of two neuropilins, which contain specific protein domains which allow them to participate in several different types of signaling pathways that control cell migration. "
+LGALS3,1.4000577,CD14+ monocytes,Myeloid cells,"Involved in acute inflammatory responses including neutrophil activation and adhesion, chemoattraction of monocytes macrophages, opsonization of apoptotic neutrophils, and activation of mast cells. "

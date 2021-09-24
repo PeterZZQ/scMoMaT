@@ -1,0 +1,7 @@
+,factor_5,Cell types(II),Cell types(I),Description
+CD8B,0.81499916,Cytotoxic CD8+ T cells,T cells,The CD8 antigen is a cell surface glycoprotein found on most cytotoxic T lymphocytes that mediates efficient cell-cell interactions within the immune system.
+CD8A,0.70769614,Cytotoxic CD8+ T cells,T cells,The CD8 antigen is a cell surface glycoprotein found on most cytotoxic T lymphocytes that mediates efficient cell-cell interactions within the immune system.
+CD27,0.6439747,T cells,T cells,The protein encoded by this gene is a member of the TNF-receptor superfamily. This receptor is required for generation and long-term maintenance of T cell immunity.
+GZMK,0.54826707,Cytotoxic CD8+ T cells,T cells,"This gene product is a member of a group of related serine proteases from the cytoplasmic granules of cytotoxic lymphocytes. Cytolytic T lymphocytes (CTL) and natural killer (NK) cells share the remarkable ability to recognize, bind, and lyse specific target cells."
+KLRC1,0.5481858,NK cells,NK cells,Key inhibitory receptor on natural killer (NK) cells that regulates their activation and effector functions
+KLRK1,0.52810633,NK cells,NK cells,"The NKG2 gene family is located within the NK complex, a region that contains several C-type lectin genes preferentially expressed in NK cells. This gene encodes a member of the NKG2 family. "

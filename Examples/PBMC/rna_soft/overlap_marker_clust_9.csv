@@ -1,0 +1,4 @@
+,factor_9,Cell types(II),Cell types(I),Description
+FOXP3,0.58585066,Regulatory CD4+ T cells,T cells,Transcriptional regulator which is crucial for the development and inhibitory function of regulatory T-cells (Treg).
+IL2RA,0.5374703,Regulatory CD4+ T cells,T cells,Receptor for interleukin-2. The receptor is involved in the regulation of immune tolerance by controlling regulatory T cells (TREGs) activity. 
+TSPAN13,0.5179943,Plasmacytoid dendritic cells,Myeloid cells,"The protein encoded by this gene is a member of the transmembrane 4 superfamily, also known as the tetraspanin family."

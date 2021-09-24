@@ -1,0 +1,4 @@
+,factor_2,Cell types(II),Cell types(I),Description
+CTLA4,0.5782528,Regulatory CD4+ T cells,T cells,Inhibitory receptor acting as a major negative regulator of T-cell responses.
+FOXP3,0.57387537,Regulatory CD4+ T cells,T cells,Transcriptional regulator which is crucial for the development and inhibitory function of regulatory T-cells (Treg).
+CD4,0.4751599,Helper CD4+ T cells,T cells,"CD4 (cluster of differentiation 4) is a glycoprotein that serves as a co-receptor for the T-cell receptor (TCR). CD4 is found on the surface of immune cells such as T helper cells, monocytes, macrophages, and dendritic cells."

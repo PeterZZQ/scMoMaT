@@ -1,0 +1,7 @@
+,factor_8,Cell types(II),Cell types(I),Description
+IL2RA,0.79838926,Regulatory CD4+ T cells,T cells,Receptor for interleukin-2. The receptor is involved in the regulation of immune tolerance by controlling regulatory T cells (TREGs) activity. 
+CTLA4,0.66874635,Regulatory CD4+ T cells,T cells,Inhibitory receptor acting as a major negative regulator of T-cell responses.
+CD28,0.6533656,T cells,T cells,"The protein encoded by this gene is essential for T-cell proliferation and survival, cytokine production, and T-helper type-2 development. Several alternatively spliced transcript variants encoding different isoforms have been found for this gene."
+FOXP3,0.6526259,Regulatory CD4+ T cells,T cells,Transcriptional regulator which is crucial for the development and inhibitory function of regulatory T-cells (Treg).
+CD3D,0.61457044,T cells,T cells,The protein encoded by this gene is part of the T-cell receptor/CD3 complex (TCR/CD3 complex) and is involved in T-cell development and signal transduction.
+CD4,0.57955825,Helper CD4+ T cells,T cells,"CD4 (cluster of differentiation 4) is a glycoprotein that serves as a co-receptor for the T-cell receptor (TCR). CD4 is found on the surface of immune cells such as T helper cells, monocytes, macrophages, and dendritic cells."
