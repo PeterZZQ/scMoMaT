@@ -166,7 +166,7 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
         for batch in range(len(zs)):
             cluster_types = cluster_types.union(set([x for x in np.unique(annos[batch])]))
         colormap = plt.cm.get_cmap("tab20", len(cluster_types))
-
+        cluster_types = sorted(list(cluster_types))
         for i, cluster_type in enumerate(cluster_types):
             z_clust = []
             for batch in range(len(zs)):
@@ -189,6 +189,7 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
         cluster_types = set()
         for batch in range(len(zs)):
             cluster_types = cluster_types.union(set([x for x in np.unique(annos[batch])]))
+        cluster_types = sorted(list(cluster_types))
         colormap = plt.cm.get_cmap("tab20", len(cluster_types))
 
 
