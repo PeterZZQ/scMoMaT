@@ -732,8 +732,10 @@ class cfrm_new2(Module):
                     loss3 += 0
                 elif idx_mod != len(self.mods) - 1:
                     loss3 += self.cosine_loss(self.A_assos[idx_mod+1], self.A_assos[idx_mod])
-                else:
-                    loss3 += self.cosine_loss(self.A_assos[0], self.A_assos[idx_mod])
+
+                # for two modalities, this will calculate the same similarity twice.
+                # else:
+                #     loss3 += self.cosine_loss(self.A_assos[0], self.A_assos[idx_mod])
                 
       
         
