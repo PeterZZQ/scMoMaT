@@ -9,12 +9,15 @@ from warnings import warn
 import time
 
 from scipy.optimize import curve_fit
+from scipy.spatial import distance
 from sklearn.base import BaseEstimator
 from sklearn.utils import check_random_state, check_array
 from sklearn.utils.validation import check_is_fitted
 from sklearn.metrics import pairwise_distances
 from sklearn.preprocessing import normalize
 from sklearn.neighbors import KDTree
+
+
 
 try:
     import joblib
@@ -3208,32 +3211,3 @@ class UMAP(BaseEstimator):
         if self.output_dens:
             self.rad_orig_ = aux_data["rad_orig"]
             self.rad_emb_ = aux_data["rad_emb"]
-
-
-@numba.njit(parallel=True)
-def re_pairdis(X, ref_distance):
-    """A fast computation of .
-    Parameters
-    ----------
-    X: array of shape (n_samples, n_features)
-        The input data to compute the k-neighbor indices of.
-        
-    Returns
-    -------
-    re_dis
-    """
-    re_dis = np.zeros((X.shape[0], X.shape[1]), dtype=np.float32)
-    s2l_index = np.empty((X.shape[0], X.shape[1]), dtype=np.int32)
-    for row in numba.prange(X.shape[0]):
-        # v = np.argsort(X_row)  # Need to call argsort this way for numba
-        X_row = X[row, :]
-        v = X_row.argsort(kind="quicksort")
-        X_row[v] = list(numba.prange(X.shape[1]))
-        s2l_index[row, :] = X_row
-
-    for col in numba.prange(X.shape[1]):
-        samp = np.random.choice(ref_distance, X.shape[0], replace=False)
-        samp.sort()
-        re_dis[:, col] = samp[s2l_index[:, col]]
-
-    return re_dis

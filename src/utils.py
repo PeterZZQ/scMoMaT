@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 from scipy import stats
+from scipy.spatial.distance import pdist, squareform
+import scipy.sparse as sp
+from umap.utils import fast_knn_indices
 
 import torch.nn.functional as F
 
@@ -736,7 +739,6 @@ def infer_interaction(C1, C2, mask = None):
         p = mask * p
     return p
 
-
     # cannot filter correlationship using specific features
     # # select factor specific features
     # cutoff = 0.33
@@ -747,6 +749,177 @@ def infer_interaction(C1, C2, mask = None):
     #     # bin_C2[C2[:,factor_id] > cutoff, factor_id] = 1
     #     feats1 = np.where(C1[:,factor_id] > cutoff)[0]
     #     feats2 = np.where(C2[:,factor_id] > cutoff)[0]
+
+
+
+
+def re_distance_nn(X, n_neighbors):
+    '''
+    Calculate pairwise distance for X. Then, values of distances in blocks will be 
+    replaced orderly by the reference block. The reference block is the largest size 
+    of batch's block. 
+    After that, we compute nearest neighbors for each sample in X. We will compute 
+    the number of nearest neighbors picked from each batch first. Their sum must 
+    equal to the input of n_neighbors This will be based on the size of batch. Then, 
+    we compute knn_indices and knn_distance.
+
+    Parameters
+    -----------
+    X: list, length is the number of batches
+        The elements in X is arrays of shape of (n_samples, n_features)
+        The input data to compute pairwise distance.
+
+    n_neighbors: int
+        The number of nearest neighbors to compute for each sample in ``X``. 
+
+
+    Returns
+    ------------
+    pairwise_distances: csr_matrix (n_samples, n_samples)
+
+    knn_indices
+
+    knn_distance
+    '''
+
+
+    # get a pairwise distance matrix
+    pair_dist = squareform(pdist(np.concatenate(X, axis=0)))
+
+    # get the matrix who has the largest numbers of elements as the reference matrix
+    start_point, end_point, b_ratios = [], [], []
+    maxnum, maxbatch, start, number = 0, 0, 0, 0
+
+    for batch in range(len(X)):
+        start_point.append(start)
+        b_ratios.append(len(X[batch])/len(pair_dist)) 
+        number = len(X[batch])
+        start += number
+        end = start-1
+        end_point.append(end)
+        if number > maxnum:
+            maxnum = start
+            maxbatch = batch
+
+    # pick the largest matrix as the reference matrix
+    ref_dis = pair_dist[start_point[maxbatch]:end_point[maxbatch]+1,    
+                                    start_point[maxbatch]:end_point[maxbatch]+1].flatten()
+
+    # compute the number of nearest neighbors for each sample in each batch of X
+    b_neighbors = np.random.multinomial(n_neighbors, b_ratios)
+
+
+    # Modify distances for each block
+    i = 0
+    distance = np.zeros((len(pair_dist), len(pair_dist)), dtype=np.float32)
+    for rows in range(len(X)):
+        for batch in range(i, len(X)):
+            if [rows, batch] != [maxbatch, maxbatch]:
+                blocks = pair_dist[start_point[rows]:end_point[rows]+1, start_point[batch]:end_point[batch]+1].flatten()
+                d = np.argsort(blocks)
+                blocks[d] = list(range(len(d)))
+    
+                sample = np.random.choice(ref_dis, len(d), replace=False)
+                sample.sort()
+    
+                blocks = sample[blocks.astype(int)]
+                distance[start_point[rows]:end_point[rows]+1, start_point[batch]:end_point[batch]+1] = \
+                    np.reshape(blocks, (end_point[rows]+1-start_point[rows], end_point[batch]+1-start_point[batch]))
+            else:
+                distance[start_point[rows]:end_point[rows]+1, start_point[batch]:end_point[batch]+1] = \
+                    pair_dist[start_point[rows]:end_point[rows]+1, start_point[batch]:end_point[batch]+1]
+        i += 1
+        
+    distance = np.triu(distance, 1)
+    distance += distance.T
+    pairwise_distances = sp.csr_matrix(distance)
+
+    
+    # compute knn_indices and knn_dists based on modified pairwise distances and 
+    # customized number of nearest neighbors
+    knn_indices = np.zeros((len(pair_dist), n_neighbors))
+    for batch in range(len(X)):
+        knn_indices[:, sum(b_neighbors[0:batch]):sum(b_neighbors[0:batch+1])] = \
+                    fast_knn_indices(pair_dist[:, start_point[batch]:end_point[batch]+1], b_neighbors[batch]) \
+                    + start_point[batch]
+    
+    knn_indices = knn_indices.astype(int)
+    knn_dists = pair_dist[np.arange(pair_dist.shape[0])[:, None], knn_indices].copy()
+    
+    return pairwise_distances, knn_indices, knn_dists
+
+
+
+def re_nn_distance(X, n_neighbors):
+    '''
+    we compute nearest neighbors for each sample in X. We will compute 
+    the number of nearest neighbors picked from each batch first. Their sum must 
+    equal to the input of n_neighbors. This will be based on the size of batch. 
+    Then, we compute knn_indices.
+    knn_distance is computed based on original knn_indices, which is based on 
+    n_neighbor rather than b_neighbors.
+
+    Parameters
+    -----------
+    X: list, length is the number of batches
+        The elements in X is arrays of shape of (n_samples, n_features)
+        The input data to compute pairwise distance.
+
+    n_neighbors: int
+        The number of nearest neighbors to compute for each sample in ``X``. 
+
+
+    Returns
+    ------------
+    pairwise_distances: csr_matrix (n_samples, n_samples)
+
+    knn_indices
+
+    knn_dists
+    '''
+
+    # get a pairwise distance matrix
+    pair_dist = squareform(pdist(np.concatenate(X, axis=0)))
+
+    # get the start points, end points and size for each batch
+    start_point, end_point, b_ratios = [], [], []
+    start = 0
+
+    for batch in range(len(X)):
+        start_point.append(start)
+        b_ratios.append(len(X[batch])/len(pair_dist)) 
+        start += len(X[batch])
+        end_point.append(start-1)
+
+    # compute the number of nearest neighbors for each sample in each batch of X
+    b_neighbors = np.random.multinomial(n_neighbors, b_ratios)
+
+    # compute knn_indices based on b_neighbors
+    knn_indices = np.zeros((len(pair_dist), n_neighbors))
+    for batch in range(len(X)):
+        knn_indices[:, sum(b_neighbors[0:batch]):sum(b_neighbors[0:batch+1])] = \
+            fast_knn_indices(pair_dist[:, start_point[batch]:end_point[batch]+1], b_neighbors[batch]) + start_point[batch]
+    
+    knn_indices = knn_indices.astype(int)
+
+    # Only modify distance for points in knn_indices
+    # Get knn_distance from original knn_indices, which is nearest neighbors totally 
+    # based on n_neighbors 
+    ori_indices = fast_knn_indices(pair_dist, n_neighbors)
+    knn_dists = pair_dist[np.arange(pair_dist.shape[0])[:, None], ori_indices].copy()
+    # Modify pairwise distance matrix where the elements are changed due to knn_dists
+    pair_dist[np.arange(pair_dist.shape[0])[:, None], knn_indices] = knn_dists
+
+    #Ensure pairwise distance matrix is symmetric
+    pair_dist[knn_indices.T, np.arange(pair_dist.shape[1])[None, :]] = knn_dists.T
+    pair_dist = np.triu(pair_dist, 1)
+    pair_dist += pair_dist.T
+
+    pairwise_distances = sp.csr_matrix(pair_dist)
+
+    return pairwise_distances, knn_indices, knn_dists
+
+
 
 
 '''
