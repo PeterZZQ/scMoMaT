@@ -802,8 +802,8 @@ def re_distance_nn(X, n_neighbors):
             maxbatch = batch
 
     # pick the largest matrix as the reference matrix
-    ref_dis = pair_dist[start_point[maxbatch]:end_point[maxbatch]+1,    
-                                    start_point[maxbatch]:end_point[maxbatch]+1].flatten()
+    ref_dis = np.ravel(pair_dist[start_point[maxbatch]:end_point[maxbatch]+1,    
+                                    start_point[maxbatch]:end_point[maxbatch]+1])
 
     # compute the number of nearest neighbors for each sample in each batch of X
     b_neighbors = np.random.multinomial(n_neighbors, b_ratios)
