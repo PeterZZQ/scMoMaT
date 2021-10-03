@@ -208,9 +208,9 @@ class cfrm_vanilla(Module):
             Calculate overall loss term
         """
         # init
-        loss1 = 0
-        loss2 = 0
-        loss3 = 0
+        loss1 = torch.FloatTensor([0]).to(device)
+        loss2 = torch.FloatTensor([0]).to(device)
+        loss3 = torch.FloatTensor([0]).to(device)
 
         if mode != 'validation':
             mask_cells = batch_indices["cells"]
@@ -224,7 +224,7 @@ class cfrm_vanilla(Module):
                     if mode == "validation":
                         A_assos = scale * (self.A_assos["shared"] + self.A_assos[mod + "_" + str(batch)])
                         loss1 += self.recon_loss(self.Xs[mod][batch], self.softmax(self.C_cells[str(batch)]), self.softmax(self.C_feats[mod]), A_assos, self.b_cells[mod][batch], self.b_feats[mod][batch])
-                        
+                        print("loss1_sub: {:.4e}".format(self.recon_loss(self.Xs[mod][batch], self.softmax(self.C_cells[str(batch)]), self.softmax(self.C_feats[mod]), A_assos, self.b_cells[mod][batch], self.b_feats[mod][batch]).item()) )
                     elif (mode == "C_cells") or (mode != "C_cells" and mode[8:] == mod):
                         batch_X = self.Xs[mod][batch][np.ix_(mask_cells[batch], mask_feats[idx_mod])]
                         batch_C_cells = self.C_cells[str(batch)][mask_cells[batch],:]
@@ -266,7 +266,7 @@ class cfrm_vanilla(Module):
 
         loss = alpha[0] * loss1 + alpha[1] * loss2 + alpha[2] * loss3 
 
-        return loss, alpha[0] * loss1, alpha[1] * loss2, alpha[2] * loss3
+        return loss, loss1, loss2, loss3
     
 
     def train_func(self, T):

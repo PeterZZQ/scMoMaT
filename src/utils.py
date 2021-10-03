@@ -99,8 +99,11 @@ def preprocess(counts, modality = "RNA"):
     Preprocess the dataset, for count, interaction matrices
     """
     if modality == "ATAC":
-        # make binary
+        # make binary, maximum is 1
         counts = (counts > 0).astype(np.float) 
+        # # normalize according to library size
+        # counts = counts / np.sum(counts, axis = 1)[:,None]
+        # counts = counts/np.max(counts)
 
     elif modality == "interaction":
         # gene by region matrix
