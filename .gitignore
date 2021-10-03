@@ -1,3 +1,5 @@
-./coupleNMF
-./data
-./test/test_old
+coupleNMF
+data
+test/test_old
+src/__pycache__
+
