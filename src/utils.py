@@ -608,8 +608,48 @@ def get_igraph_from_adjacency(adjacency, directed=None):
     return g
 
 
+def _compute_connectivities_umap(
+    knn_indices,
+    knn_dists,
+    n_neighbors,
+    set_op_mix_ratio=1.0,
+    local_connectivity=1.0,
+):
+    """\
+    This is from umap.fuzzy_simplicial_set [McInnes18]_.
+    Given a set of data X, a neighborhood size, and a measure of distance
+    compute the fuzzy simplicial set (here represented as a fuzzy graph in
+    the form of a sparse matrix) associated to the data. This is done by
+    locally approximating geodesic distance at each point, creating a fuzzy
+    simplicial set for each such point, and then combining all the local
+    fuzzy simplicial sets into a global one via a fuzzy union.
+    """
+
+    from umap.umap_ import fuzzy_simplicial_set
+    from scipy.sparse import coo_matrix
+
+    X = coo_matrix(([], ([], [])), shape=(knn_indices.shape[0], 1))
+    connectivities = fuzzy_simplicial_set(
+        X,
+        n_neighbors,
+        None,
+        None,
+        knn_indices=knn_indices,
+        knn_dists=knn_dists,
+        set_op_mix_ratio=set_op_mix_ratio,
+        local_connectivity=local_connectivity,
+    )
+
+    if isinstance(connectivities, tuple):
+        # In umap-learn 0.4, this returns (result, sigmas, rhos)
+        connectivities = connectivities[0]
+
+    return connectivities.tocsr()
+
 def leiden_cluster(
-    X, 
+    X = None, 
+    knn_indices = None,
+    knn_dists = None,
     resolution = 30.0,
     random_state = 0,
     n_iterations: int = -1,
@@ -628,21 +668,19 @@ def leiden_cluster(
 
     partition_kwargs = dict(partition_kwargs)
 
+    if (knn_indices is None) or (knn_dists is None):
+        # X is needed
+        if X is None:
+            raise ValueError("`X' and `knn_indices & knn_dists', at least one need to be provided.")
 
-    neighbor = NearestNeighbors(n_neighbors = k_neighs)
-    neighbor.fit(X)
-    # get test connectivity result 0-1 adj_matrix, mode = 'connectivity' by default
-    adj_matrix = neighbor.kneighbors_graph(X).toarray()
-    dist_matrix = neighbor.kneighbors_graph(X, mode='distance').toarray()
+        neighbor = NearestNeighbors(n_neighbors = k_neighs)
+        neighbor.fit(X)
+        # get test connectivity result 0-1 adj_matrix, mode = 'connectivity' by default
+        knn_indices, knn_dists = neighbor.kneighbors(X, n_neighbors = k_neighs, return_distance = True)
 
-    adj_matrix += adj_matrix.T
-    # change 2 back to 1
-    adj_matrix[adj_matrix.nonzero()[0],adj_matrix.nonzero()[1]] = 1
-
-    affin = np.exp(- (dist_matrix - np.min(dist_matrix, axis = 1)[:,None]) ** 2/sigma)
-    affin = adj_matrix * affin
-    affin = (affin + affin.T)/2
-        
+    affin = _compute_connectivities_umap(knn_indices = knn_indices, knn_dists = knn_dists, n_neighbors = k_neighs, set_op_mix_ratio=1.0, local_connectivity=1.0)
+    affin = affin.todense()
+            
     partition_type = leidenalg.RBConfigurationVertexPartition
     g = get_igraph_from_adjacency(affin, directed = True)
 
