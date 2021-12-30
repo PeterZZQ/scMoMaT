@@ -2,4 +2,5 @@ coupleNMF
 data
 test/test_old
 src/__pycache__
+check_points
 
