@@ -1,3 +1,4 @@
+from signal import raise_signal
 import numpy as np
 import torch
 # from torch_sparse import SparseTensor
@@ -10,7 +11,7 @@ from scipy.spatial.distance import pdist, squareform
 import scipy.sparse as sp
 from umap.utils import fast_knn_indices
 
-import torch.nn.functional as F
+from sklearn.preprocessing import StandardScaler
 
 # ----------------------------------------------------- # 
 
@@ -55,8 +56,11 @@ def quantile_norm(X):
 
     return(Xn)
 
-def quantile_norm_log(X):
-    logX = np.log1p(X)
+def quantile_norm_log(X, log = True):
+    if log:
+        logX = np.log1p(X)
+    else:
+        logX = X
     logXn = quantile_norm(logX)
     return logXn
 
@@ -92,7 +96,7 @@ def preprocess_old(counts, mode = "standard", modality = "RNA"):
 
     return counts
 
-def preprocess(counts, modality = "RNA"):
+def preprocess(counts, modality = "RNA", log = True):
     """\
     Description:
     ------------
@@ -111,9 +115,18 @@ def preprocess(counts, modality = "RNA"):
     
     else:
         # other cases, e.g. Protein, RNA, etc
-        counts = quantile_norm_log(counts)
+        counts = quantile_norm_log(counts, log = log)
         counts = counts/np.max(counts)
 
+    return counts
+
+def preprocess_liger(counts, with_mean = False):
+    # normalize the count (library size) of the data
+    counts = counts/(np.sum(counts, axis = 1, keepdims = True) + 1e-6)
+    # scale for unit variance, 
+    # vars stores the variance of each feature
+    # vars = np.sum(counts ** 2, axis = 0, keepdims = True)
+    counts = StandardScaler(with_mean = with_mean, with_std = True).fit_transform(counts)
     return counts
 
 
@@ -217,7 +230,7 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
             axs[batch].spines['right'].set_visible(False)
             axs[batch].spines['top'].set_visible(False)  
         
-        
+    plt.tight_layout()
     if save:
         fig.savefig(save, bbox_inches = "tight")
 
@@ -826,6 +839,8 @@ def re_distance_nn(X, n_neighbors):
 
     # get a pairwise distance matrix
     pair_dist = squareform(pdist(np.concatenate(X, axis=0)))
+    if n_neighbors < len(X):
+        raise ValueError("the number of neighbors should not be smaller than the number of batches")
 
     # get the matrix who has the largest numbers of elements as the reference matrix
     start_point, end_point, b_ratios = [], [], []
@@ -847,7 +862,14 @@ def re_distance_nn(X, n_neighbors):
                                     start_point[maxbatch]:end_point[maxbatch]+1])
 
     # compute the number of nearest neighbors for each sample in each batch of X
-    b_neighbors = np.random.multinomial(n_neighbors, b_ratios)
+    # b_neighbors = np.random.multinomial(n_neighbors, b_ratios)
+    # assign b_neighbors directly according to proportion.
+    b_neighbors = []
+    for batch in range(len(X)):
+        if batch == len(X) - 1:
+            b_neighbors.append(max(int(n_neighbors - sum(b_neighbors)), 1))
+        else:
+            b_neighbors.append(max(int(n_neighbors * b_ratios[batch]), 1))
 
 
     # Modify distances for each block
@@ -921,6 +943,8 @@ def re_nn_distance(X, n_neighbors):
 
     # get a pairwise distance matrix
     pair_dist = squareform(pdist(np.concatenate(X, axis=0)))
+    if n_neighbors < len(X):
+        raise ValueError("the number of neighbors should not be smaller than the number of batches")
 
     # get the start points, end points and size for each batch
     start_point, end_point, b_ratios = [], [], []
@@ -933,7 +957,15 @@ def re_nn_distance(X, n_neighbors):
         end_point.append(start-1)
 
     # compute the number of nearest neighbors for each sample in each batch of X
-    b_neighbors = np.random.multinomial(n_neighbors, b_ratios)
+    # If the number of neighbors is too small, the it might be that some batches don't have neighbors, for both sampling and fixed
+    # b_neighbors = np.random.multinomial(n_neighbors, b_ratios)
+    # assign b_neighbors directly according to proportion.
+    b_neighbors = []
+    for batch in range(len(X)):
+        if batch == len(X) - 1:
+            b_neighbors.append(max(int(n_neighbors - sum(b_neighbors)), 1))
+        else:
+            b_neighbors.append(max(int(n_neighbors * b_ratios[batch]), 1))
 
     # compute knn_indices based on b_neighbors
     knn_indices = np.zeros((len(pair_dist), n_neighbors))

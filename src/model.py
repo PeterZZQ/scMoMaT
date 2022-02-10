@@ -100,7 +100,7 @@ class cfrm_vanilla(Module):
         for mod in self.mods:
             for batch in range(len(self.Ns)):
                 if self.Xs[mod][batch] is not None:
-                    self.A_assos[mod + "_" + str(batch)] = Parameter(torch.rand(self.N_cell, self.N_feat))
+                    self.A_assos[mod + "_" + str(batch)] = Parameter(torch.zeros(self.N_cell, self.N_feat))
 
         
         # create bias term
@@ -216,7 +216,7 @@ class cfrm_vanilla(Module):
             mask_cells = batch_indices["cells"]
             mask_feats = batch_indices["feats"]
             
-        # reconstruction loss    
+        # reconstruction loss, ||X - scale * C1 @ A_assos @ C2^t - b1 - b2^t||^2    
         for batch in range(len(self.Ns)):
             for idx_mod, mod in enumerate(self.mods): # use mods instead of self.mods to reduce computation
                 if self.Xs[mod][batch] is not None:
@@ -225,7 +225,7 @@ class cfrm_vanilla(Module):
                         A_assos = scale * (self.A_assos["shared"] + self.A_assos[mod + "_" + str(batch)])
                         loss1 += self.recon_loss(self.Xs[mod][batch], self.softmax(self.C_cells[str(batch)]), self.softmax(self.C_feats[mod]), A_assos, self.b_cells[mod][batch], self.b_feats[mod][batch])
                         # print("loss1_sub: {:.4e}".format(self.recon_loss(self.Xs[mod][batch], self.softmax(self.C_cells[str(batch)]), self.softmax(self.C_feats[mod]), A_assos, self.b_cells[mod][batch], self.b_feats[mod][batch]).item()) )
-                    elif (mode == "C_cells") or (mode != "C_cells" and mode[8:] == mod):
+                    elif (mode == "C_cells") or (mode == "A_assos") or (mode[:7] == "C_feats" and mode[8:] == mod):
                         batch_X = self.Xs[mod][batch][np.ix_(mask_cells[batch], mask_feats[idx_mod])]
                         batch_C_cells = self.C_cells[str(batch)][mask_cells[batch],:]
                         batch_C_feats = self.C_feats[mod][mask_feats[idx_mod], :]
@@ -278,25 +278,49 @@ class cfrm_vanilla(Module):
             mask_cells, mask_feats = self.sample_mini_batch()
             
             # update C_cells
+            # print("update C_cells...")
             self.A_assos["shared"].requires_grad = False
             for i, mod in enumerate(self.mods):
                 self.C_feats[mod].requires_grad = False
-                for batch in range(len(self.Ns)):
-                    if self.Xs[mod][batch] is not None:                
-                        self.A_assos[mod + "_" + str(batch)].requires_grad = False
+            for idx in self.A_assos.keys():
+                self.A_assos[idx].requires_grad = False
+                        
             for batch in range(len(self.Ns)):
                 self.C_cells[str(batch)].requires_grad = True
 
+            # sanity check
+            for idx in self.C_cells.keys():
+                assert self.C_cells[idx].requires_grad
+            for idx in self.C_feats.keys():
+                assert not self.C_feats[idx].requires_grad
+            for idx in self.A_assos.keys():
+                assert not self.A_assos[idx].requires_grad
+
+            # update gradient    
             loss, *_ = self.batch_loss(mode = "C_cells", alpha = self.alpha, batch_indices = {"cells": mask_cells, "feats": mask_feats})
             loss.backward()
             self.optimizer.step()
             self.optimizer.zero_grad()
 
             # update C_feats
+            # print("update C_feats...")
             for batch in range(len(self.Ns)):
                 self.C_cells[str(batch)].requires_grad = False
             for i, mod in enumerate(self.mods):
                 self.C_feats[mod].requires_grad = True
+
+                # sanity check
+                for idx in self.C_cells.keys():
+                    assert not self.C_cells[idx].requires_grad
+                for idx in self.C_feats.keys():
+                    if idx != mod:
+                        assert not self.C_feats[idx].requires_grad
+                    elif idx == mod:
+                        assert self.C_feats[idx].requires_grad
+                for idx in self.A_assos.keys():
+                    assert not self.A_assos[idx].requires_grad
+
+                # update gradient  
                 loss, *_ = self.batch_loss(mode = "C_feats_" + mod, alpha = self.alpha, batch_indices = {"cells": mask_cells, "feats": mask_feats})
                 loss.backward()
                 self.optimizer.step()
@@ -305,16 +329,27 @@ class cfrm_vanilla(Module):
                 self.C_feats[mod].requires_grad = False
 
             # update A_assos:
+            # print("update A_assos...")
             self.A_assos["shared"].requires_grad = True
-            for i, mod in enumerate(self.mods):
-                for batch in range(len(self.Ns)):
-                    if self.Xs[mod][batch] is not None:
-                        self.A_assos[mod + "_" + str(batch)].requires_grad = True
+            for idx in self.A_assos.keys():
+                self.A_assos[idx].requires_grad = True
+
+            # sanity check
+            for idx in self.C_cells.keys():
+                assert not self.C_cells[idx].requires_grad
+            for idx in self.C_feats.keys():
+                assert not self.C_feats[idx].requires_grad
+            for idx in self.A_assos.keys():
+                assert self.A_assos[idx].requires_grad
+
             loss, *_ = self.batch_loss(mode = "A_assos", alpha = self.alpha, batch_indices = {"cells": mask_cells, "feats": mask_feats})                    
             loss.backward()
             self.optimizer.step()
             self.optimizer.zero_grad()
+
             # no non-negative constraint
+            with torch.no_grad():
+                self.A_assos["shared"].data = self.A_assos["shared"] * (self.A_assos["shared"] > 0)
             
             
             with torch.no_grad():
@@ -333,16 +368,20 @@ class cfrm_vanilla(Module):
                             self.scales[mod][batch] = scale
                             # update bias term:
                             batch_b_feats = self.b_feats[mod][batch][:, mask_feats[idx_mod]]
-                            self.b_cells[mod][batch][mask_cells[batch], :] = torch.mean(batch_X - scale * self.softmax(batch_C_cells) @ batch_A_asso @ self.softmax(batch_C_feats).t() - batch_b_feats, dim = 1)[:,None]
+                            self.b_cells[mod][batch][mask_cells[batch], :] = torch.mean(batch_X - self.scales[mod][batch] * self.softmax(batch_C_cells) @ batch_A_asso @ self.softmax(batch_C_feats).t() - batch_b_feats, dim = 1)[:,None]
                             batch_b_cells = self.b_cells[mod][batch][mask_cells[batch],:]
-                            self.b_feats[mod][batch][:, mask_feats[idx_mod]] = torch.mean(batch_X - scale * self.softmax(batch_C_cells) @ batch_A_asso @ self.softmax(batch_C_feats).t() - batch_b_cells, dim = 0)[None,:]
+                            self.b_feats[mod][batch][:, mask_feats[idx_mod]] = torch.mean(batch_X - self.scales[mod][batch] * self.softmax(batch_C_cells) @ batch_A_asso @ self.softmax(batch_C_feats).t() - batch_b_cells, dim = 0)[None,:]
 
 
             
             # validation       
-            if (t+1) % self.interval == 0:
+            if ((t+1) % self.interval == 0) | (t == 0):
                 with torch.no_grad():
                     loss, loss1, loss2, loss3 = self.batch_loss(mode = "validation", alpha = self.alpha)
+
+                    # print(self.A_assos["shared"])
+                    # print(self.A_assos["rna_0"])
+                    # print(self.A_assos["rna_1"])
                 
                 print('Epoch {}, Validating Loss: {:.4f}'.format(t + 1, loss.item()))
                 info = [
