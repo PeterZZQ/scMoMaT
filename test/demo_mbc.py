@@ -23,6 +23,7 @@ import pandas as pd
 import scipy.sparse as sp
 import model
 import time
+import bmk
 
 import quantile 
 
@@ -31,7 +32,7 @@ import coupleNMF as coupleNMF
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 
 def quantile_norm(targ_mtx, ref_mtx, replace = False):
@@ -42,7 +43,6 @@ def quantile_norm(targ_mtx, ref_mtx, replace = False):
     dist_temp[dist_idx] = reference
     return dist_temp.reshape(targ_mtx.shape[0], targ_mtx.shape[1])
 
-# In[]
 import importlib 
 importlib.reload(model)
 
@@ -56,7 +56,8 @@ liger_path = "mbc/liger/"
 counts_rnas = []
 counts_atacs = []
 labels = []
-for batch in [1, 2]:
+n_batches = 2
+for batch in range(1, n_batches+1):
     labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch) + '.csv'), index_col=0)["cell_type"].values.squeeze())
     
     try:
@@ -81,7 +82,6 @@ A = sp.load_npz(os.path.join(dir, 'GxR.npz'))
 A = np.array(A.todense())
 interacts = None
 
-
 # obtain the feature name
 genes = pd.read_csv(dir + "genes.txt", header = None).values.squeeze()
 regions = pd.read_csv(dir + "regions.txt", header = None).values.squeeze()
@@ -101,7 +101,7 @@ counts["rna"][1] = (counts["rna"][1]!=0).astype(int)
 # utils.plot_latent_ext([x_umap[:counts["rna"][0].shape[0], :], x_umap[counts["rna"][0].shape[0]:, :]], annos = labels, mode = "separate", save = None, figsize = (10,15), axis_label = "UMAP")
 # utils.plot_latent_ext([x_umap[:counts["rna"][0].shape[0], :], x_umap[counts["rna"][0].shape[0]:, :]], annos = labels, mode = "modality", save = None, figsize = (10,7), axis_label = "UMAP")
 
-
+counts["nbatches"] = n_batches
 # In[] Train model
 alpha = [1000, 1, 5]
 batchsize = 0.1
@@ -114,7 +114,8 @@ T = 4000
 lr = 1e-2
 
 start_time = time.time()
-model1 = model.cfrm_vanilla(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
+# model1 = model.cfrm_vanilla(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run)
+model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device)
 losses1 = model1.train_func(T = T)
 end_time = time.time()
 print("running time: " + str(end_time - start_time))
@@ -144,23 +145,20 @@ print(model1.scales)
 umap_op = UMAP(n_components = 2, n_neighbors = 15, min_dist = 0.4, random_state = 0) 
 zs = []
 labels = []
-prec_labels = []
-pre_labels = []
-for batch in range(0,2):
+for batch in range(0,n_batches):
     z = model1.softmax(model1.C_cells[str(batch)].cpu().detach()).numpy()
     zs.append(z)
     labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["cell_type"].values.squeeze())
-    pre_labels.append(np.argmax(z, axis = 1).squeeze())
 
 x_umap = umap_op.fit_transform(np.concatenate(zs, axis = 0))
 # separate into batches
 x_umaps = []
-for batch in range(0,2):
+for batch in range(0,n_batches):
     if batch == 0:
         start_pointer = 0
         end_pointer = start_pointer + zs[batch].shape[0]
         x_umaps.append(x_umap[start_pointer:end_pointer,:])
-    elif batch == 1:
+    elif batch == (n_batches-1):
         start_pointer = start_pointer + zs[batch - 1].shape[0]
         x_umaps.append(x_umap[start_pointer:,:])
     else:
@@ -178,30 +176,50 @@ utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir
 n_neighbors = 30
 
 zs = []
-for batch in range(0,2):
+for batch in range(0,n_batches):
     z = model1.softmax(model1.C_cells[str(batch)].cpu().detach()).numpy()
     zs.append(z)
 
 s_pair_dist, knn_indices, knn_dists = utils.re_nn_distance(zs, n_neighbors)
 # s_pair_dist, knn_indices, knn_dists = re_distance_nn(zs, n_neighbors)
+# here load the score.csv that we calculated in advance to select the best resolution
+scores = pd.read_csv(result_dir + "score.csv", index_col = 0)
+scores = scores[scores["methods"] == "scJMT"] 
+resolution = scores["resolution"].values[np.argmax(scores["NMI"].values.squeeze())]
+print(resolution)
+
+labels_tmp = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
 umap_op = UMAP(n_components = 2, n_neighbors = n_neighbors, min_dist = 0.2, random_state = 0, 
                 metric='precomputed', knn_dists=knn_dists, knn_indices=knn_indices)
 x_umap = umap_op.fit_transform(s_pair_dist)
 
+
+# scDART
+zs2 = utils.match_embeds(zs, k = n_neighbors, reference = None, bandwidth = 40)
+# x_umap = UMAP(n_components = 2, min_dist = 0.2, random_state = 0).fit_transform(np.concatenate(zs2, axis = 0))
+# labels_tmp = utils.leiden_cluster(X = np.concatenate(zs2, axis = 0), knn_indices = None, knn_dists = None, resolution = 0.3)
+
+
 # separate into batches
 x_umaps = []
-for batch in range(0,2):
+leiden_labels = []
+for batch in range(n_batches):
     if batch == 0:
         start_pointer = 0
         end_pointer = start_pointer + zs[batch].shape[0]
         x_umaps.append(x_umap[start_pointer:end_pointer,:])
-    elif batch == 1:
+        leiden_labels.append(labels_tmp[start_pointer:end_pointer])
+
+    elif batch == (n_batches - 1):
         start_pointer = start_pointer + zs[batch - 1].shape[0]
         x_umaps.append(x_umap[start_pointer:,:])
+        leiden_labels.append(labels_tmp[start_pointer:])
+
     else:
         start_pointer = start_pointer + zs[batch - 1].shape[0]
         end_pointer = start_pointer + zs[batch].shape[0]
         x_umaps.append(x_umap[start_pointer:end_pointer,:])
+        leiden_labels.append(labels_tmp[start_pointer:end_pointer])
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = result_dir + f'latent_separate_{K}_{T}_processed.png', 
                       figsize = (10,15), axis_label = "Latent")
@@ -212,8 +230,11 @@ utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir + f'latent_clusters_{K}_{T}_processed.png', 
                       figsize = (15,10), axis_label = "Latent", markerscale = 6)
 
+utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = result_dir + f'latent_leiden_clusters_{K}_processed.png', 
+                      figsize = (15,10), axis_label = "Latent", markerscale = 6)
+
+
 # In[] Baseline methods
-'''
 # 1. Seurat
 seurat_pcas = [pd.read_csv(seurat_path + "seurat_pca_c1.txt", sep = "\t", index_col = 0).values, 
                pd.read_csv(seurat_path + "seurat_pca_c2.txt", sep = "\t", index_col = 0).values]
@@ -256,5 +277,189 @@ utils.plot_latent_ext(liger_umaps, annos = labels, mode = "modality", save = lig
 
 utils.plot_latent_ext(liger_umaps, annos = labels, mode = "joint", save = liger_path + f'latent_clusters_liger.png', 
                       figsize = (10,10), axis_label = "Latent", markerscale = 6)
+
+
+# In[] Seurat has the highest score because the label of scATAC-Seq is predicted by Seurat.
+importlib.reload(bmk)
 '''
+# graph connectivity score (gc) measure the batch effect removal per cell identity
+# 1. scJMT
+# construct neighborhood graph from the post-processed latent space
+knn_graph = np.zeros((knn_indices.shape[0], knn_indices.shape[0]))
+knn_graph[np.arange(knn_indices.shape[0])[:, None], knn_indices] = 1
+gc_scjmt = bmk.graph_connectivity(G = knn_graph, groups = np.concatenate(labels, axis = 0))
+print('GC (scJMT): {:.3f}'.format(gc_scjmt))
+
+# 2. Seurat, n_neighbors affect the overall acc, and should be the same as scJMT
+n_neighbors = knn_indices.shape[1]
+gc_seurat = bmk.graph_connectivity(X = np.concatenate(seurat_pcas, axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
+print('GC (Seurat): {:.3f}'.format(gc_seurat))
+
+# 3. Liger
+gc_liger = bmk.graph_connectivity(X = np.concatenate((H1, H2), axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
+print('GC (Liger): {:.3f}'.format(gc_liger))
+
+# 4. scJMT embedding
+gc_scjmt_embed = bmk.graph_connectivity(X = np.concatenate(zs2, axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
+print('GC (scJMT embed): {:.3f}'.format(gc_scjmt_embed))
+
+# Batch effect removal regardless of cell identity
+# Graph iLISI
+
+# Conservation of biological identity
+# NMI and ARI
+# 1. scJMT
+nmi_scjmt = []
+ari_scjmt = []
+for resolution in np.arange(0.1, 10, 0.5):
+    leiden_labels_scjmt = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
+    nmi_scjmt.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_scjmt))
+    ari_scjmt.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_scjmt))
+print('NMI (scJMT): {:.3f}'.format(max(nmi_scjmt)))
+print('ARI (scJMT): {:.3f}'.format(max(ari_scjmt)))
+
+# 2. Seurat
+nmi_seurat = []
+ari_seurat = []
+for resolution in np.arange(0.1, 10, 0.5):
+    leiden_labels_seurat = utils.leiden_cluster(X = np.concatenate(seurat_pcas, axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
+    nmi_seurat.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_seurat))
+    ari_seurat.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_seurat))
+print('NMI (Seurat): {:.3f}'.format(max(nmi_seurat)))
+print('ARI (Seurat): {:.3f}'.format(max(ari_seurat)))
+
+# 3. Liger
+nmi_liger = []
+ari_liger = []
+for resolution in np.arange(0.1, 10, 0.5):
+    leiden_labels_liger = utils.leiden_cluster(X = np.concatenate((H1, H2), axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
+    nmi_liger.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_liger))
+    ari_liger.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_liger))
+print('NMI (Liger): {:.3f}'.format(max(nmi_liger)))
+print('ARI (Liger): {:.3f}'.format(max(ari_liger)))
+
+# 1. scJMT embedding
+nmi_scjmt_embed = []
+ari_scjmt_embed = []
+for resolution in np.arange(0.1, 10, 0.5):
+    leiden_labels_scjmt_embed = utils.leiden_cluster(X = np.concatenate(zs2, axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
+    nmi_scjmt_embed.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_scjmt_embed))
+    ari_scjmt_embed.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_scjmt_embed))
+print('NMI (scJMT embed): {:.3f}'.format(max(nmi_scjmt_embed)))
+print('ARI (scJMT embed): {:.3f}'.format(max(ari_scjmt_embed)))
+
+scores = pd.DataFrame(columns = ["methods", "resolution", "NMI", "ARI", "GC"])
+scores["NMI"] = np.array(nmi_scjmt + nmi_seurat + nmi_liger + nmi_scjmt_embed)
+scores["ARI"] = np.array(ari_scjmt + ari_seurat + ari_liger + ari_scjmt_embed)
+scores["GC"] = np.array([gc_scjmt] * len(nmi_scjmt) + [gc_seurat] * len(nmi_seurat) + [gc_liger] * len(nmi_liger) + [gc_scjmt_embed] * len(nmi_scjmt_embed))
+scores["resolution"] = np.array([x for x in np.arange(0.1, 10, 0.5)] * 4)
+scores["methods"] = np.array(["scJMT"] * len(nmi_scjmt) + ["Seurat"] * len(nmi_seurat) + ["Liger"] * len(nmi_liger) + ["scJMT (embed)"] * len(nmi_scjmt_embed))
+scores.to_csv(result_dir + "score.csv")
+'''
+scores = pd.read_csv(result_dir + "score.csv")
+
+# In[] Extend Motif
+# --------------------------------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------------------------------- #
+# 
+# Extend scJMT to include the Motif obtained from chromVAR
+# 
+# --------------------------------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------------------------------- # 
+# read in dataset
+dir = '../data/real/diag/mouse_brain_cortex/'
+result_dir = "mbc/cfrm_quantile/"
+seurat_path = "mbc/seurat/"
+liger_path = "mbc/liger/"
+
+counts_rnas = []
+counts_atacs = []
+counts_motifs = []
+labels = []
+n_batches = 2
+for batch in range(1, n_batches+1):
+    labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch) + '.csv'), index_col=0)["cell_type"].values.squeeze())
+    
+    try:
+        counts_atac = np.array(sp.load_npz(os.path.join(dir, 'RxC' + str(batch) + ".npz")).todense().T)
+        counts_atac = utils.preprocess(counts_atac, modality = "ATAC")   
+    except:
+        counts_atac = None
+        
+    try:
+        counts_rna = np.array(sp.load_npz(os.path.join(dir, 'GxC' + str(batch) + ".npz")).todense().T)
+        counts_rna = utils.preprocess(counts_rna, modality = "RNA", log = False)
+    except:
+        counts_rna = None
+
+    
+    try:
+        counts_motif = pd.read_csv(dir + r'MxC{}.csv'.format(batch), index_col = 0).T
+        # there might be small amount of na
+        counts_motif = counts_motif.fillna(0)
+        motifs = counts_motif.columns.values
+        counts_motif = counts_motif.values
+        # chromVAR provide the z-score, which has negative values
+        counts_motif = (counts_motif - np.min(counts_motif))/(np.max(counts_motif) - np.min(counts_motif) + 1e-6)
+    except:
+        counts_motif = None
+    
+    counts_rnas.append(counts_rna)
+    counts_atacs.append(counts_atac)
+    counts_motifs.append(counts_motif)
+
+counts = {"rna":counts_rnas, "atac": counts_atacs, "motif": counts_motifs}
+
+A = sp.load_npz(os.path.join(dir, 'GxR.npz'))
+A = np.array(A.todense())
+interacts = None
+
+genes = pd.read_csv(dir + "genes.txt", header = None).values.squeeze()
+regions = pd.read_csv(dir + "regions.txt", header = None).values.squeeze()
+
+feats_name = {"rna": genes, "atac": regions, "motif": motifs}
+counts["feats_name"] = feats_name
+
+# CALCULATE PSEUDO-SCRNA-SEQ
+counts["rna"][1] = counts["atac"][1] @ A.T
+
+# NORMALIZATION OF PSEUDO-SCRNA-SEQ
+# CURRENT CHOICE--BINARIZE, still is able to see the cluster pattern, much denser than scRNA-Seq (cluster pattern clearer)
+counts["rna"][1] = (counts["rna"][1]!=0).astype(int)
+
+# PLOT FUNCTION
+# x_umap = UMAP(n_components = 2, min_dist = 0.4, random_state = 0).fit_transform(np.concatenate(counts["rna"], axis = 0))
+# utils.plot_latent_ext([x_umap[:counts["rna"][0].shape[0], :], x_umap[counts["rna"][0].shape[0]:, :]], annos = labels, mode = "separate", save = None, figsize = (10,15), axis_label = "UMAP")
+# utils.plot_latent_ext([x_umap[:counts["rna"][0].shape[0], :], x_umap[counts["rna"][0].shape[0]:, :]], annos = labels, mode = "modality", save = None, figsize = (10,7), axis_label = "UMAP")
+
+counts["nbatches"] = n_batches
+
+
+# In[] retrain model, you can incorporate new matrices 
+import importlib
+importlib.reload(model)
+# the leiden label is the one produced by the best resolution
+model2 = model.cfrm_retrain_vanilla(model = model1, counts =  counts, labels = leiden_labels, device = device)#.to(device)
+losses = model2.train(T = 2000)
+
+x = np.linspace(0, 2000, int(2000/interval) + 1)
+plt.plot(x, losses)
+
+C_feats = {}
+for mod in model2.mods:
+    C_feat = model2.softmax(model2.C_feats[mod]).data.cpu().numpy() @ model2.A_assos["shared"].data.cpu().numpy().T 
+    C_feats[mod] = pd.DataFrame(data = C_feat, index = model2.feats_name[mod], columns = ["cluster_" + str(i) for i in range(C_feat.shape[1])])
+
+# In[]
+C_gene = C_feats["rna"]
+utils.plot_feat_score(C_gene, n_feats = 20, figsize= (15,20), save_as = None, title = None)
+
+C_motif = C_feats["motif"]
+utils.plot_feat_score(C_motif, n_feats = 20, figsize= (20,20), save_as = None, title = None)
+
+C_region = C_feats["atac"]
+
+C_gene.to_csv(result_dir + "C_gene.csv")
+C_motif.to_csv(result_dir + "C_motif.csv")
+C_region.to_csv(result_dir + "C_region.csv")
 # %%
