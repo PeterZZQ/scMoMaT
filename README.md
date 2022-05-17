@@ -1,24 +1,16 @@
-# CFRM
-Downstream analysis of CFRM model
+## scMoMaT: Mosaic integration of single cell multi-omics matrices using matrix trifactorization
+scMoMaT is a single-cell data integration method that is able to:
+* integrate single cell multi-omics data under the mosaic scenario using matrix tri-factorization
+* uncover the cell type specific bio-markers at the same time when learning a unified cell representation
+* integrate cell batches with unequal cell type composition
 
-## Real dataset
+#### Directory
+* `src` contains the main script of scMoMaT
+* `test` contains the testing script of scMoMaT on the datasets in the manuscript.
 
-#### scRNA-Seq Pancreas
-
-#### Multi^2 PBMC
-
-#### Spleen
-The issue with this dataset is that the scRNA-Seq data hasn't been published. We can only use it when it is published. The data need to be replaced.
-Replacement Mouse brain: https://satijalab.org/signac/articles/mouse_brain_vignette.html
-
-scRNA-Seq from allen brain atlas: https://www.nature.com/articles/s41467-020-15968-5
-* Tasic, B. et al. Shared and distinct transcriptomic cell types across neocortical areas. Nature 563, 72–78 (2018); 
-* Tasic, B. et al. Adult mouse cortical cell taxonomy revealed by single cell transcriptomics. Nat. Neurosci. 19, 335–346 (2016).
-
-scATAC-Seq from 10X genome
-
-Replacement2: BMMC data from LIGER: http://htmlpreview.github.io/?https://github.com/welch-lab/liger/blob/master/vignettes/Integrating_scRNA_and_scATAC_data.html
-
-Replacement3: scDART data Endo
-## Simulated dataset
-TODO
+#### Usage 
+See the test scripts in `test` folder:
+* `demo_pbmc.py`
+* `demo_bmmc_healthy.py`
+* `demo_spleen_subsample.py`
+* `demo_mop.py`

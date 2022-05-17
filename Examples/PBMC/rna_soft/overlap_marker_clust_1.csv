@@ -1,6 +1,0 @@
-,factor_1,Cell types(II),Cell types(I),Description
-CD8B,1.2444322,Cytotoxic CD8+ T cells,T cells,The CD8 antigen is a cell surface glycoprotein found on most cytotoxic T lymphocytes that mediates efficient cell-cell interactions within the immune system.
-CD8A,1.1541153,Cytotoxic CD8+ T cells,T cells,The CD8 antigen is a cell surface glycoprotein found on most cytotoxic T lymphocytes that mediates efficient cell-cell interactions within the immune system.
-IL7R,0.49487156,Memory T cells,T cells,The protein encoded by this gene is a receptor for interleukin 7 (IL7). 
-CD3D,0.47637758,T cells,T cells,The protein encoded by this gene is part of the T-cell receptor/CD3 complex (TCR/CD3 complex) and is involved in T-cell development and signal transduction.
-CD3E,0.47373867,T cells,T cells,"The protein encoded by this gene is the CD3-epsilon polypeptide, which together with CD3-gamma, -delta and -zeta, and the T-cell receptor alpha/beta and gamma/delta heterodimers, forms the T-cell receptor-CD3 complex. "

@@ -17,7 +17,8 @@ from sklearn.cluster import KMeans
 
 
 from sklearn.decomposition import PCA
-from umap_batch import UMAP
+import umap_batch
+from umap import UMAP
 
 import pandas as pd  
 import scipy.sparse as sp
@@ -114,7 +115,6 @@ T = 4000
 lr = 1e-2
 
 start_time = time.time()
-# model1 = model.cfrm_vanilla(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run)
 model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device)
 losses1 = model1.train_func(T = T)
 end_time = time.time()
@@ -123,8 +123,11 @@ print("running time: " + str(end_time - start_time))
 x = np.linspace(0, T, int(T/interval)+1)
 plt.plot(x, losses1)
 
-torch.save(model1.state_dict(), result_dir + f'CFRM_{K}_{T}.pt')
-model1.load_state_dict(torch.load(result_dir + f'CFRM_{K}_{T}.pt'))
+# state dict will not save tensors including scaling and bias
+# torch.save(model1.state_dict(), result_dir + f'CFRM_{K}_{T}.pt')
+# model1.load_state_dict(torch.load(result_dir + f'CFRM_{K}_{T}.pt'))
+torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
+model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
 
 # In[] Sanity check, the scales should be positive, A_assos should also be positive
 for mod in model1.A_assos.keys():
@@ -172,6 +175,7 @@ utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir + f'latent_clusters_{K}_{T}.png', figsize = (15,10), axis_label = "UMAP", markerscale = 6)
 
+
 # In[]
 n_neighbors = 30
 
@@ -180,8 +184,8 @@ for batch in range(0,n_batches):
     z = model1.softmax(model1.C_cells[str(batch)].cpu().detach()).numpy()
     zs.append(z)
 
-s_pair_dist, knn_indices, knn_dists = utils.re_nn_distance(zs, n_neighbors)
-# s_pair_dist, knn_indices, knn_dists = re_distance_nn(zs, n_neighbors)
+s_pair_dist, knn_indices, knn_dists = utils.post_process(zs, n_neighbors, njobs = 8)
+
 # here load the score.csv that we calculated in advance to select the best resolution
 scores = pd.read_csv(result_dir + "score.csv", index_col = 0)
 scores = scores[scores["methods"] == "scJMT"] 
@@ -189,7 +193,7 @@ resolution = scores["resolution"].values[np.argmax(scores["NMI"].values.squeeze(
 print(resolution)
 
 labels_tmp = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
-umap_op = UMAP(n_components = 2, n_neighbors = n_neighbors, min_dist = 0.2, random_state = 0, 
+umap_op = umap_batch.UMAP(n_components = 2, n_neighbors = n_neighbors, min_dist = 0.2, random_state = 0, 
                 metric='precomputed', knn_dists=knn_dists, knn_indices=knn_indices)
 x_umap = umap_op.fit_transform(s_pair_dist)
 
@@ -221,18 +225,17 @@ for batch in range(n_batches):
         x_umaps.append(x_umap[start_pointer:end_pointer,:])
         leiden_labels.append(labels_tmp[start_pointer:end_pointer])
 
-utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = result_dir + f'latent_separate_{K}_{T}_processed.png', 
+utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = result_dir + f'latent_separate_{K}_{T}_processed2.png', 
                       figsize = (10,15), axis_label = "Latent")
 
-utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_dir + f'latent_batches_{K}_{T}_processed.png', 
+utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_dir + f'latent_batches_{K}_{T}_processed2.png', 
                       figsize = (15,10), axis_label = "Latent", markerscale = 6)
 
-utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir + f'latent_clusters_{K}_{T}_processed.png', 
+utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir + f'latent_clusters_{K}_{T}_processed2.png', 
                       figsize = (15,10), axis_label = "Latent", markerscale = 6)
 
-utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = result_dir + f'latent_leiden_clusters_{K}_processed.png', 
+utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = result_dir + f'latent_leiden_clusters_{K}_processed2.png', 
                       figsize = (15,10), axis_label = "Latent", markerscale = 6)
-
 
 # In[] Baseline methods
 # 1. Seurat
@@ -281,7 +284,7 @@ utils.plot_latent_ext(liger_umaps, annos = labels, mode = "joint", save = liger_
 
 # In[] Seurat has the highest score because the label of scATAC-Seq is predicted by Seurat.
 importlib.reload(bmk)
-'''
+
 # graph connectivity score (gc) measure the batch effect removal per cell identity
 # 1. scJMT
 # construct neighborhood graph from the post-processed latent space
@@ -354,9 +357,36 @@ scores["ARI"] = np.array(ari_scjmt + ari_seurat + ari_liger + ari_scjmt_embed)
 scores["GC"] = np.array([gc_scjmt] * len(nmi_scjmt) + [gc_seurat] * len(nmi_seurat) + [gc_liger] * len(nmi_liger) + [gc_scjmt_embed] * len(nmi_scjmt_embed))
 scores["resolution"] = np.array([x for x in np.arange(0.1, 10, 0.5)] * 4)
 scores["methods"] = np.array(["scJMT"] * len(nmi_scjmt) + ["Seurat"] * len(nmi_seurat) + ["Liger"] * len(nmi_liger) + ["scJMT (embed)"] * len(nmi_scjmt_embed))
-scores.to_csv(result_dir + "score.csv")
-'''
+# scores.to_csv(result_dir + "score.csv")
+
+# In[] Method ori the best, method 2 the second (close to ori method), method 1 the worst
+# score for the original post-processing
 scores = pd.read_csv(result_dir + "score.csv")
+# score for post_nn_distance
+scores1 = pd.read_csv(result_dir + "score1.csv")
+# score for post_nn_distance2
+scores2 = pd.read_csv(result_dir + "score2.csv")
+
+print("GC (scJMT) postprocess ori: {:.4f}".format(np.max(scores.loc[scores["methods"] == "scJMT", "GC"].values)))
+print("NMI (scJMT) postprocess ori: {:.4f}".format(np.max(scores.loc[scores["methods"] == "scJMT", "NMI"].values)))
+print("ARI (scJMT) postprocess ori: {:.4f}".format(np.max(scores.loc[scores["methods"] == "scJMT", "ARI"].values)))
+
+print("GC (scJMT) postprocess 1: {:.4f}".format(np.max(scores1.loc[scores["methods"] == "scJMT", "GC"].values)))
+print("NMI (scJMT) postprocess 1: {:.4f}".format(np.max(scores1.loc[scores["methods"] == "scJMT", "NMI"].values)))
+print("ARI (scJMT) postprocess 1: {:.4f}".format(np.max(scores1.loc[scores["methods"] == "scJMT", "ARI"].values)))
+
+print("GC (scJMT) postprocess 2: {:.4f}".format(np.max(scores2.loc[scores["methods"] == "scJMT", "GC"].values)))
+print("NMI (scJMT) postprocess 2: {:.4f}".format(np.max(scores2.loc[scores["methods"] == "scJMT", "NMI"].values)))
+print("ARI (scJMT) postprocess 2: {:.4f}".format(np.max(scores2.loc[scores["methods"] == "scJMT", "ARI"].values)))
+
+print("GC (LIGER): {:.4f}".format(np.max(scores2.loc[scores["methods"] == "Liger", "GC"].values)))
+print("NMI (LIGER): {:.4f}".format(np.max(scores2.loc[scores["methods"] == "Liger", "NMI"].values)))
+print("ARI (LIGER): {:.4f}".format(np.max(scores2.loc[scores["methods"] == "Liger", "ARI"].values)))
+
+print("GC (Seurat): {:.4f}".format(np.max(scores2.loc[scores["methods"] == "Seurat", "GC"].values)))
+print("NMI (Seurat): {:.4f}".format(np.max(scores2.loc[scores["methods"] == "Seurat", "NMI"].values)))
+print("ARI (Seurat): {:.4f}".format(np.max(scores2.loc[scores["methods"] == "Seurat", "ARI"].values)))
+
 
 # In[] Extend Motif
 # --------------------------------------------------------------------------------------------------- #

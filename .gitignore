@@ -4,5 +4,5 @@ test_old
 src/__pycache__
 check_points
 **/.DS_Store
-
+**/*.mtx
 

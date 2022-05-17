@@ -345,11 +345,13 @@ class cfrm_vanilla(Module):
                 
                 losses.append(loss.item())
                 
+                '''
                 # update for early stopping 
                 if loss.item() < best_loss:# - 0.01 * abs(best_loss):
                     
                     best_loss = loss.item()
-                    torch.save(self.state_dict(), f'../check_points/real_{self.N_cell}.pt')
+                    # should save the whole model instead of just the state dict
+                    # torch.save(self.state_dict(), f'../check_points/real_{self.N_cell}.pt')
                     count = 0
                 else:
                     count += 1
@@ -362,12 +364,12 @@ class cfrm_vanilla(Module):
                         else:
                             self.load_state_dict(torch.load(f'../check_points/real_{self.N_cell}.pt'))
                             count = 0                            
-         
+                '''
         return losses                            
 
 
 class cfrm_retrain_vanilla(Module):
-    def __init__(self, model, counts, labels, lr = 1e-2, seed = 0, device = device):
+    def __init__(self, model, counts, labels, alpha = [1000, 100, 100], lr = 1e-2, seed = 0, device = device):
         """\
         Description:
         ------------
@@ -396,7 +398,7 @@ class cfrm_retrain_vanilla(Module):
         self.N_feat = C_cells["0"].shape[1]
         self.batch_size = model.batch_size
         self.interval = model.interval
-        self.alpha = model.alpha
+        self.alpha = alpha
         self.device = device
         
         np.random.seed(seed)
@@ -597,23 +599,23 @@ class cfrm_retrain_vanilla(Module):
                 
                 losses.append(loss.item())
                 
-                # update for early stopping 
-                if loss.item() < best_loss:# - 0.01 * abs(best_loss):
+                # # update for early stopping 
+                # if loss.item() < best_loss:# - 0.01 * abs(best_loss):
                     
-                    best_loss = loss.item()
-                    torch.save(self.state_dict(), f'../check_points/real_{self.N_cell}.pt')
-                    count = 0
-                else:
-                    count += 1
-                    print(count)
-                    if count % int(T/self.interval) == 0:
-                        self.optimizer.param_groups[0]['lr'] *= 0.5
-                        print('Epoch: {}, shrink lr to {:.4f}'.format(t + 1, self.optimizer.param_groups[0]['lr']))
-                        if self.optimizer.param_groups[0]['lr'] < 1e-6:
-                            break
-                        else:
-                            self.load_state_dict(torch.load(f'../check_points/real_{self.N_cell}.pt'))
-                            count = 0                            
+                #     best_loss = loss.item()
+                #     torch.save(self.state_dict(), f'../check_points/real_{self.N_cell}.pt')
+                #     count = 0
+                # else:
+                #     count += 1
+                #     print(count)
+                #     if count % int(T/self.interval) == 0:
+                #         self.optimizer.param_groups[0]['lr'] *= 0.5
+                #         print('Epoch: {}, shrink lr to {:.4f}'.format(t + 1, self.optimizer.param_groups[0]['lr']))
+                #         if self.optimizer.param_groups[0]['lr'] < 1e-6:
+                #             break
+                #         else:
+                #             self.load_state_dict(torch.load(f'../check_points/real_{self.N_cell}.pt'))
+                #             count = 0                            
                         
          
         return losses        

@@ -2210,6 +2210,7 @@ class UMAP(BaseEstimator):
         # If we aren't asking for unique use the full index.
         # This will save special cases later.
         else:
+            print("not unique")
             index = list(range(X.shape[0]))
             inverse = list(range(X.shape[0]))
 
@@ -2242,6 +2243,7 @@ class UMAP(BaseEstimator):
             print("Construct fuzzy simplicial set")
 
         if self.metric == "precomputed" and self._sparse_data:
+            print("using precompute")
             # For sparse precomputed distance matrices, we just argsort the rows to find
             # nearest neighbors. To make this easier, we expect matrices that are
             # symmetrical (so we can find neighbors by looking at rows in isolation,
@@ -2254,6 +2256,7 @@ class UMAP(BaseEstimator):
             if not np.all(X.diagonal() == 0):
                 raise ValueError("Non-zero distances from samples to themselves!")
             if self.knn_indices is None or self.knn_dists is None:
+                # if the knn is not calculated, then we calculate from input pairwise distance matrix  
                 self._knn_indices = np.zeros((X.shape[0], self.n_neighbors), dtype=np.int)
                 self._knn_dists = np.zeros(self._knn_indices.shape, dtype=np.float)
 
@@ -2269,10 +2272,13 @@ class UMAP(BaseEstimator):
                     self._knn_indices[row_id] = row_indices[row_nn_data_indices]
                     self._knn_dists[row_id] = row_data[row_nn_data_indices]
             else:
+                print("Provided KNN...")
+                # use the provided knn in the initialization
                 self._knn_indices = self.knn_indices
                 self._knn_dists = self.knn_dists
 
             # Disconnect any vertices farther apart than _disconnection_distance
+            # np.inf
             disconnected_index = self._knn_dists >= self._disconnection_distance
             self._knn_indices[disconnected_index] = -1
             self._knn_dists[disconnected_index] = np.inf
@@ -2284,7 +2290,7 @@ class UMAP(BaseEstimator):
                 self._rhos,
                 self.graph_dists_,
             ) = fuzzy_simplicial_set(
-                X[index],
+                X[index], # X is just a place holder here
                 self.n_neighbors,
                 random_state,
                 "precomputed",
@@ -2312,6 +2318,7 @@ class UMAP(BaseEstimator):
             )
         # Handle small cases efficiently by computing all distances
         elif X[index].shape[0] < 4096 and not self.force_approximation_algorithm:
+            print("recompute KNN")
             self._small_data = True
             try:
                 # sklearn pairwise_distances fails for callable metric on sparse data
@@ -2387,6 +2394,7 @@ class UMAP(BaseEstimator):
             else:
                 nn_metric = self._input_distance_func
 
+            print("standard mode, recalculate knn...")
             (
                 self._knn_indices,
                 self._knn_dists,

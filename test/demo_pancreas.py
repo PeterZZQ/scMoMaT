@@ -55,7 +55,8 @@ counts_rnas = []
 counts_atacs = []
 counts_proteins = []
 labels = []
-for batch in range(8):
+n_batches = 8
+for batch in range(n_batches):
     labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch) + '.csv'), index_col=0)["celltype"].values.squeeze())
         
     try:
@@ -75,7 +76,7 @@ feats_name = {"rna": genes}
 counts["feats_name"] = feats_name
 
 interacts = None
-
+counts["nbatches"] = n_batches
 # x_umap = UMAP(n_components = 2, min_dist = 0.4, random_state = 0).fit_transform(np.concatenate(counts["rna"], axis = 0))
 # utils.plot_latent_ext([x_umap[:counts["rna"][0].shape[0], :], x_umap[counts["rna"][0].shape[0]:, :]], annos = labels, mode = "separate", save = None, figsize = (10,15), axis_label = "UMAP")
 # utils.plot_latent_ext([x_umap[:counts["rna"][0].shape[0], :], x_umap[counts["rna"][0].shape[0]:, :]], annos = labels, mode = "modality", save = None, figsize = (10,7), axis_label = "UMAP")
@@ -93,7 +94,8 @@ lr = 1e-2
 
 # use interaction matrix
 start_time = time.time()
-model1 = model.cfrm_vanilla(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
+# model1 = model.cfrm_vanilla(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
+model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device).to(device)
 losses1 = model1.train_func(T = T)
 end_time = time.time()
 print("running time: " + str(end_time - start_time))
@@ -101,8 +103,8 @@ print("running time: " + str(end_time - start_time))
 x = np.linspace(0, T, int(T/interval) + 1)
 plt.plot(x, losses1)
 
-torch.save(model1.state_dict(), result_dir + f'CFRM_{K}_{T}.pt')
-model1.load_state_dict(torch.load(result_dir + f'CFRM_{K}_{T}.pt'))
+torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
+model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
 
 # In[]
 for mod in model1.A_assos.keys():
@@ -157,8 +159,10 @@ for batch in range(8):
     z = model1.softmax(model1.C_cells[str(batch)].cpu().detach()).numpy()
     zs.append(z)
 
-s_pair_dist, knn_indices, knn_dists = utils.re_nn_distance(zs, n_neighbors)
+# s_pair_dist, knn_indices, knn_dists = utils.re_nn_distance(zs, n_neighbors)
 # s_pair_dist, knn_indices, knn_dists = utils.re_distance_nn(zs, n_neighbors)
+# s_pair_dist, knn_indices, knn_dists = utils.post_nn_distance(zs, n_neighbors, njobs = 8)
+s_pair_dist, knn_indices, knn_dists = utils.post_nn_distance2(zs, n_neighbors, njobs = 8)
 
 umap_op = UMAP(n_components = 2, n_neighbors = n_neighbors, min_dist = 0.1, random_state = 0, 
                 metric='precomputed', knn_dists=knn_dists, knn_indices=knn_indices)

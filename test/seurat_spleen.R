@@ -32,15 +32,22 @@ library(Matrix)
 # For mouse brain cortex dataset, uncomment the lines below
 path <- "../data/real/diag/Xichen/"
 result_path <- "spleen/seurat/"
+
+path <- "../data/real/diag/Xichen/remove_celltype/"
+result_path <- "spleen/remove_celltype/seurat/"
 counts.atac <- readMM(paste0(path, "RxC2.mtx"))
 rownames(counts.atac) <- read.table(paste0(path, "regions.txt"), header = F, sep = ",")[[1]]
 colnames(counts.atac) <- rownames(read.csv(paste0(path, "meta_c2.csv"), header = T, row.names = 1, sep = ","))
+meta.atac <- read.csv(paste0(path, "meta_c2.csv"), header = T, row.names = 1, sep = ",")
+
 counts.rna <- readMM(paste0(path, "GxC1.mtx"))
 rownames(counts.rna) <- read.table(paste0(path, "genes.txt"), header = F, sep = ",")[[1]]
 colnames(counts.rna) <- rownames(read.csv(paste0(path, "meta_c1.csv"), header = T, row.names = 1, sep = ","))
 gene2region <- readMM(paste0(path, "GxR.mtx"))
 rownames(gene2region) <- rownames(counts.rna)
 colnames(gene2region) <- rownames(counts.atac)
+meta.rna <- read.csv(paste0(path, "meta_c1.csv"), header = T, row.names = 1, sep = ",")
+
 
 # For mouse brain cortex:
 atac_assay <- CreateChromatinAssay(
@@ -53,8 +60,8 @@ seurat.atac <- CreateSeuratObject(
   counts = atac_assay,
   assay = 'peaks',
   project = 'ATAC',
-  meta.data = read.csv(paste0(path, "meta_c2.csv"), header = T, row.names = 1, sep = ",")
-)
+  meta.data = meta.atac, header = T, row.names = 1, sep = ",")
+
 
 # Not using the annotation as we use the self-calculated gene activity matrix
 # # extract gene annotations from EnsDb
@@ -72,8 +79,8 @@ seurat.atac <- CreateSeuratObject(
 seurat.rna <- CreateSeuratObject(counts = counts.rna, 
                                  assay = "RNA", 
                                  project = "full_matrix", 
-                                 meta.data = read.csv(paste0(path, "meta_c1.csv"), header = T, row.names = 1, sep = ",")
-)
+                                 meta.data = meta.rna, header = T, row.names = 1, sep = ",")
+
 DefaultAssay(seurat.rna) <- "RNA"
 # pre-processing
 seurat.rna <- NormalizeData(seurat.rna)
