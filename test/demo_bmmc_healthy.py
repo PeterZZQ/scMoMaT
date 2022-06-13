@@ -51,25 +51,25 @@ importlib.reload(model)
 subsampling = 1
 dir = '../data/real/diag/healthy_hema/topgenes_1000/BMMC/'
 if subsampling == 1:
-    result_dir = "bmmc_healthyhema_1000/cfrm_quantile/"
+    result_dir = "bmmc_healthyhema_1000/scmomat/"
     seurat_path = "bmmc_healthyhema_1000/seurat/"
     liger_path = "bmmc_healthyhema_1000/liger/"
     uinmf_path = "bmmc_healthyhema_1000/uinmf_bin/" 
     multimap_path = "bmmc_healthyhema_1000/multimap/"
 else:
-    result_dir = "bmmc_healthyhema_1000/subsample_" + str(subsampling) + "/cfrm_quantile/"
+    result_dir = "bmmc_healthyhema_1000/subsample_" + str(subsampling) + "/scmomat/"
     seurat_path = "bmmc_healthyhema_1000/subsample_" + str(subsampling) + "/seurat/"
     liger_path = "bmmc_healthyhema_1000/subsample_" + str(subsampling) + "/liger/"
 
 # dir = '../data/real/diag/healthy_hema/topgenes_2000/BMMC/'
 # if subsampling == 1:
-#     result_dir = "bmmc_healthyhema_2000/cfrm_quantile/"
+#     result_dir = "bmmc_healthyhema_2000/scmomat/"
 #     seurat_path = "bmmc_healthyhema_2000/seurat/"
 #     liger_path = "bmmc_healthyhema_2000/liger/"
 #     uinmf_path = "bmmc_healthyhema_2000/uinmf_bin/" 
 #     multimap_path = "bmmc_healthyhema_2000/multimap/"
 # else:
-#     result_dir = "bmmc_healthyhema_2000/subsample_" + str(subsampling) + "/cfrm_quantile/"
+#     result_dir = "bmmc_healthyhema_2000/subsample_" + str(subsampling) + "/scmomat/"
 #     seurat_path = "bmmc_healthyhema_2000/subsample_" + str(subsampling) + "/seurat/"
 #     liger_path = "bmmc_healthyhema_2000/subsample_" + str(subsampling) + "/liger/"
 
@@ -201,7 +201,7 @@ utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir
 # In[] Post-processing and clustering
 plt.rcParams["font.size"] = 10
 
-n_neighbors = 30
+n_neighbors = 50
 
 zs = []
 for batch in range(n_batches):
@@ -252,16 +252,16 @@ for batch in range(n_batches):
         leiden_labels.append(labels_tmp[start_pointer:end_pointer])
 
 utils.plot_latent_ext(x_umaps_scmomat, annos = labels, mode = "separate", save = result_dir + f'latent_separate_{K}_{T}_processed2.png', 
-                      figsize = (15,15), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", alpha = 0.5)
+                      figsize = (15,15), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", alpha = 0.5)
 
 utils.plot_latent_ext(x_umaps_scmomat, annos = labels, mode = "modality", save = result_dir + f'latent_batches_{K}_{T}_processed2.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", alpha = 0.5)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", alpha = 0.5)
 
 utils.plot_latent_ext(x_umaps_scmomat, annos = labels, mode = "joint", save = result_dir + f'latent_clusters_{K}_{T}_processed2.png', 
-                      figsize = (13,7), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", alpha = 0.5)
+                      figsize = (13,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", alpha = 0.5)
 
 utils.plot_latent_ext(x_umaps_scmomat, annos = leiden_labels, mode = "joint", save = result_dir + f'latent_leiden_clusters_{K}_{T}_{resolution}_processed2.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, alpha = 0.5)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, alpha = 0.5)
 
 
 # In[] Baseline methods
@@ -284,13 +284,13 @@ for batch in range(n_batches):
         uinmf_umaps.append(uinmf_umap[start_pointer:end_pointer,:])
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "separate", save = uinmf_path + f'latent_separate_uinmf.png', 
-                      figsize = (15,15), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (15,15), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "modality", save = uinmf_path + f'latent_batches_uinmf.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "joint", save = uinmf_path + f'latent_clusters_uinmf.png', 
-                      figsize = (13,7), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (13,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 
 # 2. Multimap
@@ -302,13 +302,13 @@ for batch in ["C1", "C2"]:
     X_multimaps.append(X_multimap[batches.values.squeeze() == batch, :])
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "separate", save = multimap_path + f'latent_separate_multimap.png', 
-                      figsize = (15,15), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (15,15), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "modality", save = multimap_path + f'latent_batches_multimap.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "joint", save = multimap_path + f'latent_clusters_multimap.png', 
-                      figsize = (13,7), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (13,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 
 # 1. Seurat
@@ -319,13 +319,13 @@ seurat_umaps = [pd.read_csv(seurat_path + "seurat_umap_c1.txt", sep = "\t", inde
 
 
 utils.plot_latent_ext(seurat_umaps, annos = labels, mode = "separate", save = seurat_path + f'latent_separate_seurat.png', 
-                      figsize = (15,15), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (15,15), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 utils.plot_latent_ext(seurat_umaps, annos = labels, mode = "modality", save = seurat_path + f'latent_batches_seurat.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 utils.plot_latent_ext(seurat_umaps, annos = labels, mode = "joint", save = seurat_path + f'latent_clusters_seurat.png', 
-                      figsize = (13,7), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (13,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 
 # 2. Liger
@@ -347,13 +347,13 @@ for batch in range(0,2):
         liger_umaps.append(liger_umap[start_pointer:end_pointer,:])
 
 utils.plot_latent_ext(liger_umaps, annos = labels, mode = "separate", save = liger_path + f'latent_separate_liger.png', 
-                      figsize = (15,15), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (15,15), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 utils.plot_latent_ext(liger_umaps, annos = labels, mode = "modality", save = liger_path + f'latent_batches_liger.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 utils.plot_latent_ext(liger_umaps, annos = labels, mode = "joint", save = liger_path + f'latent_clusters_liger.png', 
-                      figsize = (13,7), axis_label = "Latent", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
+                      figsize = (13,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, text_size = "large", colormap = "tab20b", alpha = 0.5)
 
 
 
@@ -737,36 +737,36 @@ C_region = pd.read_csv(result_dir + "C_region.csv", index_col = 0)
 
 plt.rcParams["font.size"] = 20
 
-# factor 9: NK: GNLY (included), NKG7 (included), KLRB1 (included), KLRD1 (included), KLRF1 (included)
+# factor 8: NK: GNLY (included), NKG7 (included), KLRB1 (included), KLRD1 (included), KLRF1 (included)
 for gene in ['GNLY', 'KLRD1', 'TBX21']: # 'CD37' not included
     expr = [counts["rna"][0][:, counts["feats_name"]["rna"] == gene].squeeze(), counts["rna"][1][:, counts["feats_name"]["rna"] == gene].squeeze() ]
-    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = gene)
-    fig = utils.plot_factor(C_gene, markers = [gene], cluster = 9, figsize = (7,5))
+    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = gene)
+    fig = utils.plot_factor(C_gene, markers = [gene], cluster = 8, figsize = (7,5))
     fig.savefig(result_dir + gene + "_score.png", bbox_inches = "tight")
 
-# factor 0, 3, 5: T cells
+# factor 0, 3, 6: T cells
 for gene in ["CD3D", "CD3E", "CD28"]:
     expr = [counts["rna"][0][:, counts["feats_name"]["rna"] == gene].squeeze(), counts["rna"][1][:, counts["feats_name"]["rna"] == gene].squeeze() ]
-    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = gene)
-    fig = utils.plot_factor(C_gene, markers = [gene], cluster = [0,3,5], figsize = (7,5))
+    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = gene)
+    fig = utils.plot_factor(C_gene, markers = [gene], cluster = [0,3,6], figsize = (7,5))
     fig.savefig(result_dir + gene + "_score.png", bbox_inches = "tight")    
 
-# factor 5: CD8+ T cells
+# factor 6: CD8+ T cells
 CD8A = [counts["rna"][0][:, counts["feats_name"]["rna"] == "CD8A"].squeeze(), counts["rna"][1][:, counts["feats_name"]["rna"] == "CD8A"].squeeze() ]
-utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = CD8A, mode = "joint", save = result_dir + "CD8A.png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = "CD8A")
-fig = utils.plot_factor(C_gene, markers = ["CD8A"], cluster = 5, figsize = (7,5))
+utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = CD8A, mode = "joint", save = result_dir + "CD8A.png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = "CD8A")
+fig = utils.plot_factor(C_gene, markers = ["CD8A"], cluster = 6, figsize = (7,5))
 fig.savefig(result_dir + "CD8A_score.png", bbox_inches = "tight")
 
 CD8B = [counts["rna"][0][:, counts["feats_name"]["rna"] == "CD8B"].squeeze(), counts["rna"][1][:, counts["feats_name"]["rna"] == "CD8B"].squeeze() ]
-utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = CD8B, mode = "joint", save = result_dir + "CD8B.png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = "CD8B")
-fig = utils.plot_factor(C_gene, markers = ["CD8B"], cluster = 5, figsize = (7,5))
+utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = CD8B, mode = "joint", save = result_dir + "CD8B.png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = "CD8B")
+fig = utils.plot_factor(C_gene, markers = ["CD8B"], cluster = 6, figsize = (7,5))
 fig.savefig(result_dir + "CD8B_score.png", bbox_inches = "tight")
 
 
 # factor 0, 3: CD4+ Naive T cells
 for gene in ["CCR7", "TCF7"]:
     expr = [counts["rna"][0][:, counts["feats_name"]["rna"] == gene].squeeze(), counts["rna"][1][:, counts["feats_name"]["rna"] == gene].squeeze() ]
-    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = gene)
+    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = gene)
     fig = utils.plot_factor(C_gene, markers = [gene], cluster = [0,3], figsize = (7,5))
     fig.savefig(result_dir + gene + "_score.png", bbox_inches = "tight")    
 
@@ -782,8 +782,8 @@ for gene in ["CCR7", "TCF7"]:
 # CD37 should be included
 for gene in ['CD79A', 'PAX5']: # 'CD37' not included
     expr = [counts["rna"][0][:, counts["feats_name"]["rna"] == gene].squeeze(), counts["rna"][1][:, counts["feats_name"]["rna"] == gene].squeeze() ]
-    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = gene)
-    fig = utils.plot_factor(C_gene, markers = [gene], cluster = [6, 7], figsize = (7,5))
+    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = gene)
+    fig = utils.plot_factor(C_gene, markers = [gene], cluster = [5, 7], figsize = (7,5))
     fig.savefig(result_dir + gene + "_score.png", bbox_inches = "tight")
 
 # pre-B cells 
@@ -791,11 +791,11 @@ for gene in ['CD79A', 'PAX5']: # 'CD37' not included
 # de_gene = genes[np.argsort(np.abs(C_gene.values[:, 7] - C_gene.values[:, 6]).squeeze())[::-1]]
 for gene in ['MME', 'CD38', 'CD34']: # IL7R, CD22, CD79B
     expr = [counts["rna"][0][:, counts["feats_name"]["rna"] == gene].squeeze(), counts["rna"][1][:, counts["feats_name"]["rna"] == gene].squeeze() ]
-    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = gene)
-    fig = utils.plot_factor(C_gene, markers = [gene], cluster = [6, 7], figsize = (7,5))
+    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = gene)
+    fig = utils.plot_factor(C_gene, markers = [gene], cluster = [5, 7], figsize = (7,5))
     fig.savefig(result_dir + gene + "_score.png", bbox_inches = "tight")
 
-# factor 1 & 2 & 8 Monocyte
+# factor 1 & 2 & 10 Monocyte
 # CCL2,CD14+ monocytes, not included
 # S100A8,CD14+ monocytes
 # S100A9,CD14+ monocytes,
@@ -809,21 +809,21 @@ for gene in ['MME', 'CD38', 'CD34']: # IL7R, CD22, CD79B
 # CEBPB not included motif
 for gene in ['S100A8', 'S100A9', 'CD14', 'LYZ', 'LGALS3', 'S100A12', 'FCGR3A']: 
     expr = [counts["rna"][0][:, counts["feats_name"]["rna"] == gene].squeeze(), counts["rna"][1][:, counts["feats_name"]["rna"] == gene].squeeze() ]
-    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = gene)
-    fig = utils.plot_factor(C_gene, markers = [gene], cluster = [1, 2, 8], figsize = (7,5))
+    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = gene)
+    fig = utils.plot_factor(C_gene, markers = [gene], cluster = [1, 2, 10], figsize = (7,5))
     fig.savefig(result_dir + gene + "_score.png", bbox_inches = "tight")
 
-# factor 10, pDC, ID3, CLEC4C (BDCA-2), PTPRC, ptprs (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4547994/)
+# factor 9, pDC, ID3, CLEC4C (BDCA-2), PTPRC, ptprs (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4547994/)
 for gene in ['PTPRS']: # ['ID3', 'STAT1']: 
     expr = [counts["rna"][0][:, counts["feats_name"]["rna"] == gene].squeeze(), counts["rna"][1][:, counts["feats_name"]["rna"] == gene].squeeze() ]
-    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = gene)
-    fig = utils.plot_factor(C_gene, markers = [gene], cluster = 10, figsize = (7,5))
+    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = gene)
+    fig = utils.plot_factor(C_gene, markers = [gene], cluster = 9, figsize = (7,5))
     fig.savefig(result_dir + gene + "_score.png", bbox_inches = "tight")
 
 # factor 4, erythroid/HSC lineage: GATA1 (not included)
 for gene in ['HOXB2']:
     expr = [counts["rna"][0][:, counts["feats_name"]["rna"] == gene].squeeze(), counts["rna"][1][:, counts["feats_name"]["rna"] == gene].squeeze() ]
-    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = gene)
+    utils.plot_latent_continuous(x_umaps_scmomat[:2], annos = expr, mode = "joint", save = result_dir + gene + ".png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = gene)
     fig = utils.plot_factor(C_gene, markers = [gene], cluster = 4, figsize = (7,5))
     fig.savefig(result_dir + gene + "_score.png", bbox_inches = "tight")
 
@@ -834,22 +834,22 @@ for gene in ['HOXB2']:
 # factor 1 CMP/LMPP/Monocyte lineage: Myeloid (MA0466.2_CEBPB),
 for motif in ["MA0466.2_CEBPB"]:
     expr = counts["motif"][0][:, counts["feats_name"]["motif"] == motif].squeeze()
-    utils.plot_latent_continuous([x_umaps_scmomat[:2][0]], annos = [expr], mode = "joint", save = result_dir + motif + ".png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = motif)
-    fig = utils.plot_factor(C_motif, markers = [motif], cluster = [1,2,8], figsize = (7,5))
+    utils.plot_latent_continuous([x_umaps_scmomat[:2][0]], annos = [expr], mode = "joint", save = result_dir + motif + ".png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = motif)
+    fig = utils.plot_factor(C_motif, markers = [motif], cluster = [1,2,10], figsize = (7,5))
     fig.savefig(result_dir + motif + "_score.png", bbox_inches = "tight")
  
 
-# factor 0, 3, 5: T cell motif
+# factor 0, 3, 6: T cell motif
 for motif in ["MA0850.1_FOXP3", "MA0523.1_TCF7L2", "MA0033.2_FOXL1"]:
     expr = counts["motif"][0][:, counts["feats_name"]["motif"] == motif].squeeze()
-    utils.plot_latent_continuous([x_umaps_scmomat[:2][0]], annos = [expr], mode = "joint", save = result_dir + motif + ".png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = motif)
-    fig = utils.plot_factor(C_motif, markers = [motif], cluster = [0,3,5], figsize = (7,5))
+    utils.plot_latent_continuous([x_umaps_scmomat[:2][0]], annos = [expr], mode = "joint", save = result_dir + motif + ".png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = motif)
+    fig = utils.plot_factor(C_motif, markers = [motif], cluster = [0,3,6], figsize = (7,5))
     fig.savefig(result_dir + motif + "_score.png", bbox_inches = "tight")
 
-# factor 9: NK motif MA0800.1_EOMES
+# factor 8: NK motif MA0800.1_EOMES
 for motif in ["MA0800.1_EOMES"]:
     expr = counts["motif"][0][:, counts["feats_name"]["motif"] == motif].squeeze()
-    utils.plot_latent_continuous([x_umaps_scmomat[:2][0]], annos = [expr], mode = "joint", save = result_dir + motif + ".png", figsize = (7, 5), axis_label = "Latent", alpha = 1, cmap = "Reds", title = motif)
-    fig = utils.plot_factor(C_motif, markers = [motif], cluster = 9, figsize = (7,5))
+    utils.plot_latent_continuous([x_umaps_scmomat[:2][0]], annos = [expr], mode = "joint", save = result_dir + motif + ".png", figsize = (7, 5), axis_label = "UMAP", alpha = 1, cmap = "Reds", title = motif)
+    fig = utils.plot_factor(C_motif, markers = [motif], cluster = 8, figsize = (7,5))
     fig.savefig(result_dir + motif + "_score.png", bbox_inches = "tight")
 # %%

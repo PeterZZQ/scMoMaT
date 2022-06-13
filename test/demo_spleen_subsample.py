@@ -263,17 +263,17 @@ interval = 1000
 T = 4000
 lr = 1e-2
 
-start_time = time.time()
-# model1 = model.cfrm_vanilla(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
-model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device).to(device)
-losses1 = model1.train_func(T = T)
-end_time = time.time()
-print("running time: " + str(end_time - start_time))
+# start_time = time.time()
+# # model1 = model.cfrm_vanilla(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
+# model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device).to(device)
+# losses1 = model1.train_func(T = T)
+# end_time = time.time()
+# print("running time: " + str(end_time - start_time))
 
-x = np.linspace(0, T, int(T/interval) + 1)
-plt.plot(x, losses1)
+# x = np.linspace(0, T, int(T/interval) + 1)
+# plt.plot(x, losses1)
 
-torch.save(model1, result_dir_removecelltype + f'CFRM_{K}_{T}.pt')
+# torch.save(model1, result_dir_removecelltype + f'CFRM_{K}_{T}.pt')
 model1 = torch.load(result_dir_removecelltype + f'CFRM_{K}_{T}.pt')
 
 # In[] Check the scales is positive
@@ -330,13 +330,14 @@ utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir
 
 # In[] Post-processing and clustering
 plt.rcParams["font.size"] = 10
-n_neighbors = 15
+n_neighbors = 30
+r = None
 
 zs = []
 for batch in range(n_batches):
     z = model1.softmax(model1.C_cells[str(batch)].cpu().detach()).numpy()
     zs.append(z)
-s_pair_dist, knn_indices, knn_dists = utils.post_process(zs, n_neighbors, njobs = 8)
+s_pair_dist, knn_indices, knn_dists = utils.post_process(zs, n_neighbors, njobs = 8, r = r)
 # here load the score.csv that we calculated in advance to select the best resolution
 resolution = 0.6
 
@@ -374,16 +375,16 @@ for batch in range(n_batches):
         leiden_labels.append(labels_tmp[start_pointer:end_pointer])
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = result_dir_removecelltype + f'latent_separate_{K}_{T}_processed2.png', 
-                      figsize = (12,15), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (12,15), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_dir_removecelltype + f'latent_batches_{K}_{T}_processed2.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir_removecelltype + f'latent_clusters_{K}_{T}_processed2.png', 
-                      figsize = (12,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (12,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = result_dir_removecelltype + f'latent_leiden_clusters_{K}_{T}_{resolution}_processed2.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 
 # In[] New post-processing, for data batches with missing cell types
@@ -443,16 +444,16 @@ utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = res
 #         leiden_labels.append(labels_tmp[start_pointer:end_pointer])
 
 # utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = result_dir_removecelltype + f'latent_separate_{K}_{T}_processed2.png', 
-#                       figsize = (12,15), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+#                       figsize = (12,15), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 # utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_dir_removecelltype + f'latent_batches_{K}_{T}_processed2.png', 
-#                       figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+#                       figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 # utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir_removecelltype + f'latent_clusters_{K}_{T}_processed2.png', 
-#                       figsize = (12,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+#                       figsize = (12,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 # utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = result_dir_removecelltype + f'latent_leiden_clusters_{K}_{T}_{resolution}_processed2.png', 
-#                       figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+#                       figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 
 # In[]
@@ -476,13 +477,13 @@ for batch in range(n_batches):
         uinmf_umaps.append(uinmf_umap[start_pointer:end_pointer,:])
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "separate", save = uinmf_path + f'latent_separate_uinmf.png', 
-                      figsize = (15,15), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (15,15), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "modality", save = uinmf_path + f'latent_batches_uinmf.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "joint", save = uinmf_path + f'latent_clusters_uinmf.png', 
-                      figsize = (12,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (12,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 
 
@@ -496,13 +497,13 @@ for batch in ["RNA", "ATAC"]:
     X_multimaps.append(X_multimap[batches.values.squeeze() == batch, :])
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "separate", save = multimap_path + f'latent_separate_multimap.png', 
-                      figsize = (15,15), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (15,15), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "modality", save = multimap_path + f'latent_batches_multimap.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "joint", save = multimap_path + f'latent_clusters_multimap.png', 
-                      figsize = (12,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (12,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 # 3. Seurat
 seurat_path = "spleen/remove_celltype/seurat/"
@@ -513,13 +514,13 @@ seurat_umaps = [pd.read_csv(seurat_path + "seurat_umap_c1.txt", sep = "\t", inde
 
 
 utils.plot_latent_ext(seurat_umaps, annos = labels, mode = "separate", save = seurat_path + f'latent_separate_seurat.png', 
-                      figsize = (15,15), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (15,15), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(seurat_umaps, annos = labels, mode = "modality", save = seurat_path + f'latent_batches_seurat.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(seurat_umaps, annos = labels, mode = "joint", save = seurat_path + f'latent_clusters_seurat.png', 
-                      figsize = (12,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (12,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 
 # 4. Liger
@@ -542,13 +543,13 @@ for batch in range(0,2):
         liger_umaps.append(liger_umap[start_pointer:end_pointer,:])
 
 utils.plot_latent_ext(liger_umaps, annos = labels, mode = "separate", save = liger_path + f'latent_separate_liger.png', 
-                      figsize = (15,15), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (15,15), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(liger_umaps, annos = labels, mode = "modality", save = liger_path + f'latent_batches_liger.png', 
-                      figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(liger_umaps, annos = labels, mode = "joint", save = liger_path + f'latent_clusters_liger.png', 
-                      figsize = (12,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (12,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 # In[]
 import importlib
@@ -676,7 +677,7 @@ print("NMI (Seurat): {:.4f}".format(np.max(scores.loc[scores["methods"] == "Seur
 print("ARI (Seurat): {:.4f}".format(np.max(scores.loc[scores["methods"] == "Seurat", "ARI"].values)))
 
 
-scores2 = pd.read_csv("spleen/cfrm_quantile/scores.csv", index_col = 0)
+scores2 = pd.read_csv("spleen/scmomat/scores.csv", index_col = 0)
 
 print("GC (scMoMaT) postprocess 2: {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "scMoMaT", "GC"].values)))
 print("NMI (scMoMaT) postprocess 2: {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "scMoMaT", "NMI"].values)))
