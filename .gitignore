@@ -7,4 +7,5 @@ Examples_old
 check_points
 **/.DS_Store
 **/*.mtx
+test/_*
 
