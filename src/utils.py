@@ -17,6 +17,7 @@ from adjustText import adjust_text
 import time
 from multiprocessing import Pool, cpu_count
 
+plt.rcParams["font.size"] = 10
 # ----------------------------------------------------- # 
 
 # Preprocessing
@@ -176,7 +177,7 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
         ax = fig.add_subplot()
         
         for batch in range(len(zs)):
-            ax.scatter(zs[batch][:,0], zs[batch][:,1], color = colormap(batch), label = "batch " + str(batch), s = _kwargs["s"], alpha = _kwargs["alpha"])
+            ax.scatter(zs[batch][:,0], zs[batch][:,1], color = colormap(batch), label = "batch " + str(batch + 1), s = _kwargs["s"], alpha = _kwargs["alpha"])
         ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), markerscale = _kwargs["markerscale"])
         ax.tick_params(axis = "both", which = "major", labelsize = 15)
 
@@ -829,8 +830,7 @@ def match_embed_seurat(z_rna, z_atac, k = 20):
 
 
 
-
-def post_process(X, n_neighbors, njobs = None):
+def post_process(X, n_neighbors, r = None, njobs = None):
     # get a pairwise distance matrix for all batches
     from sklearn.metrics import pairwise_distances
     start_time = time.time()
@@ -872,9 +872,46 @@ def post_process(X, n_neighbors, njobs = None):
     knn_indices = np.zeros((len(pair_dist), n_neighbors))
     knn_dists = np.zeros((len(pair_dist), n_neighbors))
     for batch in range(len(X)):
-        knn_indices[:, sum(b_neighbors[0:batch]):sum(b_neighbors[0:(batch+1)])] = fast_knn_indices(pair_dist[:, start_point[batch]:end_point[batch]+1], b_neighbors[batch]) + start_point[batch]
+        # fast_knn_indices include the node itself, it sort the values too
+        knn_indices[:, sum(b_neighbors[0:batch]):sum(b_neighbors[0:(batch+1)])] = fast_knn_indices(pair_dist[:, start_point[batch]:end_point[batch]+1], b_neighbors[batch] + 1)[:, 1:] + start_point[batch]
     knn_indices = knn_indices.astype(int)
     knn_dists = pair_dist[np.arange(pair_dist.shape[0])[:, None], knn_indices].copy()
+
+    if r is not None:
+        # construct within batch knn graph
+        knn_indices2 = np.zeros((len(pair_dist), n_neighbors))
+        for batch in range(len(X)):
+            # fast_knn_indices include the node itself, it sort the values too
+            knn_indices2[start_point[batch]:end_point[batch]+1, :] = fast_knn_indices(pair_dist[start_point[batch]:end_point[batch]+1, start_point[batch]:end_point[batch]+1], n_neighbors + 1)[:, 1:] + start_point[batch]
+        knn_indices2 = knn_indices2.astype(int)
+        knn_dists2 = pair_dist[np.arange(pair_dist.shape[0])[:, None], knn_indices2].copy()
+        # mask matrix stores the neighbors that need to be removed
+        mask = np.zeros((len(pair_dist), n_neighbors))
+        # radius cut-off, useful for disproportionate cell type composition
+        for batch_i in range(len(X)):
+            for batch_j in range(len(X)):
+                if batch_i != batch_j:
+                    # r = segment1d(knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])].reshape(-1))
+                    # radius = r * np.median(knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])].reshape(-1))
+                    # print("batch i: {:d}, batch j: {:d}, r: {:.4f}".format(batch_i, batch_j, radius))
+                    assert r <= 1
+                    radius = np.percentile(knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])].reshape(-1), r * 100)
+                    print("batch i: {:d}, batch j: {:d}, r: {:.4f}".format(batch_i, batch_j, radius))
+                    
+                    # the removed neighbors are denoted as 1
+                    mask_block = (knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])] > radius)
+                    mask[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])] = mask_block
+                    removed_neighs = np.where(np.sum(mask_block, axis = 1) > 0)[0] + start_point[batch_i]
+
+                    # update knn_indices
+                    knn_indices[np.ix_(removed_neighs, np.arange(sum(b_neighbors[0:batch_j]), sum(b_neighbors[0:(batch_j+1)])))] = \
+                        knn_indices2[np.ix_(removed_neighs, np.arange(sum(b_neighbors[0:batch_j]), sum(b_neighbors[0:(batch_j+1)])))]
+                    
+                    # update knn_dists
+                    knn_dists[np.ix_(removed_neighs, np.arange(sum(b_neighbors[0:batch_j]), sum(b_neighbors[0:(batch_j+1)])))] = \
+                        knn_dists2[np.ix_(removed_neighs, np.arange(sum(b_neighbors[0:batch_j]), sum(b_neighbors[0:(batch_j+1)])))]
+        
+
     end_time = time.time()
     print("knn separate, time used {:.4f}s".format(end_time - start_time))
     
@@ -884,7 +921,7 @@ def post_process(X, n_neighbors, njobs = None):
         for batch_j in range(len(X)):
             if batch_i != batch_j:
                 block = knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])]
-                knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])] = block/np.mean(block, axis = 1, keepdims = True) * np.mean(ref_block, axis = 1, keepdims = True)
+                knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])] = block/(np.mean(block, axis = 1, keepdims = True) + 1e-6) * np.mean(ref_block, axis = 1, keepdims = True)
     end_time = time.time()
     print("modify distance 1, time used {:.4f}s".format(end_time - start_time))
 
@@ -892,13 +929,6 @@ def post_process(X, n_neighbors, njobs = None):
     # Modify pairwise distance matrix where the elements are changed due to knn_dists, 
     # pairwise_distance does not affect the UMAP visualization and leiden clustering
 
-    # OLD
-    # pair_dist[np.arange(pair_dist.shape[0])[:, None], knn_indices] = knn_dists2
-    # #Ensure pairwise distance matrix is symmetric
-    # pair_dist[knn_indices.T, np.arange(pair_dist.shape[1])[None, :]] = knn_dists2.T
-    # # maker sure that diagonal is 0
-    # pair_dist = np.triu(pair_dist, 1)
-    # pair_dist += pair_dist.T
 
     # NEW, UMAP
     pairwise_distances = np.zeros_like(pair_dist)
@@ -914,7 +944,6 @@ def post_process(X, n_neighbors, njobs = None):
     # print("make sparse, time used {:.4f}s".format(end_time - start_time))
     # pairwise_distances = pair_dist
     return pairwise_distances, knn_indices, knn_dists
-
 
 
 
@@ -1054,7 +1083,105 @@ def infer_interaction(C1, C2, mask = None):
     #     feats2 = np.where(C2[:,factor_id] > cutoff)[0]
 
 
+
 '''
+def _post_process(X, n_neighbors, r = None, njobs = None):
+    # get a pairwise distance matrix for all batches
+    from sklearn.metrics import pairwise_distances
+    start_time = time.time()
+    pair_dist = pairwise_distances(np.concatenate(X, axis = 0), n_jobs = njobs)
+    end_time = time.time()
+    print("calculating pairwise distance, time used {:.4f}s".format(end_time - start_time))
+
+    # start_time = time.time()
+    # pair_dist2 = squareform(pdist(np.concatenate(X, axis=0)))
+    # end_time = time.time()
+    # print("calculating pairwise distance, time used {:.4f}s".format(end_time - start_time))
+    # assert np.allclose(pair_dist, pair_dist2)
+    if n_neighbors < len(X):
+        raise ValueError("the number of neighbors should not be smaller than the number of batches")
+
+    # get the start points, end points and number of neighbors each batch
+    start_time = time.time()
+    start_point, end_point, b_ratios = [], [], []
+    start = 0
+
+    for batch in range(len(X)):
+        start_point.append(start)
+        b_ratios.append(len(X[batch])/len(pair_dist)) 
+        start += len(X[batch])
+        end_point.append(start-1)
+
+    # compute the number of nearest neighbors for each sample in each batch of X
+    # If the number of neighbors is too small, the it might be that some batches don't have neighbors, for both sampling and fixed
+    # b_neighbors = np.random.multinomial(n_neighbors, b_ratios)
+    # assign b_neighbors directly according to proportion.
+    b_neighbors = []
+    for batch in range(len(X)):
+        if batch == len(X) - 1:
+            b_neighbors.append(max(int(n_neighbors - sum(b_neighbors)), 1))
+        else:
+            b_neighbors.append(max(int(n_neighbors * b_ratios[batch]), 1))
+
+    # compute knn_indices based on b_neighbors
+    knn_indices = np.zeros((len(pair_dist), n_neighbors))
+    knn_dists = np.zeros((len(pair_dist), n_neighbors))
+    for batch in range(len(X)):
+        knn_indices[:, sum(b_neighbors[0:batch]):sum(b_neighbors[0:(batch+1)])] = fast_knn_indices(pair_dist[:, start_point[batch]:end_point[batch]+1], b_neighbors[batch]) + start_point[batch]
+    knn_indices = knn_indices.astype(int)
+    knn_dists = pair_dist[np.arange(pair_dist.shape[0])[:, None], knn_indices].copy()
+    if r is not None:
+        # radius cut-off, useful for disproportionate cell type composition
+        for batch_i in range(len(X)):
+            for batch_j in range(len(X)):
+                if batch_i != batch_j:
+                    # TODO: plot histogram
+                    r = segment1d(knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])].reshape(-1))
+                    mask = (knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])] <= r)
+                    knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])]  = knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])] * mask
+        pass
+
+    end_time = time.time()
+    print("knn separate, time used {:.4f}s".format(end_time - start_time))
+    
+    start_time = time.time()
+    for batch_i in range(len(X)):
+        ref_block = knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_i]):sum(b_neighbors[0:(batch_i+1)])]
+        for batch_j in range(len(X)):
+            if batch_i != batch_j:
+                block = knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])]
+                knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])] = block/np.mean(block, axis = 1, keepdims = True) * np.mean(ref_block, axis = 1, keepdims = True)
+    end_time = time.time()
+    print("modify distance 1, time used {:.4f}s".format(end_time - start_time))
+
+    start_time = time.time()
+    # Modify pairwise distance matrix where the elements are changed due to knn_dists, 
+    # pairwise_distance does not affect the UMAP visualization and leiden clustering
+
+    # OLD
+    # pair_dist[np.arange(pair_dist.shape[0])[:, None], knn_indices] = knn_dists2
+    # #Ensure pairwise distance matrix is symmetric
+    # pair_dist[knn_indices.T, np.arange(pair_dist.shape[1])[None, :]] = knn_dists2.T
+    # # maker sure that diagonal is 0
+    # pair_dist = np.triu(pair_dist, 1)
+    # pair_dist += pair_dist.T
+
+    # NEW, UMAP
+    pairwise_distances = np.zeros_like(pair_dist)
+    pairwise_distances[np.arange(pairwise_distances.shape[0])[:, None], knn_indices] = knn_dists
+    pairwise_distances = pairwise_distances + pairwise_distances.T - pairwise_distances * pairwise_distances.T
+
+    end_time = time.time()
+    print("modify distance 2, time used {:.4f}s".format(end_time - start_time))
+
+    # start_time = time.time()     
+    pairwise_distances = sp.csr_matrix(pairwise_distances)
+    # end_time = time.time()
+    # print("make sparse, time used {:.4f}s".format(end_time - start_time))
+    # pairwise_distances = pair_dist
+    return pairwise_distances, knn_indices, knn_dists
+
+
 def _quantile_align(Xs):
     if len(Xs) == 2:
         X_query = Xs[0]

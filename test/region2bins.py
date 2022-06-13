@@ -15,6 +15,7 @@ data_dir = "../data/real/diag/healthy_hema/topgenes_2000/BMMC/"
 data_dir = "../data/real/diag/Xichen/"
 data_dir = "../data/real/MOp_ext/"
 data_dir = "../data/real/diag/Xichen/remove_celltype/"
+data_dir = "../data/real/MOp_5batches/"
 
 bin_size = 100000
 
@@ -63,12 +64,13 @@ np.savetxt(data_dir + "bins.txt", region2bin.columns.values, fmt = "%s")
 
 # In[] Generate bin by cell matrix
 
-n_batches = 3
+n_batches = 5
 for batch in range(n_batches):
     try:
         counts_atac = load_npz(os.path.join(data_dir, 'RxC' + str(batch + 1) + ".npz"))
         counts_bin = csr_matrix(region2bin.T.values) * counts_atac
         mmwrite(data_dir + "BxC" + str(batch + 1) + ".mtx", csr_matrix(counts_bin))
+        save_npz(data_dir + "BxC" + str(batch + 1) + ".npz", csr_matrix(counts_bin))
     except:
         counts_atac = None
 

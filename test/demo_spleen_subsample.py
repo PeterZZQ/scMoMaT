@@ -124,6 +124,11 @@ for batch in range(1, n_batches+1):
         barcodes1 = np.random.choice(barcodes1, size = 100, replace = False)
         barcodes2 = meta_cell.loc[(meta_cell["cell_type"] != "B_follicular") & (meta_cell["cell_type"] != "B_follicular_transitional") & (meta_cell["cell_type"] != "Marginal_Zone_B"), :].index.values.squeeze() # & (meta_cell["cell_type"] != 'Unknown') & (meta_cell["cell_type"] != 'Proliferating')
         meta_cell_sub = meta_cell.loc[np.concatenate((barcodes1, barcodes2), axis = 0), :]
+        
+        # barcodes1 = meta_cell.loc[(meta_cell["cell_type"] == "T_CD4_naive") | (meta_cell["cell_type"] == "T_CD4_reg") | (meta_cell["cell_type"] == "T_CD8_naive") | (meta_cell["cell_type"] == "Memory_CD8_T") , :].index.values.squeeze()
+        # barcodes1 = np.random.choice(barcodes1, size = 1, replace = False)
+        # barcodes2 = meta_cell.loc[(meta_cell["cell_type"] != "T_CD4_naive") & (meta_cell["cell_type"] != "T_CD4_reg") & (meta_cell["cell_type"] != "T_CD8_naive") & (meta_cell["cell_type"] != "Memory_CD8_T") , :].index.values.squeeze() 
+        # meta_cell_sub = meta_cell.loc[np.concatenate((barcodes1, barcodes2), axis = 0), :]
     else:
         # # down sampling B_follicular, B_follicular_transitional, and Marginal_Zone_B
         # barcodes1 = meta_cell.loc[(meta_cell["cell_type"] == "T_CD8_naive") | (meta_cell["cell_type"] == "Memory_CD8_T") | (meta_cell["cell_type"] == "T_CD4_naive") | (meta_cell["cell_type"] == "T_CD4_reg"), :].index.values.squeeze()
@@ -379,6 +384,75 @@ utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir
 
 utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = result_dir_removecelltype + f'latent_leiden_clusters_{K}_{T}_{resolution}_processed2.png', 
                       figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+
+
+# In[] New post-processing, for data batches with missing cell types
+
+# plt.rcParams["font.size"] = 10
+# n_neighbors = 15
+
+# zs = []
+# for batch in range(n_batches):
+#     z = model1.softmax(model1.C_cells[str(batch)].cpu().detach()).numpy()
+#     zs.append(z)
+
+# # find index of cell in batch 2 correspond to T_CD4_naive, T_CD4_reg, and T_CD8
+# start_point, end_point = [], []
+# start = 0
+# for batch in range(len(zs)):
+#     start_point.append(start)
+#     start += len(zs[batch])
+#     end_point.append(start-1)
+# idx_missing = start_point[1] + np.where((labels[1] == "T_CD4_naive") | (labels[1] == "T_CD4_reg") | (labels[1] == "T_CD8"))[0]
+
+# s_pair_dist, knn_indices, knn_dists = utils.post_process_cutoff(zs, n_neighbors, njobs = 8, r = 0.6)
+# # here load the score.csv that we calculated in advance to select the best resolution
+# resolution = 0.6
+
+# labels_tmp = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
+# umap_op = umap_batch.UMAP(n_components = 2, n_neighbors = n_neighbors, min_dist = 0.3, random_state = 0, 
+#                 metric='precomputed', knn_dists=knn_dists, knn_indices=knn_indices)
+# x_umap = umap_op.fit_transform(s_pair_dist)
+
+
+# # scDART
+# zs2 = utils.match_embeds(zs, k = n_neighbors, reference = None, bandwidth = 40)
+# # x_umap = UMAP(n_components = 2, min_dist = 0.2, random_state = 0).fit_transform(np.concatenate(zs2, axis = 0))
+# # labels_tmp = utils.leiden_cluster(X = np.concatenate(zs2, axis = 0), knn_indices = None, knn_dists = None, resolution = 0.3)
+
+
+# # separate into batches
+# x_umaps = []
+# leiden_labels = []
+# for batch in range(n_batches):
+#     if batch == 0:
+#         start_pointer = 0
+#         end_pointer = start_pointer + zs[batch].shape[0]
+#         x_umaps.append(x_umap[start_pointer:end_pointer,:])
+#         leiden_labels.append(labels_tmp[start_pointer:end_pointer])
+
+#     elif batch == (n_batches - 1):
+#         start_pointer = start_pointer + zs[batch - 1].shape[0]
+#         x_umaps.append(x_umap[start_pointer:,:])
+#         leiden_labels.append(labels_tmp[start_pointer:])
+
+#     else:
+#         start_pointer = start_pointer + zs[batch - 1].shape[0]
+#         end_pointer = start_pointer + zs[batch].shape[0]
+#         x_umaps.append(x_umap[start_pointer:end_pointer,:])
+#         leiden_labels.append(labels_tmp[start_pointer:end_pointer])
+
+# utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = result_dir_removecelltype + f'latent_separate_{K}_{T}_processed2.png', 
+#                       figsize = (12,15), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+
+# utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_dir_removecelltype + f'latent_batches_{K}_{T}_processed2.png', 
+#                       figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+
+# utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir_removecelltype + f'latent_clusters_{K}_{T}_processed2.png', 
+#                       figsize = (12,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+
+# utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = result_dir_removecelltype + f'latent_leiden_clusters_{K}_{T}_{resolution}_processed2.png', 
+#                       figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 
 # In[]
