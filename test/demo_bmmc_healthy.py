@@ -134,19 +134,16 @@ T = 4000
 lr = 1e-2
 
 start_time = time.time()
-# model1 = model.cfrm_vanilla(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
-model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device)
-losses1 = model1.train_func(T = T)
-end_time = time.time()
-print("running time: " + str(end_time - start_time))
+# model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device)
+# losses1 = model1.train_func(T = T)
+# end_time = time.time()
+# print("running time: " + str(end_time - start_time))
 
-x = np.linspace(0, T, int(T/interval) + 1)
-plt.plot(x, losses1)
+# x = np.linspace(0, T, int(T/interval) + 1)
+# plt.plot(x, losses1)
 
 # state dict does not include the scaling factor, etc
-# torch.save(model1.state_dict(), result_dir + f'CFRM_{K}_{T}.pt')
-# model1.load_state_dict(torch.load(result_dir + f'CFRM_{K}_{T}.pt'))
-torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
+# torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
 model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
 
 # In[] Check the scales is positive

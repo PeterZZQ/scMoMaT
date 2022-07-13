@@ -17,14 +17,8 @@ class cfrm_vanilla(Module):
     """\
         Gene clusters more than cell clusters, force A_r and A_g to be sparse:
         
-        alpha[0]: the weight of the tri-factorization term
-        alpha[1]: the weight of the missing dimension term
-        alpha[2]: the weight of the association relationship between modalities
-        alpha[3]: the weight of the interaction matrix
-        alpha[4]: the sparsity of A_r and A_g
-        
     """
-    def __init__(self, counts, K = 30, batch_size = 0.3, interval = 10, lr = 1e-2, alpha = [1000, 100, 100], seed = None, device = device):
+    def __init__(self, counts, K = 30, batch_size = 0.3, interval = 10, lr = 1e-2, alpha = [1000, 1], seed = None, device = device):
         super().__init__()
         
         # init parameters, 
@@ -369,7 +363,7 @@ class cfrm_vanilla(Module):
 
 
 class cfrm_retrain_vanilla(Module):
-    def __init__(self, model, counts, labels, alpha = [1000, 100, 100], lr = 1e-2, seed = 0, device = device):
+    def __init__(self, model, counts, labels, alpha = [1000, 100], lr = 1e-2, seed = 0, device = device):
         """\
         Description:
         ------------
@@ -562,7 +556,11 @@ class cfrm_retrain_vanilla(Module):
             loss.backward()
             self.optimizer.step()
             self.optimizer.zero_grad()
-            
+
+            # no non-negative constraint
+            with torch.no_grad():
+                self.A_assos["shared"].data = self.A_assos["shared"] * (self.A_assos["shared"] > 0)
+
             # update bias term
             with torch.no_grad():
                 for batch in range(self.nbatches):

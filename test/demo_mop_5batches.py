@@ -260,7 +260,7 @@ counts["nbatches"] = n_batches
 
 
 # In[]
-alpha = [1000, 1, 5]
+alpha = [1000, 1]
 batchsize = 0.1
 run = 0
 K = 30
@@ -305,7 +305,6 @@ x_umap = umap_op.fit_transform(np.concatenate(zs, axis = 0))
 
 # separate into batches
 x_umaps = []
-leiden_labels = []
 for batch in range(n_batches):
     if batch == 0:
         start_pointer = 0
@@ -491,12 +490,104 @@ C_region = pd.read_csv(result_dir + "C_region.csv", index_col = 0)
 
 # In[] 
 # Checked, Factor 0: L6 CT/L6 b, marker (up) Slc17a7, Fezf2, Sulf1, Foxp2 (unique compared to L6 IT). (down, unique compared to L6 IT) Slc30a3,  
-# Checked, Factor 6: L6 IT marker (up) Slc17a7, Fezf2, Sulf1, Slc30a3, (down) Foxp2
+# Checked, Factor 10, 2: L6 IT marker (up) Slc17a7, Fezf2, Sulf1, Slc30a3, (down) Foxp2
+
+def plot_factor(C_feats, markers, cluster1 = 0, cluster2 = 0, figsize = (10,20)): 
+    n_markers = len(markers)
+    if n_markers >= 2:
+        nrows = np.ceil(n_markers/2).astype('int32')
+        ncols = 2
+    elif n_markers == 1:
+        nrows = 1
+        ncols = 1 
+
+    clusts = np.array([eval(x.split("_")[1]) for x in C_feats.columns.values.squeeze()])   
+    fig, axs = plt.subplots(nrows = nrows, ncols = ncols, figsize = figsize)
+    for marker in range(n_markers):
+        x = C_feats.loc[markers[marker],:].values.squeeze()
+        if nrows != 1:
+            barlist = axs[marker%nrows, marker//nrows].bar(np.arange(C_feats.shape[1]), x)
+            if isinstance(cluster1, list):
+                for i in cluster1:
+                    barlist[np.where(clusts == i)[0][0]].set_color('y')    
+            else:
+                barlist[np.where(clusts == cluster1)[0][0]].set_color('y')
+            if isinstance(cluster2, list):
+                for i in cluster2:
+                    barlist[np.where(clusts == i)[0][0]].set_color('r')    
+            else:
+                barlist[np.where(clusts == cluster1)[0][0]].set_color('r')
+
+            axs[marker%nrows, marker//nrows].tick_params(axis='x', labelsize=15)
+            axs[marker%nrows, marker//nrows].tick_params(axis='y', labelsize=15)
+            axs[marker%nrows, marker//nrows].set_title(markers[marker], fontsize = 20)
+            _ = axs[marker%nrows, marker//nrows].set_xticks(np.arange(C_feats.shape[1]))
+            _ = axs[marker%nrows, marker//nrows].set_xticklabels(clusts)
+            _ = axs[marker%nrows, marker//nrows].set_xlabel("cluster", fontsize = 20)
+            _ = axs[marker%nrows, marker//nrows].set_ylabel("factor value", fontsize = 20)
+            colors = {'L6CT_L6b':'r', 'L6IT':'y'}         
+            labels = list(colors.keys())
+            handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
+            axs[marker%nrows, marker//nrows].legend(handles, labels, loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+        
+        elif nrows == 1 and ncols == 1:
+            barlist = axs.bar(np.arange(C_feats.shape[1]), x)
+            if isinstance(cluster1, list):
+                for i in cluster1:
+                    barlist[np.where(clusts == i)[0][0]].set_color('y')    
+            else:
+                barlist[np.where(clusts == cluster1)[0][0]].set_color('y')
+            if isinstance(cluster2, list):
+                for i in cluster2:
+                    barlist[np.where(clusts == i)[0][0]].set_color('r')    
+            else:
+                barlist[np.where(clusts == cluster1)[0][0]].set_color('r')
+
+            axs.tick_params(axis='x', labelsize=15)
+            axs.tick_params(axis='y', labelsize=15)
+            axs.set_title(markers[marker], fontsize = 20)
+            _ = axs.set_xticks(np.arange(C_feats.shape[1]))
+            _ = axs.set_xticklabels(clusts)
+            _ = axs.set_xlabel("cluster", fontsize = 20)
+            _ = axs.set_ylabel("factor value", fontsize = 20)
+            colors = {'L6CT_L6b':'r', 'L6IT':'y'}         
+            labels = list(colors.keys())
+            handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
+            axs.legend(handles, labels, loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+        
+        else:
+            barlist = axs[marker].bar(np.arange(C_feats.shape[1]), x)
+            if isinstance(cluster1, list):
+                for i in cluster1:
+                    barlist[np.where(clusts == i)[0][0]].set_color('y')    
+            else:
+                barlist[np.where(clusts == cluster1)[0][0]].set_color('y')
+            if isinstance(cluster2, list):
+                for i in cluster2:
+                    barlist[np.where(clusts == i)[0][0]].set_color('r')    
+            else:
+                barlist[np.where(clusts == cluster1)[0][0]].set_color('r')
+
+            axs[marker].tick_params(axis='x', labelsize=15)
+            axs[marker].tick_params(axis='y', labelsize=15)
+            axs[marker].set_title(markers[marker], fontsize = 20)
+            _ = axs[marker].set_xticks(np.arange(C_feats.shape[1]))
+            _ = axs[marker].set_xticklabels(clusts)
+            _ = axs[marker].set_xlabel("cluster", fontsize = 20)
+            _ = axs[marker].set_ylabel("factor value", fontsize = 20)
+            colors = {'L6CT_L6b':'r', 'L6IT':'y'}         
+            labels = list(colors.keys())
+            handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
+            axs[marker].legend(handles, labels, loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+
+    plt.tight_layout()
+    return fig
+
 sub_dir = result_dir + "L6CT_L6b/"
 if not os.path.exists(sub_dir):
     os.makedirs(sub_dir)
 genes = ['Slc17a7', 'Fezf2', 'Sulf1', 'Foxp2', 'Slc30a3']
-fig = utils.plot_factor(C_gene, markers = genes, cluster = 0, figsize = (12, 10))
+fig = plot_factor(C_gene, markers = genes, cluster1 = 0, cluster2 = [10, 2], figsize = (15, 10))
 fig.savefig(sub_dir + "marker_genes.png")
 
 sub_dir = result_dir + "L6IT/"
@@ -505,20 +596,20 @@ if not os.path.exists(sub_dir):
 fig = utils.plot_factor(C_gene, markers = genes, cluster = [10, 2], figsize = (12, 10))
 fig.savefig(sub_dir + "marker_genes.png")
 
-# In[] Checked, Factor 8 NP, L5/6 NP, Slc17a7, Fezf2, Sla2, Foxp2, Tshz2
+# In[] Checked, Factor 8 NP, L5/6 NP, Slc17a7, Fezf2, Sla2, Tshz2
 # Tshz2 consistently marks L5 NP cell types across data modalities [A transcriptomic and epigenomic cell atlas of the mouse primary motor cortex]
 sub_dir = result_dir + "NP/"
 if not os.path.exists(sub_dir):
     os.makedirs(sub_dir)
-genes = ['Fezf2', 'Slc17a7', 'Sla2', 'Foxp2', 'Tshz2']
+genes = ['Fezf2', 'Slc17a7', 'Sla2', 'Tshz2']
 fig = utils.plot_factor(C_gene, markers = genes, cluster = 7, figsize = (10,10))
 fig.savefig(sub_dir + "marker_genes.png")
 
-# In[] Checked, Factor 1 L2/3 'Slc17a7', 'Slc30a3', 'Rfx3', 'Rfx4', 'Lamp5', 'Calb1', 'Otof'
+# In[] Checked, Factor 1 L2/3 'Slc17a7', 'Slc30a3', 'Rfx3', 'Lamp5', 'Calb1', 'Otof'
 sub_dir = result_dir + "L23/"
 if not os.path.exists(sub_dir):
     os.makedirs(sub_dir)
-genes = ['Slc17a7', 'Slc30a3', 'Rfx3', 'Rfx4', 'Lamp5', 'Calb1']
+genes = ['Slc17a7', 'Slc30a3', 'Rfx3', 'Lamp5', 'Calb1']
 fig = utils.plot_factor(C_gene, markers = genes, cluster = [1], figsize = (10,10))
 fig.savefig(sub_dir + "marker_genes.png")
 
@@ -531,11 +622,11 @@ fig.savefig(sub_dir + "marker_genes.png")
 sub_dir = result_dir + "L45/"
 if not os.path.exists(sub_dir):
     os.makedirs(sub_dir)
-genes = ['Rorb', 'Rspo1', 'Cux2', 'Slc30a3', 'Slc17a7', 'Foxp2', 'Fezf2']
+genes = ['Rorb', 'Rspo1', 'Slc30a3', 'Slc17a7', 'Foxp2']
 fig = utils.plot_factor(C_gene, markers = genes, cluster = [3], figsize = (10,12))
 fig.savefig(sub_dir + "marker_genes.png")
 
-# # Factor 7: L5 PT (ET), marker: Fezf2, Fam84b (not here), Bcl6[https://www.nature.com/articles/s41586-018-0654-5.pdf]. Other highly expressed: Slc17a7, unclear
+# Factor 7: L5 PT (ET), marker: Fezf2, Fam84b (not here), Bcl6[https://www.nature.com/articles/s41586-018-0654-5.pdf]. Other highly expressed: Slc17a7, unclear
 # fig = utils.plot_factor(C_gene, markers = ['Fezf2', 'Bcl6'], cluster = 7, figsize = (10, 4))
 
 # In[] Checked, Factor 10 Astro ["Slc1a2", "Aldoc", "Plpp3", "Slc1a3", "Sparcl1", "Cst3", "Mt3", "Apoe", "Atp1a2", "Id3", "Fabp7", "Aqp4", "Glul", "Clu", "Mfge8", "Cpe", "Slc4a4", "Mt1", "Pla2g7", "Gja1"]
@@ -680,5 +771,233 @@ ax.set_xlim([0,1])
 fig.savefig(result_dir + "consistency.png", bbox_inches = "tight")
 
 
+# In[] Feature module/cluster
+resolution = 0.9
+C_feats = {}
+labels_feats = {}
+labels_feats_leiden = {}
+for mod in model1.mods:
+    C_feats[mod] = model1.softmax(model1.C_feats[mod]).data.cpu().numpy()
+    # 1. cluster using leiden 
+    labels_feats_leiden[mod] = utils.leiden_cluster(X = C_feats[mod], knn_indices = None, knn_dists = None, resolution = resolution)
+    # 2. cluster by maximum 
+    labels_feats[mod] = np.argmax(C_feats[mod], axis = 1)
+
+C_feats2 = {}
+labels_feats2 = {}
+labels_feats2_leiden = {}
+for mod in model2.mods:
+    C_feats2[mod] = model2.softmax(model2.C_feats[mod]).data.cpu().numpy()
+    # 1. cluster using leiden 
+    labels_feats2_leiden[mod] = utils.leiden_cluster(X = C_feats2[mod], knn_indices = None, knn_dists = None, resolution = resolution)
+    # 2. cluster by maximum 
+    labels_feats2[mod] = np.argmax(C_feats2[mod], axis = 1)
+
+
+if not os.path.exists(result_dir + "features/"):
+    os.makedirs(result_dir + "features/")
+# visualize GENE using UMAP
+umap_op = UMAP(n_components = 2, n_neighbors = 30, min_dist = 0.2, random_state = 0) 
+x_umap = umap_op.fit_transform(C_feats["rna"])
+utils.plot_latent_ext([x_umap], annos = [labels_feats["rna"]], mode = "joint", save = result_dir + "features/C_genes1.png", figsize = (10,6), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
+utils.plot_latent_ext([x_umap], annos = [labels_feats_leiden["rna"]], mode = "joint", save = result_dir + "features/C_genes1_leiden.png", figsize = (10,6), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
+
+umap_op = UMAP(n_components = 2, n_neighbors = 30, min_dist = 0.2, random_state = 0) 
+x_umap = umap_op.fit_transform(C_feats2["rna"])
+utils.plot_latent_ext([x_umap], annos = [labels_feats2["rna"]], mode = "joint", save = result_dir + "features/C_genes2.png", figsize = (10,6), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
+utils.plot_latent_ext([x_umap], annos = [labels_feats2_leiden["rna"]], mode = "joint", save = result_dir + "features/C_genes2_leiden.png", figsize = (10,6), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
+
+# visualize REGION using UMAP
+umap_op = UMAP(n_components = 2, n_neighbors = 30, min_dist = 0.2, random_state = 0) 
+x_umap = umap_op.fit_transform(C_feats["atac"])
+utils.plot_latent_ext([x_umap], annos = [labels_feats["atac"]], mode = "joint", save = result_dir + "features/C_regions1.png", figsize = (10,6), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
+utils.plot_latent_ext([x_umap], annos = [labels_feats_leiden["atac"]], mode = "joint", save = result_dir + "features/C_regions1_leiden.png", figsize = (10,6), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
+
+umap_op = UMAP(n_components = 2, n_neighbors = 30, min_dist = 0.2, random_state = 0) 
+x_umap = umap_op.fit_transform(C_feats2["atac"])
+utils.plot_latent_ext([x_umap], annos = [labels_feats2["atac"]], mode = "joint", save = result_dir + "features/C_regions2.png", figsize = (10,6), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
+utils.plot_latent_ext([x_umap], annos = [labels_feats2_leiden["atac"]], mode = "joint", save = result_dir + "features/C_regions2_leiden.png", figsize = (10,6), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
+
+# visualize Motif using UMAP
+umap_op = UMAP(n_components = 2, n_neighbors = 30, min_dist = 0.2, random_state = 0) 
+x_umap = umap_op.fit_transform(C_feats2["motif"])
+utils.plot_latent_ext([x_umap], annos = [labels_feats2["motif"]], mode = "joint", save = result_dir + "features/C_motif.png", figsize = (10,6), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
+utils.plot_latent_ext([x_umap], annos = [labels_feats2_leiden["motif"]], mode = "joint", save = result_dir + "features/C_motif_leiden.png", figsize = (10,6), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
+
+
+import seaborn as sns
+# forgot to constraint the A_assos to be postive
+A_assos = model2.A_assos["shared"].detach().cpu().numpy()
+fig = plt.figure(figsize = (7,5))
+ax = fig.add_subplot()
+sns.heatmap(A_assos, ax = ax)
+fig.savefig(result_dir + "features/A_assos.png", bbox_inches = "tight")
+
+for cluster in np.sort(np.unique(labels_feats2["rna"])):
+    idx = np.where(labels_feats2["rna"] == cluster)[0]
+    genes = counts["feats_name"]["rna"][idx]
+    np.savetxt(result_dir + "features/gene_module_" + str(cluster) + ".txt", genes, fmt = "%s")
+
+
+# In[]
+# marker genes 
+# Factor 4, GABAergic inhibitory: Pvalb, Sst; 
+# factor 6, GABAergic inhibitory: Lamp5, Sncg, Vip, Npy
+# Factor 9, Oligo: Plp1, Mbp, Bcas1, Sirt2, Cnp, Mag, Cldn11, Fyn, Gpr17, Enpp6, Bmp4, Cd9, Tubb4a, Nfasc, Lims2, Tnr, Rnd2, Dynll2, Ugt8a, Mobp
+# Factor 11, OPC: "Pdgfra", "Lhfpl3", "Olig1", "C1ql1", "S100a13", "Olig2", "Epn2", "Cspg4", "Scrg1", "Matn4", "Cntn1", "S100a1", "Pllp", "Cdo1", "Sox10", "Gpr17", "Cspg5", "Ostf1", "Tpm1", "Ncald"
+# Factor 12, Macrophage, "C1qb","C1qa","Ccl4","C1qc","Hexb","Tyrobp","Ccl2","Fcer1g","Ctss","Ccl3","Csf1r","Lgmn","Cx3cr1","Pf4","P2ry12","Fcrls","Sepp1","Ctsd","Trem2","Laptm5"
+# Factor 8 Astro ["Slc1a2", "Aldoc", "Plpp3", "Slc1a3", "Sparcl1", "Cst3", "Mt3", "Apoe", "Atp1a2", "Id3", "Fabp7", "Aqp4", "Glul", "Clu", "Mfge8", "Cpe", "Slc4a4", "Mt1", "Pla2g7", "Gja1"]
+# Factor 5: L5 PT (ET), marker: Fezf2, Fam84b (not here), Bcl6[https://www.nature.com/articles/s41586-018-0654-5.pdf]. Other highly expressed: Slc17a7, unclear
+# Factor 3: L4/5 (L4) Rorb,Rspo1,Slc30a3,Slc17a7 (up), Foxp2(down); L4: Cux2, Rspo1 and Rorb(both clusters), L5: Fezf2 (one cluster)
+# Factor 1: L2/3 'Slc17a7', 'Slc30a3', 'Rfx3', 'Lamp5', 'Calb1', 'Otof'
+# Factor 7 NP, L5/6 NP: Slc17a7, Fezf2, Sla2, Foxp2, Tshz2
+# Factor 2: L6 CT/L6 b, marker (up) Slc17a7, Fezf2, Sulf1, Foxp2 (unique compared to L6 IT). (down, unique compared to L6 IT) Slc30a3,  
+# Factor 0: L6 IT marker (up) Slc17a7, Fezf2, Sulf1, Slc30a3, (down) Foxp2
+
+GABA1 = ["Pvalb", "Sst"]
+GABA2 = ["Sncg", "Vip", "Npy"] # 'Lamp5'
+Oligo = ["Plp1", "Mbp", "Bcas1", "Cnp", "Mag", "Cldn11", "Enpp6", "Cd9", "Tubb4a", "Lims2", "Ugt8a", "Mobp"]
+OPC = ["Lhfpl3", "Olig1", "Scrg1", "Matn4", "S100a1", "Pllp", "Sox10", "Cspg5", "Ostf1"]
+Macrophage = ["C1qb","C1qa","Hexb","Fcer1g","Ctss","Csf1r","Lgmn","Cx3cr1","Trem2"]
+Astro = ["Slc1a2", "Aldoc", "Slc1a3", "Sparcl1", "Cst3", "Apoe", "Id3", "Fabp7", "Glul", "Clu", "Mfge8", "Slc4a4", "Mt1", "Pla2g7", "Gja1"]
+L45 = ["Rorb","Rspo1","Slc30a3","Slc17a7"]
+L23 = ['Slc17a7', 'Slc30a3', 'Rfx3', 'Lamp5', 'Calb1'] 
+NP = ["Slc17a7", "Fezf2", "Sla2", "Tshz2"]
+L6CTB = ["Slc17a7", "Fezf2", "Sulf1", "Foxp2"]
+L6IT = ["Slc17a7", "Fezf2", "Sulf1", "Slc30a3"]
+
+# Three larger groups:
+# glutamatergic excitatory neurons: IT, L5 PT, L6 CT, L6b, NP
+# GABAergic inhibitory neurons: CGE, Sst, Pvalb
+# Non-neuron
+
+Gluta = list(set(L45 + L23 + NP + L6CTB + L6IT))
+GABA = list(set(GABA1 + GABA2))
+
+
+def plot_markergene(z, marker_genes, anno = None, save = None, figsize = (20,10), axis_label = "Latent", label_inplace = False, **kwargs):
+    _kwargs = {
+        "s": 10,
+        "alpha": 0.9,
+        "markerscale": 1,
+        "text_size": "x-large",
+        "colormap": "tab20b"
+    }
+    _kwargs.update(kwargs)
+
+    fig = plt.figure(figsize = figsize)
+    ax = fig.add_subplot()
+
+    ax.scatter(z.iloc[:,0].values, z.iloc[:,1].values, color = 'gray', s = _kwargs["s"], alpha = _kwargs["alpha"])
+    colormap = plt.cm.get_cmap(_kwargs["colormap"], len(marker_genes.keys()))
+
+    texts = []
+    if label_inplace:
+        for i, key in enumerate(marker_genes.keys()):
+            ax.scatter(z.loc[marker_genes[key],0], z.loc[marker_genes[key],1], color = colormap(i), label = key, s = 5 * _kwargs["s"], alpha = 1)
+            for gene in marker_genes[key]:
+                texts.append(ax.text(z.loc[gene,0], z.loc[gene,1], color = colormap(i), s = gene, fontsize = _kwargs["text_size"], weight = 'semibold', in_layout = True))
+    
+    ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), markerscale = _kwargs["markerscale"])
+    
+    ax.tick_params(axis = "both", which = "major", labelsize = 20)
+
+    ax.set_xlabel(axis_label + " 1", fontsize = 25)
+    ax.set_ylabel(axis_label + " 2", fontsize = 25)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)  
+    # adjust position
+    if label_inplace:
+        utils.adjust_text(texts, only_move={'points':'xy', 'texts':'xy'})
+
+    plt.tight_layout()
+    if save:
+        fig.savefig(save, bbox_inches = "tight")
+
+
+umap_op = UMAP(n_components = 2, n_neighbors = 30, min_dist = 0.2, random_state = 0) 
+x_umap = umap_op.fit_transform(C_feats2["rna"])
+x_umap = pd.DataFrame(data = x_umap, index = counts["feats_name"]["rna"], columns = [0, 1])
+# marker_genes = {"GABA": GABA1 + GABA2, "Oligo": Oligo, "OPC": OPC, "Macrophage": Macrophage, "Astro": Astro}
+# marker_genes = {"GABAergic": GABA1 + GABA2, "Oligo": Oligo, "OPC": OPC, "Macrophage": Macrophage, "Astro": Astro, "L45": L45, "L23": L23, "NP": NP, "L6 CT/b":L6CTB, "L6 IT": L6IT}
+marker_genes = {"GABAergic": GABA1 + GABA2, "Oligo": Oligo, "OPC": OPC, "Macrophage": Macrophage, "Astro": Astro, "Glutamatergic": Gluta}
+plot_markergene(x_umap, marker_genes = marker_genes, save = result_dir + "features/C_genes2_marker.png", figsize = (15, 10), axis_label = "UMAP", markerscale = 3, s = 5, label_inplace = True, alpha = 0.6)
+
+# In[] With regions
+A1_df = pd.DataFrame(data = A1, index = counts["feats_name"]["rna"], columns = counts["feats_name"]["atac"])
+
+A1_GABA = A1_df.loc[GABA1 + GABA2, :]
+A1_GABA = A1_GABA.loc[:, np.sum(A1_GABA.values, axis = 0)!=0]
+A1_Oligo = A1_df.loc[Oligo, :]
+A1_Oligo = A1_Oligo.loc[:, np.sum(A1_Oligo.values, axis = 0)!=0]
+A1_OPC = A1_df.loc[OPC, :]
+A1_OPC = A1_OPC.loc[:, np.sum(A1_OPC.values, axis = 0)!=0]
+A1_Macro = A1_df.loc[Macrophage, :]
+A1_Macro = A1_Macro.loc[:, np.sum(A1_Macro.values, axis = 0)!=0]
+A1_Astro = A1_df.loc[Astro, :]
+A1_Astro = A1_Astro.loc[:, np.sum(A1_Astro.values, axis = 0)!=0]
+A1_L45 = A1_df.loc[L45, :]
+A1_L45 = A1_L45.loc[:, np.sum(A1_L45.values, axis = 0)!=0]
+A1_L23 = A1_df.loc[L23, :]
+A1_L23 = A1_L23.loc[:, np.sum(A1_L23.values, axis = 0)!=0]
+A1_NP = A1_df.loc[NP, :]
+A1_NP = A1_NP.loc[:, np.sum(A1_NP.values, axis = 0)!=0]
+A1_L6CTB = A1_df.loc[L6CTB, :]
+A1_L6CTB = A1_L6CTB.loc[:, np.sum(A1_L6CTB.values, axis = 0)!=0]
+A1_L6IT = A1_df.loc[L6IT, :]
+A1_L6IT = A1_L6IT.loc[:, np.sum(A1_L6IT.values, axis = 0)!=0]
+
+A1_Gluta = A1_df.loc[Gluta, :]
+A1_Gluta = A1_Gluta.loc[:, np.sum(A1_Gluta.values, axis = 0)!=0]
+A1_OligoOPC = A1_df.loc[OPC + Oligo, :]
+A1_OligoOPC = A1_OligoOPC.loc[:, np.sum(A1_OligoOPC.values, axis = 0)!=0]
+
+def plot_markerregion(z, marker_regions, save = None, figsize = (20,10), axis_label = "Latent", label_inplace = False, **kwargs):
+    _kwargs = {
+        "s": 10,
+        "alpha": 0.9,
+        "markerscale": 1,
+        "text_size": "x-large",
+        "colormap": "tab20b"
+    }
+    _kwargs.update(kwargs)
+
+    fig = plt.figure(figsize = figsize)
+    ax = fig.add_subplot()
+
+    ax.scatter(z.iloc[:,0].values, z.iloc[:,1].values, color = 'gray', s = _kwargs["s"], alpha = _kwargs["alpha"])
+    colormap = plt.cm.get_cmap(_kwargs["colormap"], len(marker_regions.keys()))
+
+    texts = []
+    if label_inplace:
+        for i, key in enumerate(marker_regions.keys()):
+            for j, gene in enumerate(marker_regions[key].index.values):
+                regions = marker_regions[key].columns.values[np.where(marker_regions[key].loc[gene,:].values != 0)[0]]
+                ax.scatter(np.median(z.loc[regions,0]), np.median(z.loc[regions,1]), color = colormap(i), label = key if j == 0 else "", s = 5 * _kwargs["s"], alpha = 1)
+                texts.append(ax.text(np.median(z.loc[regions,0].values), np.median(z.loc[regions,1].values), color = colormap(i), s = gene, fontsize = _kwargs["text_size"], weight = 'semibold', in_layout = True))
+    
+    ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), markerscale = _kwargs["markerscale"])
+    
+    ax.tick_params(axis = "both", which = "major", labelsize = 20)
+
+    ax.set_xlabel(axis_label + " 1", fontsize = 25)
+    ax.set_ylabel(axis_label + " 2", fontsize = 25)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)  
+    # adjust position
+    if label_inplace:
+        utils.adjust_text(texts, only_move={'points':'xy', 'texts':'xy'})
+
+    plt.tight_layout()
+    if save:
+        fig.savefig(save, bbox_inches = "tight")
+
+umap_op = UMAP(n_components = 2, n_neighbors = 30, min_dist = 0.2, random_state = 0) 
+x_umap = umap_op.fit_transform(C_feats2["atac"])
+x_umap = pd.DataFrame(data = x_umap, index = counts["feats_name"]["atac"], columns = [0, 1])
+# marker_regions = {"GABA": A1_GABA, "Oligo": A1_Oligo, "OPC": A1_OPC, "Macrophage": A1_Macro, "Astro": A1_Astro, "L45": A1_L45, "L23": A1_L23, "NP": A1_NP, "L6 CT/b":A1_L6CTB, "L6 IT": A1_L6IT}
+# marker_regions = {"GABAergic": A1_GABA, "Oligo": A1_Oligo, "OPC": A1_OPC, "Macrophage": A1_Macro, "Astro": A1_Astro, "Glutamatergic": A1_Gluta}
+marker_regions = {"Oligo & OPC": A1_OligoOPC, "Macrophage": A1_Macro, "Glutamatergic": A1_Gluta}
+plot_markerregion(x_umap, marker_regions = marker_regions, save = result_dir + "features/C_regions2_marker.png", figsize = (15, 10), axis_label = "UMAP", markerscale = 3, s = 5, label_inplace = True, alpha = 0.1)
 
 # %%

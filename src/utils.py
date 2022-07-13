@@ -234,7 +234,9 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
                 axs[batch].scatter(zs[batch][index,0], zs[batch][index,1], color = colormap(i), label = cluster_type, s = _kwargs["s"], alpha = _kwargs["alpha"])
                 # text on plot
                 if label_inplace:
-                    texts.append(axs[batch].text(np.median(zs[batch][index,0]), np.median(zs[batch][index,1]), color = "black", s = cluster_types[i], fontsize = _kwargs["text_size"], weight = 'semibold', in_layout = True))
+                    # if exist cells
+                    if zs[batch][index,0].shape[0] > 0:
+                        texts.append(axs[batch].text(np.median(zs[batch][index,0]), np.median(zs[batch][index,1]), color = "black", s = cluster_types[i], fontsize = _kwargs["text_size"], weight = 'semibold', in_layout = True))
             
             axs[batch].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = (len(cluster_types) // 15) + 1, bbox_to_anchor=(0.94, 1), markerscale = _kwargs["markerscale"])
             axs[batch].set_title("batch " + str(batch + 1), fontsize = 25)
@@ -243,10 +245,13 @@ def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20
 
             axs[batch].set_xlabel(axis_label + " 1", fontsize = 19)
             axs[batch].set_ylabel(axis_label + " 2", fontsize = 19)
-            # axs[batch].set_xlim(np.min(np.concatenate((z1[:,0], z2[:,0]))), np.max(np.concatenate((z1[:,0], z2[:,0]))))
-            # axs[batch].set_ylim(np.min(np.concatenate((z1[:,1], z2[:,1]))), np.max(np.concatenate((z1[:,1], z2[:,1]))))
+
             axs[batch].spines['right'].set_visible(False)
             axs[batch].spines['top'].set_visible(False)  
+
+            axs[batch].set_xlim(np.min(np.concatenate([x[:,0] for x in zs])), np.max(np.concatenate([x[:,0] for x in zs])))
+            axs[batch].set_ylim(np.min(np.concatenate([x[:,1] for x in zs])), np.max(np.concatenate([x[:,1] for x in zs])))
+
             if label_inplace:
                 adjust_text(texts, only_move={'points':'xy', 'texts':'xy'})        
     plt.tight_layout()

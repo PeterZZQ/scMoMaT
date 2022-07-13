@@ -75,6 +75,7 @@ cell_types, sizes = np.unique(labels[0], return_counts = True)
 colormap = plt.cm.get_cmap("Paired", len(cell_types))
 percents = 100.*sizes/sizes.sum()
 legends = ['{0} - {1:1.2f} %'.format(i,j) for i,j in zip(cell_types, percents)]
+legends = ['{0}'.format(i) for i in cell_types]
 
 patches, texts = axs[0].pie(sizes, colors = colormap.colors, startangle=90)
 axs[0].axis('equal')  
@@ -93,6 +94,7 @@ sizes2 = np.array(sizes2)
 
 percents = 100.*sizes2/sizes2.sum()
 legends = ['{0} - {1:1.2f} %'.format(i,j) for i,j in zip(cell_types, percents)]
+legends = ['{0}'.format(i) for i in cell_types]
 
 patches, texts = axs[1].pie(sizes2, colors = colormap.colors, startangle=90)
 axs[0].axis('equal')  
@@ -107,7 +109,7 @@ axs[1].legend(patches, legends, loc='upper left', prop={'size': 15}, bbox_to_anc
 axs[1].axis('equal')  
 axs[1].set_title("Batch 2")
 plt.tight_layout()
-fig.savefig(result_dir_removecelltype + "pie_ori.png", bbox_inches = "tight")
+fig.savefig(result_dir_removecelltype + "pie_ori.pdf", bbox_inches = "tight")
 
 # In[]
 # only subsample cells in some cell types instead of totally remove them
@@ -220,6 +222,7 @@ cell_types, sizes = np.unique(labels[0], return_counts = True)
 colormap = plt.cm.get_cmap("Paired", len(cell_types))
 percents = 100.*sizes/sizes.sum()
 legends = ['{0} - {1:1.2f} %'.format(i,j) for i,j in zip(cell_types, percents)]
+legends = ['{0}'.format(i) for i in cell_types]
 
 patches, texts = axs[0].pie(sizes, colors = colormap.colors, startangle=90)
 axs[0].axis('equal')  
@@ -236,6 +239,7 @@ for cell_type in cell_types:
 sizes2 = np.array(sizes2)
 percents = 100.*sizes2/sizes2.sum()
 legends = ['{0} - {1:1.2f} %'.format(i,j) for i,j in zip(cell_types, percents)]
+legends = ['{0}'.format(i) for i in cell_types]
 
 patches, texts = axs[1].pie(sizes2, colors = colormap.colors, startangle=90)
 axs[0].axis('equal')
@@ -250,7 +254,7 @@ axs[1].legend(patches, legends, loc='upper left', prop={'size': 15}, bbox_to_anc
 axs[1].axis('equal')  
 axs[1].set_title("Batch 2")
 plt.tight_layout()
-fig.savefig(result_dir_removecelltype + "pie_sub.png", bbox_inches = "tight")
+fig.savefig(result_dir_removecelltype + "pie_sub.pdf", bbox_inches = "tight")
 
 # In[] Train model
 alpha = [1000, 1, 5]
@@ -375,7 +379,7 @@ for batch in range(n_batches):
         leiden_labels.append(labels_tmp[start_pointer:end_pointer])
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = result_dir_removecelltype + f'latent_separate_{K}_{T}_processed2.png', 
-                      figsize = (12,15), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (10,12), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_dir_removecelltype + f'latent_batches_{K}_{T}_processed2.png', 
                       figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)

@@ -39,8 +39,8 @@ def lsi(counts):
     return X_lsi
 
 # In[]
-dir = "../data/simulated/6b16c_test_9_large/unequal2/"
-result_dir = "simulated/6b16c_9_large2_2"
+dir = "../data/simulated/6b16c_test_1_large/unequal2/"
+result_dir = "simulated/6b16c_1_large2_2"
 scmomat_dir = result_dir + "/scmomat/"
 
 if not os.path.exists(scmomat_dir):
@@ -158,16 +158,16 @@ interval = 1000
 T = 4000
 lr = 1e-2
 
-start_time = time.time()
-model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device).to(device)
-losses1 = model1.train_func(T = T)
-end_time = time.time()
-print("running time: " + str(end_time - start_time))
+# start_time = time.time()
+# model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device).to(device)
+# losses1 = model1.train_func(T = T)
+# end_time = time.time()
+# print("running time: " + str(end_time - start_time))
 
-x = np.linspace(0, T, int(T/interval)+1)
-plt.plot(x, losses1)
+# x = np.linspace(0, T, int(T/interval)+1)
+# plt.plot(x, losses1)
 
-torch.save(model1, scmomat_dir + f'CFRM_{K}_{T}.pt')
+# torch.save(model1, scmomat_dir + f'CFRM_{K}_{T}.pt')
 model1 = torch.load(scmomat_dir + f'CFRM_{K}_{T}.pt')
 
 # # In[] Sanity check, the scales should be positive, A_assos should also be positive
@@ -259,16 +259,16 @@ for batch in range(n_batches):
 
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = scmomat_dir + f'latent_separate_{K}_{T}_processed.png', 
-                      figsize = (10,27), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7, text_size = "x-large")
+                      figsize = (7,20), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, alpha = 0.7, text_size = "x-large")
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = scmomat_dir + f'latent_joint_{K}_{T}_processed.png', 
-                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7, text_size = "x-large")
+                      figsize = (7,5), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, alpha = 0.7, text_size = "x-large")
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = scmomat_dir + f'latent_batches_{K}_{T}_processed.png', 
-                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7)
+                      figsize = (7,5), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, alpha = 0.7)
 
 utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = scmomat_dir + f'latent_leiden_clusters_{K}_{T}_{resolution}_processed.png', 
-                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7)
+                      figsize = (7,5), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, alpha = 0.7)
 
 
 # In[]
@@ -297,13 +297,13 @@ for batch in range(n_batches):
         uinmf_umaps.append(uinmf_umap[start_pointer:end_pointer,:])
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "separate", save = uinmf_path + f'latent_separate_uinmf.png', 
-                      figsize = (10,27), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (7,20), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, text_size = "large", alpha = 0.7)
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "modality", save = uinmf_path + f'latent_batches_uinmf.png', 
-                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (7,5), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, text_size = "large", alpha = 0.7)
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "joint", save = uinmf_path + f'latent_joint_uinmf.png', 
-                      figsize = (12,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (7,5), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, text_size = "large", alpha = 0.7)
 
 
 # # 1. Liger
@@ -350,13 +350,13 @@ for batch in ["C1", "C2", "C3", "C4", "C5", "C6"]:
 
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "separate", save = multimap_path + f'latent_separate_multimap.png', 
-                      figsize = (10,27), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7, text_size = "x-large")
+                      figsize = (7,20), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, alpha = 0.7, text_size = "x-large")
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "modality", save = multimap_path + f'latent_batches_multimap.png', 
-                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7, text_size = "x-large")
+                      figsize = (7,5), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, alpha = 0.7, text_size = "x-large")
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "joint", save = multimap_path + f'latent_joint_multimap.png', 
-                      figsize = (12,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7)
+                      figsize = (7,5), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, alpha = 0.7)
 
 
 # In[]
