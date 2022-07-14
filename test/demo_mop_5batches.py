@@ -101,7 +101,6 @@ for batch in range(n_batches):
         label[label == "InV"] = "CGE"
         label[label == "InS"] = "Sst"
         label[label == "InP"] = "Pvalb"
-        # ?
         label[label == "InN"] = "Npy"
         label[label == "L5"] = "L4/5"
         label[label == "L4"] = "L4/5"
@@ -165,8 +164,6 @@ for batch in range(n_batches):
         label[label == "L23.b"] = "L2/3"
         label[label == "L23.c"] = "L2/3"
         label[label == "OGC"] = "Oligo"
-
-        # ?
         label[label == "ASC"] = "Astro"
         label[label == "OPC"] = "OPC"
         label[label == "Pv"] = "Pvalb"

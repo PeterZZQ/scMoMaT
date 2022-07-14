@@ -2,7 +2,7 @@ coupleNMF
 data
 test_old
 src/__pycache__
-src/deprecated
+src/_*
 Examples_old
 check_points
 **/.DS_Store
