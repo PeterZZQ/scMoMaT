@@ -4,21 +4,26 @@ sys.path.append('../')
 sys.path.append('../src/')
 
 import numpy as np
-from sklearn.decomposition import PCA
 from umap_batch import UMAP
 import time
 import torch
 import matplotlib.pyplot as plt
 import pandas as pd  
 import scipy.sparse as sp
-import bmk
-from scipy.io import mmwrite
 
 import model
 import utils
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+import bmk
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # In[]
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 1. Load dataset and running scmomat (without retraining, retraining see the third section)
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: read in dataset
 dir = "../data/real/ASAP-PBMC/"
 result_dir = "pbmc/scmomat/"
 seurat_path = "pbmc/seurat/"
@@ -69,10 +74,6 @@ A1 = sp.load_npz(os.path.join(dir, 'GxP.npz'))
 A2 = sp.load_npz(os.path.join(dir, 'GxR.npz'))
 A1 = np.array(A1.todense())
 A2 = np.array(A2.todense())
-# A1 = utils.preprocess(A1, modality = "interaction")
-# A2 = utils.preprocess(A2, modality = "interaction")
-# No need for pseudo-count matrix
-# interacts = {"rna_atac": A2, "rna_protein": A1}
 
 # obtain the feature name
 genes = pd.read_csv(dir + "genes.txt", header = None).values.squeeze()
@@ -84,28 +85,29 @@ counts["feats_name"] = feats_name
 
 counts["nbatches"] = n_batches
 # In[]
-alpha = [1000, 1, 5]
+# NOTE: Running scmomat
+# weight on regularization term
+lamb = 0.001
 batchsize = 0.1
-run = 0
+# running seed
+seed = 0
+# number of latent dimensions
 K = 30
-Ns = [K] * 4
-N_feat = Ns[0]
 interval = 1000
 T = 4000
 lr = 1e-2
 
-# start_time = time.time()
-# # model1 = model.cfrm_vanilla(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
-# model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device).to(device)
-# losses1 = model1.train_func(T = T)
-# end_time = time.time()
-# print("running time: " + str(end_time - start_time))
+start_time = time.time()
+model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
+losses1 = model1.train_func(T = T)
+end_time = time.time()
+print("running time: " + str(end_time - start_time))
 
-# x = np.linspace(0, T, int(T/interval)+1)
-# plt.plot(x, losses1)
+x = np.linspace(0, T, int(T/interval)+1)
+plt.plot(x, losses1)
 
 # torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
-model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
+# model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
 
 # In[] Sanity check, the scales should be positive, A_assos should also be positive
 for mod in model1.A_assos.keys():
@@ -123,6 +125,7 @@ for mod in model1.A_assos.keys():
 print(model1.scales)
 
 # In[]
+# NOTE: Plot the result before post-processing (no post-processing for pbmc)
 umap_op = UMAP(n_components = 2, n_neighbors = 30, min_dist = 0.2, random_state = 0) 
 zs = []
 for batch in range(n_batches):
@@ -172,7 +175,13 @@ utils.plot_latent_ext(x_umaps_scmomat, annos = prec_labels, mode = "joint", save
 
 utils.plot_latent_ext(x_umaps_scmomat, annos = leiden_labels, mode = "joint", save = result_dir + f'latent_leiden_clusters_{K}_{T}_{resolution}.png', figsize = (7,5), axis_label = "UMAP", markerscale = 10, s = 2, label_inplace = True, text_size = "xx-large", alpha = 0.7)
 
-# In[] Baseline methods
+# In[] 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 2. Benchmarking with baseline methods
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: Baseline methods
 # UINMF
 # uinmf_path = "pbmc/uinmf/"
 uinmf_path = "pbmc/uinmf_bin/" 
@@ -226,10 +235,6 @@ utils.plot_latent_ext(X_multimaps, annos = prec_labels, mode = "modality", save 
 
 
 # In[]
-
-import importlib 
-importlib.reload(utils)
-importlib.reload(bmk)
 n_neighbors = 30
 # graph connectivity score (gc) measure the batch effect removal per cell identity
 # 1. scJMT
@@ -449,13 +454,11 @@ fig.savefig(result_dir + "ARI.png", bbox_inches = "tight")
 
 
 # In[] Extend Motif
-# --------------------------------------------------------------------------------------------------- #
-# --------------------------------------------------------------------------------------------------- #
-# 
-# Extend scJMT to include the Motif obtained from chromVAR
-# 
-# --------------------------------------------------------------------------------------------------- #
-# --------------------------------------------------------------------------------------------------- # 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 3. Retraining scmomat 
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
 # read in dataset
 dir = "../data/real/ASAP-PBMC/"
 result_dir = "pbmc/scmomat/"
@@ -510,10 +513,6 @@ A1 = sp.load_npz(os.path.join(dir, 'GxP.npz'))
 A2 = sp.load_npz(os.path.join(dir, 'GxR.npz'))
 A1 = np.array(A1.todense())
 A2 = np.array(A2.todense())
-# A1 = utils.preprocess(A1, modality = "interaction")
-# A2 = utils.preprocess(A2, modality = "interaction")
-# No need for pseudo-count matrix
-# interacts = {"rna_atac": A2, "rna_protein": A1}
 
 # obtain the feature name
 genes = pd.read_csv(dir + "genes.txt", header = None).values.squeeze()
@@ -526,12 +525,10 @@ counts["feats_name"] = feats_name
 counts["nbatches"] = n_batches
 
 # In[] retrain model, you can incorporate new matrices 
-import importlib
-importlib.reload(model)
-# the leiden label is the one produced by the best resolution
-alpha = [1000, 10]
+lamb = 0.01
 
-model2 = model.cfrm_retrain_vanilla(model = model1, counts =  counts, labels = leiden_labels, alpha = alpha, device = device).to(device)
+# the leiden label is the one produced by the best resolution
+model2 = model.scmomat_retrain(model = model1, counts =  counts, labels = leiden_labels, lamb = lamb, device = device)
 losses = model2.train(T = 4000)
 
 x = np.linspace(0, 4000, int(4000/interval) + 1)
@@ -566,7 +563,13 @@ C_protein = pd.read_csv(result_dir + "C_protein.csv", index_col = 0)
 
 
 
-# In[] Marker gene
+# In[] 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 4. Analyze retraining results 
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# Marker gene
 # NOTE: Activation of naive T cells through the antigen-specific T cell receptor (TCR) initiates transcriptional programs that drive differentiation of lineage-specific effector functions; 
 # 1. CD4+ T cells secrete cytokines to recruit and activate other immune cells
 # 2. while CD8+ T cells acquire cytotoxic functions to directly kill infected or tumor cells. (Cytotxic CD8+ T cells, CD8_CTL?)

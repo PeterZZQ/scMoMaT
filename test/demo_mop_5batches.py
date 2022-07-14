@@ -4,7 +4,6 @@ sys.path.append('../')
 sys.path.append('../src/')
 
 import numpy as np
-from sklearn.decomposition import PCA
 import umap_batch
 from umap import UMAP
 import time
@@ -12,11 +11,11 @@ import torch
 import matplotlib.pyplot as plt
 import pandas as pd  
 import scipy.sparse as sp
-import bmk
-from scipy.io import mmwrite, mmread
 
 import model
 import utils
+import bmk
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 plt.rcParams["font.size"] = 10
 
@@ -38,9 +37,14 @@ def lsi(counts):
 
 
 # In[]
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 1. Load dataset and running scmomat (without retraining, retraining see the third section)
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: read in dataset
 dir = "../data/real/MOp_5batches/"
 result_dir = "MOp_5batches/scmomat/"
-
 
 n_batches = 5
 counts_rnas = []
@@ -49,19 +53,11 @@ labels_ori = []
 labels_trans = []
 labels_remap = []
 for batch in range(n_batches):
-    # # read in labels
-    # if batch == 0:
-    #     labels_trans.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["transferred.id"].values.squeeze())
-    # elif batch == 1:
-    #     labels_trans.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["transferred.id"].values.squeeze())
-    # elif batch == 2:
-    #     labels_trans.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["transferred.id"].values.squeeze())
-
-    # read in labels
+    # NOTE: read in labels and remap
     if batch == 0:
-        # labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '_seurat.csv'), index_col=0)["celltype"].values.squeeze())
         label = pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["Ident"].values.squeeze()
         labels_ori.append(label)
+        # Note on cell type abbreviation
         # Ast = (astrocytes = RG)
         # E2Rasgrf2 = Ex-L2/3-Rasgrf2
         # E3Rmst = Ex-L3/4-Rmst
@@ -114,7 +110,9 @@ for batch in range(n_batches):
         labels_remap.append(label)
         
     elif batch == 1:
-        # The cell type abbreviation largely follows the data paper: 
+        label = pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["subclass_label"].values.squeeze()
+        labels_ori.append(label)
+        # Note on cell type abbreviation
         # astrocytes (Astro), 
         # caudal ganglionic eminence interneurons (CGE), 
         # endothelial cells (Endo), 
@@ -139,13 +137,9 @@ for batch in range(n_batches):
         # and Sst and Pvalb, which label cells derived from the medial ganglionic eminence. 
         # 
         # intratelencephalic neurons (IT) + L5 PT + L6 CT + L6b + NP = glutamatergic excitatory neurons
-        label = pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["subclass_label"].values.squeeze()
-        labels_ori.append(label)
         label[label == "Lamp5"] = "CGE"
         label[label == "Vip"] = "CGE"
         label[label == "Sncg"] = "CGE"
-        
-        # ?
         label[label == "L2/3 IT"] = "L2/3"
         label[label == "L5 ET"] = "L5"
         label[label == "L5 IT"] = "L5"
@@ -156,15 +150,12 @@ for batch in range(n_batches):
         label[label == "L4"] = "L4/5"
         label[label == "L5/6 NP"] = "NP"
         label[label == "Macrophage"] = "MGC"
-
         label[label == "OPC"] = "OPC"
         labels_remap.append(label)
 
     elif batch == 2:
-        # used by colbolt
         label = pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["MajorCluster"].values.squeeze()
         labels_ori.append(label)
-        # label = pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["SubCluster"].values.squeeze()
         label[label == "L5.IT.a"] = "L5 IT"
         label[label == "L5.IT.b"] = "L5 IT"
         label[label == "L4"] = "L4"
@@ -200,7 +191,8 @@ for batch in range(n_batches):
         label[label == "Sncg"] = "CGE"        
         
         labels_remap.append(label)
-    
+
+    # NOTE: read in the count matrices    
     try:
         counts_atac = np.array(sp.load_npz(os.path.join(dir, 'RxC' + str(batch + 1) + ".npz")).todense().T)
         # counts_atac = np.array(sp.load_npz(os.path.join(dir, 'BxC' + str(batch + 1) + ".npz")).todense().T)
@@ -260,25 +252,30 @@ counts["nbatches"] = n_batches
 
 
 # In[]
-alpha = [1000, 1]
+# NOTE: Running scmomat
+# weight on regularization term
+lamb = 0.001
 batchsize = 0.1
-run = 0
+# running seed
+seed = 0
+# number of latent dimensions
 K = 30
 interval = 1000
 T = 4000
 lr = 1e-2
 
 start_time = time.time()
-# model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device).to(device)
-# losses1 = model1.train_func(T = T)
-# end_time = time.time()
-# print("running time: " + str(end_time - start_time))
+model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
+losses1 = model1.train_func(T = T)
+end_time = time.time()
+print("running time: " + str(end_time - start_time))
 
-# x = np.linspace(0, T, int(T/interval)+1)
-# plt.plot(x, losses1)
+x = np.linspace(0, T, int(T/interval)+1)
+plt.plot(x, losses1)
+
 # save the model
 # torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
-model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
+# model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
 # In[] Sanity check, the scales should be positive, A_assos should also be positive
 for mod in model1.A_assos.keys():
     if mod != "shared":
@@ -294,7 +291,8 @@ for mod in model1.A_assos.keys():
 
 print(model1.scales)
 
-# In[]
+# In[] 
+# NOTE: Plot the result before post-processing
 umap_op = UMAP(n_components = 2, n_neighbors = 30, min_dist = 0.2, random_state = 0) 
 zs = []
 for batch in range(n_batches):
@@ -324,8 +322,7 @@ utils.plot_latent_ext(x_umaps, annos = labels_remap, mode = "separate", save = r
 utils.plot_latent_ext(x_umaps, annos = labels_remap, mode = "modality", save = result_dir + f'latent_batches_{K}_{T}.png', figsize = (15,10), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
 
 # In[]
-import importlib 
-importlib.reload(utils)
+# NOTE: Post-processing, clustering, and plot the result after post-processing
 n_neighbors = 50
 
 zs = []
@@ -383,14 +380,12 @@ utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = res
 
 
 
-# In[] Extend Motif
-# --------------------------------------------------------------------------------------------------- #
-# --------------------------------------------------------------------------------------------------- #
-# 
-# Extend scJMT to include the Motif obtained from chromVAR
-# 
-# --------------------------------------------------------------------------------------------------- #
-# --------------------------------------------------------------------------------------------------- # 
+# In[] 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 2. Retraining scmomat 
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
 # read in dataset
 n_batches = 5
 counts_rnas = []
@@ -451,12 +446,10 @@ counts["nbatches"] = n_batches
 
 
 # In[] retrain model, you can incorporate new matrices 
-import importlib
-importlib.reload(model)
-# the leiden label is the one produced by the best resolution
-alpha = [1000, 10]
+lamb = 0.01
 
-model2 = model.cfrm_retrain_vanilla(model = model1, counts =  counts, labels = leiden_labels, alpha = alpha, device = device).to(device)
+# the leiden label is the one produced by the best resolution
+model2 = model.scmomat_retrain(model = model1, counts =  counts, labels = leiden_labels, lamb = lamb, device = device)
 losses = model2.train(T = 2000)
 
 x = np.linspace(0, 2000, int(2000/interval) + 1)
@@ -489,6 +482,11 @@ C_region = pd.read_csv(result_dir + "C_region.csv", index_col = 0)
 
 
 # In[] 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 3. Analyze retraining results
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
 # Checked, Factor 0: L6 CT/L6 b, marker (up) Slc17a7, Fezf2, Sulf1, Foxp2 (unique compared to L6 IT). (down, unique compared to L6 IT) Slc30a3,  
 # Checked, Factor 10, 2: L6 IT marker (up) Slc17a7, Fezf2, Sulf1, Slc30a3, (down) Foxp2
 

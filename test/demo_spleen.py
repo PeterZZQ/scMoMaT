@@ -2,25 +2,19 @@
 import sys, os
 sys.path.append('../')
 sys.path.append('../src/')
-
 import torch
 import numpy as np
-import utils
-
-from sklearn.decomposition import PCA
 import umap_batch
 from umap import UMAP
-
+import matplotlib.pyplot as plt
 import pandas as pd  
 import scipy.sparse as sp
+
 import model
 import time
 import bmk
+import utils
 
-import quantile 
-
-from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
 
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
@@ -33,13 +27,15 @@ def quantile_norm(targ_mtx, ref_mtx, replace = False):
     dist_temp[dist_idx] = reference
     return dist_temp.reshape(targ_mtx.shape[0], targ_mtx.shape[1])
 
-import importlib 
-importlib.reload(model)
-
 # In[]
-# read in dataset
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 1. Load dataset and running scmomat (without retraining, retraining see the third section)
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: read in dataset
 dir = '../data/real/diag/Xichen/'
-result_dir = "spleen/cfrm_quantile/"
+result_dir = "spleen/scmomat/"
 seurat_path = "spleen/seurat/"
 liger_path = "spleen/liger/"
 
@@ -94,20 +90,21 @@ labels[1] = np.where(labels[1] == "T_CD8_naive", "T_CD8", labels[1])
 labels[1] = np.where(labels[1] == "Memory_CD8_T", "T_CD8", labels[1])
 # rna batch (batch 1) unique Unknown, and Proliferating
 
-# In[] Train model
-alpha = [1000, 1, 5]
+# In[] 
+# NOTE: Running scmomat
+# weight on regularization term
+lamb = 0.001
 batchsize = 0.1
-run = 0
+# running seed
+seed = 0
+# number of latent dimensions
 K = 30
-Ns = [K] * 2
-N_feat = Ns[0]
 interval = 1000
 T = 4000
 lr = 1e-2
 
 start_time = time.time()
-# model1 = model.cfrm_vanilla(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
-model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device).to(device)
+model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
 losses1 = model1.train_func(T = T)
 end_time = time.time()
 print("running time: " + str(end_time - start_time))
@@ -115,8 +112,8 @@ print("running time: " + str(end_time - start_time))
 x = np.linspace(0, T, int(T/interval) + 1)
 plt.plot(x, losses1)
 
-torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
-model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
+# torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
+# model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
 
 # In[] Check the scales is positive
 for mod in model1.A_assos.keys():
@@ -139,6 +136,7 @@ for mod in model1.A_assos.keys():
 
 print(model1.scales)
 # In[]
+# NOTE: Plot the result before post-processing
 umap_op = UMAP(n_components = 2, n_neighbors = 15, min_dist = 0.4, random_state = 0) 
 zs = []
 labels = []
@@ -169,7 +167,8 @@ utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir + f'latent_clusters_{K}_{T}.png', figsize = (15,10), axis_label = "UMAP", markerscale = 6)
 
-# In[] Post-processing and clustering
+# In[] 
+# NOTE: Post-processing, clustering, and plot the result after post-processing
 n_neighbors = 30
 
 zs = []
@@ -189,13 +188,6 @@ labels_tmp = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists
 umap_op = umap_batch.UMAP(n_components = 2, n_neighbors = n_neighbors, min_dist = 0.2, random_state = 0, 
                 metric='precomputed', knn_dists=knn_dists, knn_indices=knn_indices)
 x_umap = umap_op.fit_transform(s_pair_dist)
-
-
-# scDART
-# zs2 = utils.match_embeds(zs, k = n_neighbors, reference = None, bandwidth = 40)
-# x_umap = UMAP(n_components = 2, min_dist = 0.2, random_state = 0).fit_transform(np.concatenate(zs2, axis = 0))
-# labels_tmp = utils.leiden_cluster(X = np.concatenate(zs2, axis = 0), knn_indices = None, knn_dists = None, resolution = 0.3)
-
 
 # separate into batches
 x_umaps = []
@@ -230,7 +222,13 @@ utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir
 utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = result_dir + f'latent_leiden_clusters_{K}_{T}_{resolution}_processed2.png', 
                       figsize = (10,7), axis_label = "Latent", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
-# In[] Baseline methods
+# In[]
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 2. Benchmarking with baseline methods
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: Baseline methods
 # 1. UINMF
 uinmf_path = "spleen/uinmf_bin/" 
 H1_uinmf = pd.read_csv(uinmf_path + "liger_c1_norm.csv", index_col = 0).values
@@ -327,8 +325,7 @@ utils.plot_latent_ext(liger_umaps, annos = labels, mode = "joint", save = liger_
 
 
 # In[]
-importlib.reload(bmk)
-
+# NOTE: calculate benchmarking scores
 # labels[1] = np.where(labels[1] == "Memory_CD8_T", "T_CD8_naive", labels[1])
 # graph connectivity score (gc) measure the batch effect removal per cell identity
 # 1. scMoMaT
@@ -534,17 +531,15 @@ _ = ax.set_ylabel("ARI", fontsize = 20)
 show_values_on_bars(ax)
 fig.savefig(result_dir + "ARI.png", bbox_inches = "tight")    
 
-# In[] Extend Motif
-# --------------------------------------------------------------------------------------------------- #
-# --------------------------------------------------------------------------------------------------- #
-# 
-# Extend scJMT to include the Motif obtained from chromVAR
-# 
-# --------------------------------------------------------------------------------------------------- #
-# --------------------------------------------------------------------------------------------------- # 
+# In[] 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 3. Retraining scmomat 
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
 # read in dataset
 dir = '../data/real/diag/Xichen/'
-result_dir = "spleen/cfrm_quantile/"
+result_dir = "spleen/scmomat/"
 seurat_path = "spleen/seurat/"
 liger_path = "spleen/liger/"
 
@@ -607,14 +602,11 @@ counts["nbatches"] = n_batches
 
 
 # In[] retrain model, you can incorporate new matrices 
-import importlib
-importlib.reload(model)
-# the leiden label is the one produced by the best resolution
-model2 = model.cfrm_retrain_vanilla(model = model1, counts =  counts, labels = leiden_labels, device = device).to(device)
-losses = model2.train(T = 2000)
+lamb = 0.01
 
-x = np.linspace(0, 2000, int(2000/interval) + 1)
-plt.plot(x, losses)
+# the leiden label is the one produced by the best resolution
+model2 = model.scmomat_retrain(model = model1, counts =  counts, labels = leiden_labels, lamb = lamb, device = device)
+losses = model2.train(T = 2000)
 
 C_feats = {}
 for mod in model2.mods:

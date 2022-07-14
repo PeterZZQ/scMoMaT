@@ -2,92 +2,50 @@
 import sys, os
 sys.path.append('../')
 sys.path.append('../src/')
-
 import torch
 import numpy as np
-import utils
-from torch.nn import Module, Parameter
-import torch.optim as opt
-import torch.nn.functional as F
-
-import torch.optim as opt
-from torch import softmax, log_softmax, Tensor
-from sklearn.cluster import KMeans
-
-
-from sklearn.decomposition import PCA
 import umap_batch
 from umap import UMAP
-
+import time
 import pandas as pd  
 import scipy.sparse as sp
-import model
-import time
-import bmk
-
-import quantile 
-
-import coupleNMF as coupleNMF
-
-from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+import model
+import utils
+import bmk
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def quantile_norm(targ_mtx, ref_mtx, replace = False):
-    # sampling and don't put back
-    reference = np.sort(np.random.choice(ref_mtx.reshape(-1), targ_mtx.shape[0] * targ_mtx.shape[1], replace = replace))
-    dist_temp = targ_mtx.reshape(-1)
-    dist_idx = np.argsort(dist_temp)
-    dist_temp[dist_idx] = reference
-    return dist_temp.reshape(targ_mtx.shape[0], targ_mtx.shape[1])
-
-import importlib 
-importlib.reload(model)
-
-# In[]
-# read in dataset
-subsampling = 1
+# In[] 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 1. Load dataset and running scmomat (without retraining, retraining see the third section)
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: read in dataset
 dir = '../data/real/diag/healthy_hema/topgenes_1000/BMMC/'
-if subsampling == 1:
-    result_dir = "bmmc_healthyhema_1000/scmomat/"
-    seurat_path = "bmmc_healthyhema_1000/seurat/"
-    liger_path = "bmmc_healthyhema_1000/liger/"
-    uinmf_path = "bmmc_healthyhema_1000/uinmf_bin/" 
-    multimap_path = "bmmc_healthyhema_1000/multimap/"
-else:
-    result_dir = "bmmc_healthyhema_1000/subsample_" + str(subsampling) + "/scmomat/"
-    seurat_path = "bmmc_healthyhema_1000/subsample_" + str(subsampling) + "/seurat/"
-    liger_path = "bmmc_healthyhema_1000/subsample_" + str(subsampling) + "/liger/"
-
-# dir = '../data/real/diag/healthy_hema/topgenes_2000/BMMC/'
-# if subsampling == 1:
-#     result_dir = "bmmc_healthyhema_2000/scmomat/"
-#     seurat_path = "bmmc_healthyhema_2000/seurat/"
-#     liger_path = "bmmc_healthyhema_2000/liger/"
-#     uinmf_path = "bmmc_healthyhema_2000/uinmf_bin/" 
-#     multimap_path = "bmmc_healthyhema_2000/multimap/"
-# else:
-#     result_dir = "bmmc_healthyhema_2000/subsample_" + str(subsampling) + "/scmomat/"
-#     seurat_path = "bmmc_healthyhema_2000/subsample_" + str(subsampling) + "/seurat/"
-#     liger_path = "bmmc_healthyhema_2000/subsample_" + str(subsampling) + "/liger/"
+result_dir = "bmmc_healthyhema_1000/scmomat/"
+seurat_path = "bmmc_healthyhema_1000/seurat/"
+liger_path = "bmmc_healthyhema_1000/liger/"
+uinmf_path = "bmmc_healthyhema_1000/uinmf_bin/" 
+multimap_path = "bmmc_healthyhema_1000/multimap/"
 
 counts_rnas = []
 counts_atacs = []
 labels = []
 n_batches = 2
 for batch in range(1, n_batches+1):
-    labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch) + '.csv'), index_col=0)["BioClassification"].values.squeeze()[::subsampling])
+    labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch) + '.csv'), index_col=0)["BioClassification"].values.squeeze())
     
     try:
-        counts_atac = np.array(sp.load_npz(os.path.join(dir, 'RxC' + str(batch) + ".npz")).todense().T)[::subsampling,:]
+        counts_atac = np.array(sp.load_npz(os.path.join(dir, 'RxC' + str(batch) + ".npz")).todense().T)
         counts_atac = utils.preprocess(counts_atac, modality = "ATAC")   
     except:
         counts_atac = None
         
     try:
-        counts_rna = np.array(sp.load_npz(os.path.join(dir, 'GxC' + str(batch) + ".npz")).todense().T)[::subsampling,:]
+        counts_rna = np.array(sp.load_npz(os.path.join(dir, 'GxC' + str(batch) + ".npz")).todense().T)
         counts_rna = utils.preprocess(counts_rna, modality = "RNA", log = False)
     except:
         counts_rna = None
@@ -122,29 +80,31 @@ counts["nbatches"] = n_batches
 # remove the index of label
 for batch_id, label in enumerate(labels):
     labels[batch_id] = np.array([x[3:] for x in label])
-# In[]
-alpha = [1000, 1, 5]
+# In[] 
+# NOTE: Running scmomat
+# weight on regularization term
+lamb = 0.001
 batchsize = 0.1
-run = 0
+# running seed
+seed = 0
+# number of latent dimensions
 K = 30
-Ns = [K] * 2
-N_feat = Ns[0]
 interval = 1000
 T = 4000
 lr = 1e-2
 
 start_time = time.time()
-# model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device)
-# losses1 = model1.train_func(T = T)
-# end_time = time.time()
-# print("running time: " + str(end_time - start_time))
+model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
+losses1 = model1.train_func(T = T)
+end_time = time.time()
+print("running time: " + str(end_time - start_time))
 
-# x = np.linspace(0, T, int(T/interval) + 1)
-# plt.plot(x, losses1)
+x = np.linspace(0, T, int(T/interval) + 1)
+plt.plot(x, losses1)
 
 # state dict does not include the scaling factor, etc
 # torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
-model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
+# model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
 
 # In[] Check the scales is positive
 for mod in model1.A_assos.keys():
@@ -166,7 +126,8 @@ for mod in model1.A_assos.keys():
         print(torch.max(model1.A_assos["shared"] + model1.A_assos[mod]).item())
 
 print(model1.scales)
-# In[]
+# In[] 
+# NOTE: Plot the result before post-processing
 umap_op = UMAP(n_components = 2, n_neighbors = 15, min_dist = 0.4, random_state = 0) 
 zs = []
 for batch in range(0,n_batches):
@@ -189,13 +150,14 @@ for batch in range(0,n_batches):
         end_pointer = start_pointer + zs[batch].shape[0]
         x_umaps.append(x_umap[start_pointer:end_pointer,:])
 
-utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = result_dir + f'latent_separate_{K}_{T}.png', figsize = (10,15), axis_label = "UMAP")
+utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = result_dir + f'latent_separate_{K}_{T}.png', figsize = (10,15), axis_label = "UMAP", markerscale = 6)
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_dir + f'latent_batches_{K}_{T}.png', figsize = (15,10), axis_label = "UMAP", markerscale = 6)
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir + f'latent_clusters_{K}_{T}.png', figsize = (15,10), axis_label = "UMAP", markerscale = 6)
 
-# In[] Post-processing and clustering
+# In[] 
+# NOTE: Post-processing, clustering, and plot the result after post-processing
 plt.rcParams["font.size"] = 10
 
 n_neighbors = 50
@@ -207,11 +169,12 @@ for batch in range(n_batches):
 s_pair_dist, knn_indices, knn_dists = utils.post_process(zs, n_neighbors, njobs = 8)
 
 
-# here load the score.csv that we calculated in advance to select the best resolution
+# load the score.csv that we calculated in advance to select the best resolution
 # scores = pd.read_csv(result_dir + "score2.csv", index_col = 0)
 # scores = scores[scores["methods"] == "scMoMaT"] 
 # resolution = scores["resolution"].values[np.argmax(scores["NMI"].values.squeeze())]
 # print(resolution)
+
 # resolution = 1.0 for 1000 genes, 2.0 for 2000 genes
 resolution = 1.0
 
@@ -219,12 +182,6 @@ labels_tmp = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists
 umap_op = umap_batch.UMAP(n_components = 2, n_neighbors = n_neighbors, min_dist = 0.2, random_state = 0, 
                 metric='precomputed', knn_dists=knn_dists, knn_indices=knn_indices)
 x_umap_scmomat = umap_op.fit_transform(s_pair_dist)
-
-
-# scDART
-zs2 = utils.match_embeds(zs, k = n_neighbors, reference = None, bandwidth = 40)
-# x_umap = UMAP(n_components = 2, min_dist = 0.2, random_state = 0).fit_transform(np.concatenate(zs2, axis = 0))
-# labels_tmp = utils.leiden_cluster(X = np.concatenate(zs2, axis = 0), knn_indices = None, knn_dists = None, resolution = 0.3)
 
 
 # separate into batches
@@ -261,7 +218,13 @@ utils.plot_latent_ext(x_umaps_scmomat, annos = leiden_labels, mode = "joint", sa
                       figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 3, label_inplace = True, alpha = 0.5)
 
 
-# In[] Baseline methods
+# In[] 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 2. Benchmarking with baseline methods
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: Baseline methods
 # 1. UINMF
 H2_uinmf = pd.read_csv(uinmf_path + "liger_c1_norm.csv", index_col = 0).values
 H1_uinmf = pd.read_csv(uinmf_path + "liger_c2_norm.csv", index_col = 0).values
@@ -355,11 +318,9 @@ utils.plot_latent_ext(liger_umaps, annos = labels, mode = "joint", save = liger_
 
 
 
-# In[]
-importlib.reload(bmk)
+# In[] 
+# NOTE: calculate benchmarking scores
 # note that here the result change with the number of neighobrs, 30, 20, etc
-
-
 # labels[1] = np.where(labels[1] == "Memory_CD8_T", "T_CD8_naive", labels[1])
 # graph connectivity score (gc) measure the batch effect removal per cell identity
 # 1. scMoMaT
@@ -612,32 +573,29 @@ show_values_on_bars(ax)
 fig.savefig(result_dir + "ARI.png", bbox_inches = "tight")    
 
 
-# In[] Extend Motif
-# --------------------------------------------------------------------------------------------------- #
-# --------------------------------------------------------------------------------------------------- #
-# 
-# Extend scJMT to include the Motif obtained from chromVAR
-# 
-# --------------------------------------------------------------------------------------------------- #
-# --------------------------------------------------------------------------------------------------- # 
+# In[] 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 3. Retraining scmomat 
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
 # read in dataset
-
 counts_rnas = []
 counts_atacs = []
 counts_motifs = []
 labels = []
 n_batches = 2
 for batch in range(1, n_batches+1):
-    labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch) + '.csv'), index_col=0)["BioClassification"].values.squeeze()[::subsampling])
+    labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch) + '.csv'), index_col=0)["BioClassification"].values.squeeze())
     
     try:
-        counts_atac = np.array(sp.load_npz(os.path.join(dir, 'RxC' + str(batch) + ".npz")).todense().T)[::subsampling,:]
+        counts_atac = np.array(sp.load_npz(os.path.join(dir, 'RxC' + str(batch) + ".npz")).todense().T)
         counts_atac = utils.preprocess(counts_atac, modality = "ATAC")   
     except:
         counts_atac = None
         
     try:
-        counts_rna = np.array(sp.load_npz(os.path.join(dir, 'GxC' + str(batch) + ".npz")).todense().T)[::subsampling,:]
+        counts_rna = np.array(sp.load_npz(os.path.join(dir, 'GxC' + str(batch) + ".npz")).todense().T)
         counts_rna = utils.preprocess(counts_rna, modality = "RNA", log = False)
     except:
         counts_rna = None
@@ -683,12 +641,10 @@ counts["nbatches"] = n_batches
 
 
 # In[] retrain model, you can incorporate new matrices 
-import importlib
-importlib.reload(model)
-alpha = [1000, 10]
+lamb = 0.01
 
 # the leiden label is the one produced by the best resolution
-model2 = model.cfrm_retrain_vanilla(model = model1, counts =  counts, labels = leiden_labels, alpha = alpha, device = device).to(device)
+model2 = model.scmomat_retrain(model = model1, counts =  counts, labels = leiden_labels, lamb = lamb, device = device)
 losses = model2.train(T = 2000)
 
 x = np.linspace(0, 2000, int(2000/interval) + 1)
@@ -717,7 +673,13 @@ C_motif = pd.read_csv(result_dir + "C_motif.csv", index_col = 0)
 C_region = pd.read_csv(result_dir + "C_region.csv", index_col = 0)
 
 
-# In[] Factors Differentiation trajectory, see figure in [Wiki](https://en.wikipedia.org/wiki/Hematopoietic_stem_cell)
+# In[] 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 4. Analyze retraining results 
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# Factors Differentiation trajectory, see figure in [Wiki](https://en.wikipedia.org/wiki/Hematopoietic_stem_cell)
 # B cells and pre-B cells: CD19 (not included), CD79A (included), CD37 (not included) Pax5 (included)
 
 # CMP/LMPP CMP (common myeloid progenitor) LMPP (lymphoid primed multipotent progenitor/Lymphoid multipotent progenitors)

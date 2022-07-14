@@ -4,7 +4,6 @@ sys.path.append('../')
 sys.path.append('../src/')
 
 import numpy as np
-from sklearn.decomposition import PCA
 import umap_batch
 from umap import UMAP
 import time
@@ -12,11 +11,11 @@ import torch
 import matplotlib.pyplot as plt
 import pandas as pd  
 import scipy.sparse as sp
-import bmk
-from scipy.io import mmwrite, mmread
 
 import model
 import utils
+import bmk
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 plt.rcParams["font.size"] = 10
 import warnings
@@ -39,6 +38,12 @@ def lsi(counts):
     return X_lsi
 
 # In[]
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 1. Load dataset and running scmomat (without retraining, retraining see the third section)
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: read in dataset
 dir = "../data/simulated/6b16c_test_1_large/unequal2/"
 result_dir = "simulated/6b16c_1_large2_2"
 scmomat_dir = result_dir + "/scmomat/"
@@ -149,26 +154,29 @@ counts["nbatches"] = n_batches
 
 
 # In[]
-alpha = [1000, 1, 5]
+# NOTE: Running scmomat
+# weight on regularization term
+lamb = 0.001
 batchsize = 0.1
-run = 0
-K = 30
+# running seed
+seed = 0
+# number of latent dimensions
 K = 20
 interval = 1000
 T = 4000
 lr = 1e-2
 
-# start_time = time.time()
-# model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device).to(device)
-# losses1 = model1.train_func(T = T)
-# end_time = time.time()
-# print("running time: " + str(end_time - start_time))
+start_time = time.time()
+model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
+losses1 = model1.train_func(T = T)
+end_time = time.time()
+print("running time: " + str(end_time - start_time))
 
-# x = np.linspace(0, T, int(T/interval)+1)
-# plt.plot(x, losses1)
+x = np.linspace(0, T, int(T/interval)+1)
+plt.plot(x, losses1)
 
 # torch.save(model1, scmomat_dir + f'CFRM_{K}_{T}.pt')
-model1 = torch.load(scmomat_dir + f'CFRM_{K}_{T}.pt')
+# model1 = torch.load(scmomat_dir + f'CFRM_{K}_{T}.pt')
 
 # # In[] Sanity check, the scales should be positive, A_assos should also be positive
 # for mod in model1.A_assos.keys():
@@ -186,6 +194,7 @@ model1 = torch.load(scmomat_dir + f'CFRM_{K}_{T}.pt')
 # print(model1.scales)
 
 # In[]
+# NOTE: Plot the result before post-processing
 plt.rcParams["font.size"] = 10
 umap_op = UMAP(n_components = 2, n_neighbors = 30, min_dist = 0.2, random_state = 0) 
 zs = []
@@ -217,8 +226,7 @@ utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = scmomat
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = scmomat_dir + f'latent_batches_{K}_{T}.png', figsize = (15,10), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True)
 
 # In[]
-import importlib 
-importlib.reload(utils)
+# NOTE: Post-processing, clustering, and plot the result after post-processing
 n_neighbors = 30
 r = 0.7
 
@@ -272,6 +280,12 @@ utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = scm
 
 
 # In[]
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 2. Benchmarking with baseline methods
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: Baseline methods
 # 1. UINMF
 uinmf_path = result_dir + "/uinmf/" 
 H1_uinmf = pd.read_csv(uinmf_path + "H1_norm.csv", index_col = 0).values
@@ -360,9 +374,6 @@ utils.plot_latent_ext(X_multimaps, annos = labels, mode = "joint", save = multim
 
 
 # In[]
-import importlib 
-importlib.reload(utils)
-importlib.reload(bmk)
 n_neighbors = 30
 # graph connectivity score (gc) measure the batch effect removal per cell identity
 # 1. scMoMaT

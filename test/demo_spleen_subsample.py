@@ -2,30 +2,30 @@
 import sys, os
 sys.path.append('../')
 sys.path.append('../src/')
-
 import torch
 import numpy as np
-import utils
-
-from sklearn.decomposition import PCA
 import umap_batch
 from umap import UMAP
-
 import pandas as pd  
 import scipy.sparse as sp
-from scipy.io import mmwrite, mmread
+from scipy.io import mmwrite
+
 import model
 import time
 import bmk
+import utils
 
-import quantile 
-
-from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# In[] remove cell types, remove B cells
+# In[] 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 1. Load dataset, sub-sampling and running scmomat (without retraining, retraining see the third section)
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: subsample B cells, and plot pie chart 
 # read in dataset
 dir = '../data/real/diag/Xichen/'
 remove_dir = '../data/real/diag/Xichen/remove_celltype/'
@@ -54,8 +54,7 @@ for batch in range(1, n_batches+1):
 
 counts = {"rna":counts_rnas, "atac": counts_atacs}
 
-# remove cell types, the post-processing will force the unique cell type in one batch to find neighbors in another batch, which doesn't correspond to the cell type.
-
+# NOTE: remove cell types, the post-processing will force the unique cell type in one batch to find neighbors in another batch, which doesn't correspond to the cell type.
 # counts["atac"][1] = counts["atac"][1][(labels[1] != 'B_follicular') & (labels[1] != 'B_follicular_transitional') & (labels[1] != 'Marginal_Zone_B'), :]
 # labels[1] = labels[1][(labels[1] != 'B_follicular') & (labels[1] != 'B_follicular_transitional') & (labels[1] != 'Marginal_Zone_B')]
 # counts["rna"][0] = counts["rna"][0][(labels[0] != 'B_follicular') & (labels[0] != 'B_follicular_transitional') & (labels[0] != 'Marginal_Zone_B'), :] #  & (labels[0] != 'Unknown') & (labels[0] != 'Proliferating')
@@ -112,6 +111,7 @@ plt.tight_layout()
 fig.savefig(result_dir_removecelltype + "pie_ori.pdf", bbox_inches = "tight")
 
 # In[]
+# NOTE: subsample B cells, and plot pie chart 
 # only subsample cells in some cell types instead of totally remove them
 np.random.seed(0)
 counts_rnas = []
@@ -256,29 +256,30 @@ axs[1].set_title("Batch 2")
 plt.tight_layout()
 fig.savefig(result_dir_removecelltype + "pie_sub.pdf", bbox_inches = "tight")
 
-# In[] Train model
-alpha = [1000, 1, 5]
+# In[] 
+# NOTE: Running scmomat
+# weight on regularization term
+lamb = 0.001
 batchsize = 0.1
-run = 0
+# running seed
+seed = 0
+# number of latent dimensions
 K = 30
-Ns = [K] * 2
-N_feat = Ns[0]
 interval = 1000
 T = 4000
 lr = 1e-2
 
-# start_time = time.time()
-# # model1 = model.cfrm_vanilla(counts = counts, interacts = interacts, Ns = Ns, K = K, N_feat = N_feat, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run).to(device)
-# model1 = model.cfrm_vanilla(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, alpha = alpha, seed = run, device = device).to(device)
-# losses1 = model1.train_func(T = T)
-# end_time = time.time()
-# print("running time: " + str(end_time - start_time))
+start_time = time.time()
+model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
+losses1 = model1.train_func(T = T)
+end_time = time.time()
+print("running time: " + str(end_time - start_time))
 
-# x = np.linspace(0, T, int(T/interval) + 1)
-# plt.plot(x, losses1)
+x = np.linspace(0, T, int(T/interval) + 1)
+plt.plot(x, losses1)
 
 # torch.save(model1, result_dir_removecelltype + f'CFRM_{K}_{T}.pt')
-model1 = torch.load(result_dir_removecelltype + f'CFRM_{K}_{T}.pt')
+# model1 = torch.load(result_dir_removecelltype + f'CFRM_{K}_{T}.pt')
 
 # In[] Check the scales is positive
 for mod in model1.A_assos.keys():
@@ -302,6 +303,7 @@ for mod in model1.A_assos.keys():
 print(model1.scales)
 
 # In[]
+# NOTE: Plot the result before post-processing
 umap_op = UMAP(n_components = 2, n_neighbors = 15, min_dist = 0.4, random_state = 0) 
 zs = []
 for batch in range(0,n_batches):
@@ -332,7 +334,8 @@ utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir_removecelltype + f'latent_clusters_{K}_{T}.png', figsize = (15,10), axis_label = "UMAP", markerscale = 6)
 
 
-# In[] Post-processing and clustering
+# In[] 
+# NOTE: Post-processing, clustering, and plot the result after post-processing
 plt.rcParams["font.size"] = 10
 n_neighbors = 30
 r = None
@@ -349,13 +352,6 @@ labels_tmp = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists
 umap_op = umap_batch.UMAP(n_components = 2, n_neighbors = n_neighbors, min_dist = 0.2, random_state = 0, 
                 metric='precomputed', knn_dists=knn_dists, knn_indices=knn_indices)
 x_umap = umap_op.fit_transform(s_pair_dist)
-
-
-# scDART
-zs2 = utils.match_embeds(zs, k = n_neighbors, reference = None, bandwidth = 40)
-# x_umap = UMAP(n_components = 2, min_dist = 0.2, random_state = 0).fit_transform(np.concatenate(zs2, axis = 0))
-# labels_tmp = utils.leiden_cluster(X = np.concatenate(zs2, axis = 0), knn_indices = None, knn_dists = None, resolution = 0.3)
-
 
 # separate into batches
 x_umaps = []
@@ -391,76 +387,13 @@ utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = res
                       figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 
-# In[] New post-processing, for data batches with missing cell types
-
-# plt.rcParams["font.size"] = 10
-# n_neighbors = 15
-
-# zs = []
-# for batch in range(n_batches):
-#     z = model1.softmax(model1.C_cells[str(batch)].cpu().detach()).numpy()
-#     zs.append(z)
-
-# # find index of cell in batch 2 correspond to T_CD4_naive, T_CD4_reg, and T_CD8
-# start_point, end_point = [], []
-# start = 0
-# for batch in range(len(zs)):
-#     start_point.append(start)
-#     start += len(zs[batch])
-#     end_point.append(start-1)
-# idx_missing = start_point[1] + np.where((labels[1] == "T_CD4_naive") | (labels[1] == "T_CD4_reg") | (labels[1] == "T_CD8"))[0]
-
-# s_pair_dist, knn_indices, knn_dists = utils.post_process_cutoff(zs, n_neighbors, njobs = 8, r = 0.6)
-# # here load the score.csv that we calculated in advance to select the best resolution
-# resolution = 0.6
-
-# labels_tmp = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
-# umap_op = umap_batch.UMAP(n_components = 2, n_neighbors = n_neighbors, min_dist = 0.3, random_state = 0, 
-#                 metric='precomputed', knn_dists=knn_dists, knn_indices=knn_indices)
-# x_umap = umap_op.fit_transform(s_pair_dist)
-
-
-# # scDART
-# zs2 = utils.match_embeds(zs, k = n_neighbors, reference = None, bandwidth = 40)
-# # x_umap = UMAP(n_components = 2, min_dist = 0.2, random_state = 0).fit_transform(np.concatenate(zs2, axis = 0))
-# # labels_tmp = utils.leiden_cluster(X = np.concatenate(zs2, axis = 0), knn_indices = None, knn_dists = None, resolution = 0.3)
-
-
-# # separate into batches
-# x_umaps = []
-# leiden_labels = []
-# for batch in range(n_batches):
-#     if batch == 0:
-#         start_pointer = 0
-#         end_pointer = start_pointer + zs[batch].shape[0]
-#         x_umaps.append(x_umap[start_pointer:end_pointer,:])
-#         leiden_labels.append(labels_tmp[start_pointer:end_pointer])
-
-#     elif batch == (n_batches - 1):
-#         start_pointer = start_pointer + zs[batch - 1].shape[0]
-#         x_umaps.append(x_umap[start_pointer:,:])
-#         leiden_labels.append(labels_tmp[start_pointer:])
-
-#     else:
-#         start_pointer = start_pointer + zs[batch - 1].shape[0]
-#         end_pointer = start_pointer + zs[batch].shape[0]
-#         x_umaps.append(x_umap[start_pointer:end_pointer,:])
-#         leiden_labels.append(labels_tmp[start_pointer:end_pointer])
-
-# utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = result_dir_removecelltype + f'latent_separate_{K}_{T}_processed2.png', 
-#                       figsize = (12,15), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
-
-# utils.plot_latent_ext(x_umaps, annos = labels, mode = "modality", save = result_dir_removecelltype + f'latent_batches_{K}_{T}_processed2.png', 
-#                       figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
-
-# utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir_removecelltype + f'latent_clusters_{K}_{T}_processed2.png', 
-#                       figsize = (12,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
-
-# utils.plot_latent_ext(x_umaps, annos = leiden_labels, mode = "joint", save = result_dir_removecelltype + f'latent_leiden_clusters_{K}_{T}_{resolution}_processed2.png', 
-#                       figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
-
-
 # In[]
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+#   NOTE: 2. Benchmarking with baseline methods
+#
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# NOTE: Baseline methods
 # 1. UINMF
 uinmf_path = "spleen/remove_celltype/uinmf_bin/" 
 H1_uinmf = pd.read_csv(uinmf_path + "liger_c1_norm.csv", index_col = 0).values
@@ -556,9 +489,6 @@ utils.plot_latent_ext(liger_umaps, annos = labels, mode = "joint", save = liger_
                       figsize = (12,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 # In[]
-import importlib
-importlib.reload(bmk)
-
 # graph connectivity score (gc) measure the batch effect removal per cell identity
 # 1. scMoMaT
 # construct neighborhood graph from the post-processed latent space
