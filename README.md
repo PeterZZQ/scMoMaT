@@ -24,3 +24,15 @@ Necessary data for PBMC (the first real dataset in the manuscript, `ASAP-PBMC`) 
 #### Contact
 * Ziqi Zhang: ziqi.zhang@gatech.edu
 * Xiuwei Zhang: xiuwei.zhang@gatech.edu 
+
+
+#### Cite
+```
+@article{zhang2022scmomat,
+  title={scMoMaT: Mosaic integration of single cell multi-omics matrices using matrix trifactorization},
+  author={Zhang, Ziqi and Sun, Haoran and Chen, Xinyu and Mariappan, Ragunathan and Chen, Xi and Jain, Mika and Efremova, Mirjana and Rajan, Vaibhav and Teichmann, Sarah and Zhang, Xiuwei},
+  journal={bioRxiv},
+  year={2022},
+  publisher={Cold Spring Harbor Laboratory},
+}
+```
