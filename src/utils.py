@@ -500,6 +500,7 @@ def plot_factor(C_feats, markers, cluster = 0, figsize = (10,20)):
             _ = axs[marker].set_xlabel("cluster", fontsize = 20)
             _ = axs[marker].set_ylabel("factor value", fontsize = 20)
     plt.tight_layout()
+    plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
     return fig
 
 # ----------------------------------------------------- # 

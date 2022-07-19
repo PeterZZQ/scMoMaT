@@ -223,7 +223,6 @@ for batch in range(n_batches):
 
 counts = {"rna":counts_rnas, "atac": counts_atacs}
 
-# No need for pseudo-count matrix
 A = sp.load_npz(os.path.join(dir, 'GxR.npz'))
 A = np.array(A.todense())
 
@@ -321,13 +320,14 @@ utils.plot_latent_ext(x_umaps, annos = labels_remap, mode = "modality", save = r
 # In[]
 # NOTE: Post-processing, clustering, and plot the result after post-processing
 n_neighbors = 50
+r = None
 
 zs = []
 for batch in range(n_batches):
     z = model1.softmax(model1.C_cells[str(batch)].cpu().detach()).numpy()
     zs.append(z)
 
-s_pair_dist, knn_indices, knn_dists = utils.post_process(zs, n_neighbors, njobs = 8, r = None)
+s_pair_dist, knn_indices, knn_dists = utils.post_process(zs, n_neighbors, njobs = 8, r = r)
 
 # scores = pd.read_csv(result_dir + "score.csv", index_col = 0)
 # scores = scores[scores["methods"] == "scJMT"] 

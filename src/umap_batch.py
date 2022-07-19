@@ -16,8 +16,8 @@ from sklearn.utils.validation import check_is_fitted
 from sklearn.metrics import pairwise_distances
 from sklearn.preprocessing import normalize
 from sklearn.neighbors import KDTree
-
-
+import warnings
+warnings.filterwarnings("ignore")
 
 try:
     import joblib
