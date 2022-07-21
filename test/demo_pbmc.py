@@ -42,7 +42,7 @@ for batch in range(n_batches):
     try:
         # counts_atac = sp.load_npz(os.path.join(dir, 'RxC' + str(batch + 1) + ".npz"))
         # mmwrite(os.path.join(dir, 'RxC' + str(batch + 1) + ".mtx"), counts_atac)
-        counts_atac = np.array(sp.load_npz(os.path.join(dir, 'RxC' + str(batch + 1) + ".npz")).todense().T)
+        counts_atac = sp.load_npz(os.path.join(dir, 'RxC' + str(batch + 1) + ".npz")).toarray().T
         counts_atac = utils.preprocess(counts_atac, modality = "ATAC")
     except:
         counts_atac = None
@@ -50,7 +50,7 @@ for batch in range(n_batches):
     try:
         # counts_rna = sp.load_npz(os.path.join(dir, 'GxC' + str(batch + 1) + ".npz"))
         # mmwrite(os.path.join(dir, 'GxC' + str(batch + 1) + ".mtx"), counts_rna)
-        counts_rna = np.array(sp.load_npz(os.path.join(dir, 'GxC' + str(batch + 1) + ".npz")).todense().T)
+        counts_rna = sp.load_npz(os.path.join(dir, 'GxC' + str(batch + 1) + ".npz")).toarray().T
         counts_rna = utils.preprocess(counts_rna, modality = "RNA", log = False)
     except:
         counts_rna = None
@@ -59,7 +59,7 @@ for batch in range(n_batches):
         # counts_protein = sp.load_npz(os.path.join(dir, 'PxC' + str(batch + 1) + ".npz"))
         # mmwrite(os.path.join(dir, 'PxC' + str(batch + 1) + ".mtx"), counts_protein)
         # the log transform produce better results for the protein
-        counts_protein = np.array(sp.load_npz(os.path.join(dir, 'PxC' + str(batch + 1) + ".npz")).todense().T)
+        counts_protein = sp.load_npz(os.path.join(dir, 'PxC' + str(batch + 1) + ".npz")).toarray().T
         counts_protein = utils.preprocess(counts_protein, modality = "RNA", log = True)
     except:
         counts_protein = None
@@ -71,10 +71,8 @@ for batch in range(n_batches):
 
 counts = {"rna":counts_rnas, "atac": counts_atacs, "protein": counts_proteins}
 
-A1 = sp.load_npz(os.path.join(dir, 'GxP.npz'))
-A2 = sp.load_npz(os.path.join(dir, 'GxR.npz'))
-A1 = np.array(A1.todense())
-A2 = np.array(A2.todense())
+A1 = sp.load_npz(os.path.join(dir, 'GxP.npz')).toarray()
+A2 = sp.load_npz(os.path.join(dir, 'GxR.npz')).toarray()
 
 # obtain the feature name
 genes = pd.read_csv(dir + "genes.txt", header = None).values.squeeze()
@@ -189,10 +187,6 @@ for batch in range(n_batches):
 
 s_pair_dist, knn_indices, knn_dists = utils.post_process(zs, n_neighbors, njobs = 8, r = r)
 
-# scores = pd.read_csv(result_dir + "score.csv", index_col = 0)
-# scores = scores[scores["methods"] == "scJMT"] 
-# resolution = scores["resolution"].values[np.argmax(scores["NMI"].values.squeeze())]
-# print(resolution)
 resolution = 0.5
 labels_tmp = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
 umap_op = umap_batch.UMAP(n_components = 2, n_neighbors = n_neighbors, min_dist = 0.12, random_state = 0, 
@@ -280,7 +274,7 @@ utils.plot_latent_ext(liger_umaps, annos = prec_labels, mode = "modality", save 
 multimap_path = "pbmc/multimap/"
 batches = pd.read_csv(multimap_path + "batch_id.csv", index_col = 0)
 X_multimap = np.load(multimap_path + "multimap.npy")
-G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").todense()
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
 X_multimaps = []
 for batch in ["C1", "C2", "C3", "C4"]:
     X_multimaps.append(X_multimap[batches.values.squeeze() == batch, :])
@@ -297,7 +291,7 @@ utils.plot_latent_ext(X_multimaps, annos = prec_labels, mode = "modality", save 
 
 
 # In[]
-n_neighbors = 30
+n_neighbors = knn_indices.shape[1]
 # graph connectivity score (gc) measure the batch effect removal per cell identity
 
 # 1. scMoMaT
@@ -313,8 +307,10 @@ gc_uinmf = bmk.graph_connectivity(X = np.concatenate((H1, H2, H3, H4), axis = 0)
 print('GC (UINMF): {:.3f}'.format(gc_uinmf))
 
 # 3. Multimap
-G_multimap[G_multimap == 0] = np.inf
-knn_indices_multimap = G_multimap.argsort(axis = 1)[:, :n_neighbors]
+# NOTE: G_multimap is an affinity graph, closer neighbor with larger value
+# argsort from small to large, select the last n_neighbors
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
+knn_indices_multimap = G_multimap.argsort(axis = 1)[:, -n_neighbors:]
 knn_graph_multimap = np.zeros_like(G_multimap)
 knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
 gc_multimap = bmk.graph_connectivity(G = knn_graph_multimap, groups = np.concatenate(prec_labels, axis = 0), k = n_neighbors)
@@ -330,10 +326,10 @@ print('GC (MultiMap Graph): {:.3f}'.format(gc_multimap2))
 nmi_scmomat = []
 ari_scmomat = []
 for resolution in np.arange(0.1, 10, 0.5):
-    # leiden_labels_scjmt = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
-    leiden_labels_smomat = utils.leiden_cluster(X = np.concatenate(zs, axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
-    nmi_scmomat.append(bmk.nmi(group1 = np.concatenate(prec_labels), group2 = leiden_labels_smomat))
-    ari_scmomat.append(bmk.ari(group1 = np.concatenate(prec_labels), group2 = leiden_labels_smomat))
+    leiden_labels_scmomat = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
+    # leiden_labels_scmomat = utils.leiden_cluster(X = np.concatenate(zs, axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
+    nmi_scmomat.append(bmk.nmi(group1 = np.concatenate(prec_labels), group2 = leiden_labels_scmomat))
+    ari_scmomat.append(bmk.ari(group1 = np.concatenate(prec_labels), group2 = leiden_labels_scmomat))
 print('NMI (scMoMaT): {:.3f}'.format(max(nmi_scmomat)))
 print('ARI (scMoMaT): {:.3f}'.format(max(ari_scmomat)))
 
@@ -348,7 +344,7 @@ print('NMI (UINMF): {:.3f}'.format(max(nmi_uinmf)))
 print('ARI (UINMF): {:.3f}'.format(max(ari_uinmf)))
 
 # 3. Multimap
-G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").todense()
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
 nmi_multimap = []
 ari_multimap = []
 for resolution in np.arange(0.1, 10, 0.5):
@@ -360,10 +356,47 @@ for resolution in np.arange(0.1, 10, 0.5):
 print('NMI (MultiMap): {:.3f}'.format(max(nmi_multimap)))
 print('ARI (MultiMap): {:.3f}'.format(max(ari_multimap)))
 
-scores = pd.DataFrame(columns = ["methods", "resolution", "NMI", "ARI", "GC"])
+# Label transfer accuracy
+# randomly select a half of cells as query
+np.random.seed(0)
+query_cell = np.array([False] * knn_indices.shape[0])
+query_cell[np.random.choice(np.arange(knn_indices.shape[0]), size = int(0.5 * knn_indices.shape[0]), replace = False)] = True
+training_cell = (1 - query_cell).astype(np.bool)
+query_label = np.concatenate(prec_labels)[query_cell]
+training_label = np.concatenate(prec_labels)[training_cell]
+
+# scmomat
+knn_graph = np.zeros((knn_indices.shape[0], knn_indices.shape[0]))
+knn_graph[np.arange(knn_indices.shape[0])[:, None], knn_indices] = 1
+knn_graph = knn_graph[query_cell, :][:, training_cell]
+lta_scmomat = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, knn_graph = knn_graph)
+
+# UINMF
+lta_uinmf = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate((H1, H2, H3, H4), axis = 0)[query_cell,:],
+                                  z_train = np.concatenate((H1, H2, H3, H4), axis = 0)[training_cell,:])
+
+# MultiMap
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
+knn_indices_multimap = G_multimap.argsort(axis = 1)[:, -n_neighbors:]
+knn_graph_multimap = np.zeros_like(G_multimap)
+knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
+knn_graph_multimap = knn_graph_multimap[query_cell, :][:, training_cell]
+lta_multimap = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, knn_graph = knn_graph_multimap)
+lt2_multimap2 = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate(X_multimaps, axis = 0)[query_cell,:],
+                                  z_train = np.concatenate(X_multimaps, axis = 0)[training_cell,:])
+
+print("Label transfer accuracy (scMoMaT): {:.3f}".format(lta_scmomat))
+print("Label transfer accuracy (UINMF): {:.3f}".format(lta_uinmf))
+print("Label transfer accuracy (MultiMap Graph): {:.3f}".format(lta_multimap))
+print("Label transfer accuracy (MultiMap): {:.3f}".format(lt2_multimap2))
+
+scores = pd.DataFrame(columns = ["methods", "resolution", "NMI", "ARI", "GC", "LTA"])
 scores["NMI (prec)"] = np.array(nmi_scmomat + nmi_uinmf + nmi_multimap)
 scores["ARI (prec)"] = np.array(ari_scmomat + ari_uinmf + ari_multimap)
 scores["GC (prec)"] = np.array([gc_scmomat] * len(nmi_scmomat) + [gc_uinmf] * len(nmi_uinmf) + [gc_multimap] * len(ari_multimap))
+scores["LTA (prec)"] = np.array([lta_scmomat] * len(nmi_scmomat) + [lta_uinmf] * len(nmi_uinmf) + [lta_multimap] * len(ari_multimap))
 scores["resolution"] = np.array([x for x in np.arange(0.1, 10, 0.5)] * 3)
 scores["methods"] = np.array(["scMoMaT"] * len(nmi_scmomat) + ["UINMF"] * len(nmi_uinmf) + ["MultiMap"] * len(ari_multimap))
 
@@ -380,16 +413,17 @@ gc_uinmf = bmk.graph_connectivity(X = np.concatenate((H1, H2, H3, H4), axis = 0)
 print('GC (UINMF): {:.3f}'.format(gc_uinmf))
 
 # 3. Multimap
-G_multimap[G_multimap == 0] = np.inf
-knn_indices_multimap = G_multimap.argsort(axis = 1)[:, :n_neighbors]
+# NOTE: G_multimap is an affinity graph, closer neighbor with larger value
+# argsort from small to large, select the last n_neighbors
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
+knn_indices_multimap = G_multimap.argsort(axis = 1)[:, -n_neighbors:]
 knn_graph_multimap = np.zeros_like(G_multimap)
 knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
 gc_multimap = bmk.graph_connectivity(G = knn_graph_multimap, groups = np.concatenate(labels, axis = 0), k = n_neighbors)
 gc_multimap2 = bmk.graph_connectivity(X = np.concatenate(X_multimaps, axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
 print('GC (MultiMap): {:.3f}'.format(gc_multimap))
 print('GC (MultiMap Graph): {:.3f}'.format(gc_multimap2))
-# Batch effect removal regardless of cell identity
-# Graph iLISI
+
 
 # Conservation of biological identity
 # NMI and ARI
@@ -397,10 +431,10 @@ print('GC (MultiMap Graph): {:.3f}'.format(gc_multimap2))
 nmi_scmomat = []
 ari_scmomat = []
 for resolution in np.arange(0.1, 10, 0.5):
-    # leiden_labels_scjmt = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
-    leiden_labels_smomat = utils.leiden_cluster(X = np.concatenate(zs, axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
-    nmi_scmomat.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_smomat))
-    ari_scmomat.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_smomat))
+    leiden_labels_scmomat = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
+    # leiden_labels_smomat = utils.leiden_cluster(X = np.concatenate(zs, axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
+    nmi_scmomat.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_scmomat))
+    ari_scmomat.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_scmomat))
 print('NMI (scMoMaT): {:.3f}'.format(max(nmi_scmomat)))
 print('ARI (scMoMaT): {:.3f}'.format(max(ari_scmomat)))
 
@@ -415,11 +449,10 @@ print('NMI (UINMF): {:.3f}'.format(max(nmi_uinmf)))
 print('ARI (UINMF): {:.3f}'.format(max(ari_uinmf)))
 
 # 3. Multimap
-G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").todense()
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
 nmi_multimap = []
 ari_multimap = []
 for resolution in np.arange(0.1, 10, 0.5):
-    # leiden_labels_seurat = utils.leiden_cluster(X = np.concatenate(seurat_pcas, axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
     # Multimap state to use graph for clustering
     leiden_labels_multimap = utils.leiden_cluster(affin = G_multimap, resolution = resolution)
     nmi_multimap.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_multimap))
@@ -427,9 +460,47 @@ for resolution in np.arange(0.1, 10, 0.5):
 print('NMI (MultiMap): {:.3f}'.format(max(nmi_multimap)))
 print('ARI (MultiMap): {:.3f}'.format(max(ari_multimap)))
 
+
+# Label transfer accuracy
+# randomly select a half of cells as query
+np.random.seed(0)
+query_cell = np.array([False] * knn_indices.shape[0])
+query_cell[np.random.choice(np.arange(knn_indices.shape[0]), size = int(0.5 * knn_indices.shape[0]), replace = False)] = True
+training_cell = (1 - query_cell).astype(np.bool)
+query_label = np.concatenate(labels)[query_cell]
+training_label = np.concatenate(labels)[training_cell]
+
+# scmomat
+knn_graph = np.zeros((knn_indices.shape[0], knn_indices.shape[0]))
+knn_graph[np.arange(knn_indices.shape[0])[:, None], knn_indices] = 1
+knn_graph = knn_graph[query_cell, :][:, training_cell]
+lta_scmomat = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, knn_graph = knn_graph)
+
+# UINMF
+lta_uinmf = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate((H1, H2, H3, H4), axis = 0)[query_cell,:],
+                                  z_train = np.concatenate((H1, H2, H3, H4), axis = 0)[training_cell,:])
+
+# MultiMap
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
+knn_indices_multimap = G_multimap.argsort(axis = 1)[:, -n_neighbors:]
+knn_graph_multimap = np.zeros_like(G_multimap)
+knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
+knn_graph_multimap = knn_graph_multimap[query_cell, :][:, training_cell]
+lta_multimap = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, knn_graph = knn_graph_multimap)
+lt2_multimap2 = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate(X_multimaps, axis = 0)[query_cell,:],
+                                  z_train = np.concatenate(X_multimaps, axis = 0)[training_cell,:])
+
+print("Label transfer accuracy (scMoMaT): {:.3f}".format(lta_scmomat))
+print("Label transfer accuracy (UINMF): {:.3f}".format(lta_uinmf))
+print("Label transfer accuracy (MultiMap Graph): {:.3f}".format(lta_multimap))
+print("Label transfer accuracy (MultiMap): {:.3f}".format(lt2_multimap2))
+
 scores["NMI"] = np.array(nmi_scmomat + nmi_uinmf + nmi_multimap)
 scores["ARI"] = np.array(ari_scmomat + ari_uinmf + ari_multimap)
 scores["GC"] = np.array([gc_scmomat] * len(nmi_scmomat) + [gc_uinmf] * len(nmi_uinmf) + [gc_multimap] * len(ari_multimap))
+scores["LTA"] = np.array([lta_scmomat] * len(nmi_scmomat) + [lta_uinmf] * len(nmi_uinmf) + [lta_multimap] * len(ari_multimap))
 # scores["resolution"] = np.array([x for x in np.arange(0.1, 10, 0.5)] * 4)
 # scores["methods"] = np.array(["scMoMaT"] * len(nmi_scmomat) + ["UINMF"] * len(nmi_uinmf) + ["MultiMap"] * len(ari_multimap))
 
@@ -517,6 +588,26 @@ _ = ax.set_ylabel("ARI", fontsize = 20)
 show_values_on_bars(ax)
 fig.savefig(result_dir + "ARI.png", bbox_inches = "tight")    
 
+# LTA
+lta_scmomat = np.max(scores.loc[scores["methods"] == "scMoMaT", "LTA"].values)
+lta_uinmf = np.max(scores.loc[scores["methods"] == "UINMF", "LTA"].values)
+lta_multimap = np.max(scores.loc[scores["methods"] == "MultiMap", "LTA"].values)
+
+fig = plt.figure(figsize = (4,5))
+ax = fig.add_subplot()
+barlist = ax.bar([1,2,3], [lta_scmomat, lta_uinmf, lta_multimap], width = 0.4)
+barlist[0].set_color('r')    
+
+ax.tick_params(axis='x', labelsize=15)
+ax.tick_params(axis='y', labelsize=15)
+ax.set_title("Label Transfer Accuracy", fontsize = 20)
+_ = ax.set_xticks([1,2,3])
+_ = ax.set_xticklabels(["scMoMaT", "UINMF", "MultiMap"])
+# _ = ax.set_xlabel("cluster", fontsize = 20)
+_ = ax.set_ylabel("LTA", fontsize = 20)
+show_values_on_bars(ax)
+fig.savefig(result_dir + "LTA.png", bbox_inches = "tight")    
+
 
 # In[] Extend Motif
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -540,18 +631,18 @@ for batch in range(n_batches):
     labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["coarse_cluster"].values.squeeze())
     prec_labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["cluster"].values.squeeze())
     try:
-        counts_atac = np.array(sp.load_npz(os.path.join(dir, 'RxC' + str(batch + 1) + ".npz")).todense().T)
+        counts_atac = sp.load_npz(os.path.join(dir, 'RxC' + str(batch + 1) + ".npz")).toarray().T
         counts_atac = utils.preprocess(counts_atac, modality = "ATAC")
     except:
         counts_atac = None        
     try:
-        counts_rna = np.array(sp.load_npz(os.path.join(dir, 'GxC' + str(batch + 1) + ".npz")).todense().T)
+        counts_rna = sp.load_npz(os.path.join(dir, 'GxC' + str(batch + 1) + ".npz")).toarray().T
         counts_rna = utils.preprocess(counts_rna, modality = "RNA", log = False)
     except:
         counts_rna = None
 
     try:
-        counts_protein = np.array(sp.load_npz(os.path.join(dir, 'PxC' + str(batch + 1) + ".npz")).todense().T)
+        counts_protein = sp.load_npz(os.path.join(dir, 'PxC' + str(batch + 1) + ".npz")).toarray().T
         counts_protein = utils.preprocess(counts_protein, modality = "RNA", log = True)
     except:
         counts_protein = None
@@ -574,10 +665,8 @@ for batch in range(n_batches):
 counts = {"rna":counts_rnas, "atac": counts_atacs, "protein": counts_proteins, "motif": counts_motifs}
 
 
-A1 = sp.load_npz(os.path.join(dir, 'GxP.npz'))
-A2 = sp.load_npz(os.path.join(dir, 'GxR.npz'))
-A1 = np.array(A1.todense())
-A2 = np.array(A2.todense())
+A1 = sp.load_npz(os.path.join(dir, 'GxP.npz')).toarray()
+A2 = sp.load_npz(os.path.join(dir, 'GxR.npz')).toarray()
 
 # obtain the feature name
 genes = pd.read_csv(dir + "genes.txt", header = None).values.squeeze()
@@ -684,8 +773,8 @@ import scanpy as sc
 adata_b1 = sc.read_h5ad(dir + "multimap/adata_rna_c1.h5ad")
 adata_b2 = sc.read_h5ad(dir + "multimap/adata_rna_c2.h5ad")
 genes = adata_b1.var.index.values
-expr_b1 = np.array(adata_b1.X.todense())
-expr_b2 = np.array(adata_b2.X.todense())
+expr_b1 = adata_b1.X.toarray()
+expr_b2 = adata_b2.X.toarray()
 
 plt.rcParams["font.size"] = 15
 # only the first two batches has counts rna

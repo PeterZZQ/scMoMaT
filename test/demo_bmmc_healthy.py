@@ -39,13 +39,13 @@ for batch in range(1, n_batches+1):
     labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch) + '.csv'), index_col=0)["BioClassification"].values.squeeze())
     
     try:
-        counts_atac = np.array(sp.load_npz(os.path.join(dir, 'RxC' + str(batch) + ".npz")).todense().T)
+        counts_atac = sp.load_npz(os.path.join(dir, 'RxC' + str(batch) + ".npz")).toarray().T
         counts_atac = utils.preprocess(counts_atac, modality = "ATAC")   
     except:
         counts_atac = None
         
     try:
-        counts_rna = np.array(sp.load_npz(os.path.join(dir, 'GxC' + str(batch) + ".npz")).todense().T)
+        counts_rna = sp.load_npz(os.path.join(dir, 'GxC' + str(batch) + ".npz")).toarray().T
         counts_rna = utils.preprocess(counts_rna, modality = "RNA", log = False)
     except:
         counts_rna = None
@@ -55,8 +55,7 @@ for batch in range(1, n_batches+1):
 
 counts = {"rna":counts_rnas, "atac": counts_atacs}
 
-A = sp.load_npz(os.path.join(dir, 'GxR.npz'))
-A = np.array(A.todense())
+A = sp.load_npz(os.path.join(dir, 'GxR.npz')).toarray()
 interacts = None
 
 genes = pd.read_csv(dir + "genes.txt", header = None).values.squeeze()
@@ -93,18 +92,18 @@ interval = 1000
 T = 4000
 lr = 1e-2
 
-start_time = time.time()
-model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
-losses1 = model1.train_func(T = T)
-end_time = time.time()
-print("running time: " + str(end_time - start_time))
+# start_time = time.time()
+# model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
+# losses1 = model1.train_func(T = T)
+# end_time = time.time()
+# print("running time: " + str(end_time - start_time))
 
-x = np.linspace(0, T, int(T/interval) + 1)
-plt.plot(x, losses1)
+# x = np.linspace(0, T, int(T/interval) + 1)
+# plt.plot(x, losses1)
 
-# state dict does not include the scaling factor, etc
+# # state dict does not include the scaling factor, etc
 # torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
-# model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
+model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
 
 # In[] Check the scales is positive
 for mod in model1.A_assos.keys():
@@ -160,13 +159,14 @@ utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = result_dir
 # NOTE: Post-processing, clustering, and plot the result after post-processing
 plt.rcParams["font.size"] = 10
 
-n_neighbors = 50
+n_neighbors = 30
+r = None
 
 zs = []
 for batch in range(n_batches):
     z = model1.softmax(model1.C_cells[str(batch)].cpu().detach()).numpy()
     zs.append(z)
-s_pair_dist, knn_indices, knn_dists = utils.post_process(zs, n_neighbors, njobs = 8)
+s_pair_dist, knn_indices, knn_dists = utils.post_process(zs, n_neighbors, r = r, njobs = 8)
 
 
 # load the score.csv that we calculated in advance to select the best resolution
@@ -176,7 +176,7 @@ s_pair_dist, knn_indices, knn_dists = utils.post_process(zs, n_neighbors, njobs 
 # print(resolution)
 
 # resolution = 1.0 for 1000 genes, 2.0 for 2000 genes
-resolution = 1.0
+resolution = 0.95
 
 labels_tmp = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
 umap_op = umap_batch.UMAP(n_components = 2, n_neighbors = n_neighbors, min_dist = 0.2, random_state = 0, 
@@ -256,7 +256,7 @@ utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "joint", save = uinmf_
 # 2. Multimap
 batches = pd.read_csv(multimap_path + "batch_id.csv", index_col = 0)
 X_multimap = np.load(multimap_path + "multimap.npy")
-G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").todense()
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
 X_multimaps = []
 for batch in ["C1", "C2"]:
     X_multimaps.append(X_multimap[batches.values.squeeze() == batch, :])
@@ -319,6 +319,8 @@ utils.plot_latent_ext(liger_umaps, annos = labels, mode = "joint", save = liger_
 
 
 # In[] 
+# n_neighbors affect the overall acc
+n_neighbors = knn_indices.shape[1]
 # NOTE: calculate benchmarking scores
 # note that here the result change with the number of neighobrs, 30, 20, etc
 # labels[1] = np.where(labels[1] == "Memory_CD8_T", "T_CD8_naive", labels[1])
@@ -330,8 +332,7 @@ knn_graph[np.arange(knn_indices.shape[0])[:, None], knn_indices] = 1
 gc_scmomat = bmk.graph_connectivity(G = knn_graph, groups = np.concatenate(labels, axis = 0))
 print('GC (scmomat): {:.3f}'.format(gc_scmomat))
 
-# 2. Seurat, n_neighbors affect the overall acc, and should be the same as scJMT
-n_neighbors = knn_indices.shape[1]
+# 2. Seurat
 gc_seurat = bmk.graph_connectivity(X = np.concatenate(seurat_pcas, axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
 print('GC (Seurat): {:.3f}'.format(gc_seurat))
 
@@ -344,18 +345,16 @@ gc_uinmf = bmk.graph_connectivity(X = np.concatenate((H1_uinmf, H2_uinmf), axis 
 print('GC (UINMF): {:.3f}'.format(gc_uinmf))
 
 # 5. Multimap
-G_multimap[G_multimap == 0] = np.inf
-knn_indices_multimap = G_multimap.argsort(axis = 1)[:, :n_neighbors]
+# NOTE: G_multimap is an affinity graph, closer neighbor with larger value
+# argsort from small to large, select the last n_neighbors
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
+knn_indices_multimap = G_multimap.argsort(axis = 1)[:, -n_neighbors:]
 knn_graph_multimap = np.zeros_like(G_multimap)
 knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
 gc_multimap = bmk.graph_connectivity(G = knn_graph_multimap, groups = np.concatenate(labels, axis = 0), k = n_neighbors)
 gc_multimap2 = bmk.graph_connectivity(X = np.concatenate(X_multimaps, axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
 print('GC (MultiMap Graph): {:.3f}'.format(gc_multimap))
 print('GC (MultiMap): {:.3f}'.format(gc_multimap2))
-
-# # 4. scJMT embedding
-# gc_scjmt_embed = bmk.graph_connectivity(X = np.concatenate(zs2, axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
-# print('GC (scJMT embed): {:.3f}'.format(gc_scjmt_embed))
 
 # Batch effect removal regardless of cell identity
 # Graph iLISI
@@ -366,9 +365,9 @@ print('GC (MultiMap): {:.3f}'.format(gc_multimap2))
 nmi_scmomat = []
 ari_scmomat = []
 for resolution in np.arange(0.1, 10, 0.5):
-    leiden_labels_scjmt = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
-    nmi_scmomat.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_scjmt))
-    ari_scmomat.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_scjmt))
+    leiden_labels_scmomat = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
+    nmi_scmomat.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_scmomat))
+    ari_scmomat.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_scmomat))
 print('NMI (scMoMaT): {:.3f}'.format(max(nmi_scmomat)))
 print('ARI (scMoMaT): {:.3f}'.format(max(ari_scmomat)))
 
@@ -403,7 +402,7 @@ print('NMI (UINMF): {:.3f}'.format(max(nmi_uinmf)))
 print('ARI (UINMF): {:.3f}'.format(max(ari_uinmf)))
 
 # 5. Multimap
-G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").todense()
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
 nmi_multimap = []
 ari_multimap = []
 for resolution in np.arange(0.1, 10, 0.5):
@@ -415,81 +414,65 @@ for resolution in np.arange(0.1, 10, 0.5):
 print('NMI (MultiMap): {:.3f}'.format(max(nmi_multimap)))
 print('ARI (MultiMap): {:.3f}'.format(max(ari_multimap)))
 
-# # 1. scJMT embedding
-# nmi_scjmt_embed = []
-# ari_scjmt_embed = []
-# for resolution in np.arange(0.1, 10, 0.5):
-#     leiden_labels_scjmt_embed = utils.leiden_cluster(X = np.concatenate(zs2, axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
-#     nmi_scjmt_embed.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_scjmt_embed))
-#     ari_scjmt_embed.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_scjmt_embed))
-# print('NMI (scJMT embed): {:.3f}'.format(max(nmi_scjmt_embed)))
-# print('ARI (scJMT embed): {:.3f}'.format(max(ari_scjmt_embed)))
+# Label transfer accuracy
+# randomly select a half of cells as query
+np.random.seed(0)
+query_cell = np.array([False] * knn_indices.shape[0])
+query_cell[np.random.choice(np.arange(knn_indices.shape[0]), size = int(0.5 * knn_indices.shape[0]), replace = False)] = True
+training_cell = (1 - query_cell).astype(np.bool)
+query_label = np.concatenate(labels)[query_cell]
+training_label = np.concatenate(labels)[training_cell]
+
+# NOTE: KNN graph should be constructed between train and query cells. We should have n_neighbors train cells around each query cell, and then vote
+# however, the pre-reconstructed knn graph for scMoMaT and MultiMap find n_neighbors from all cells (train+query), it's hard to modify pre-reconstructed graph to match the requirement.
+# We use the pre-reconstructed graph directly and ignore the query cells when voting, to methods still have the same number of n_neighbors
+# scmomat
+knn_graph = np.zeros((knn_indices.shape[0], knn_indices.shape[0]))
+knn_graph[np.arange(knn_indices.shape[0])[:, None], knn_indices] = 1
+knn_graph = knn_graph[query_cell, :][:, training_cell]
+lta_scmomat = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, knn_graph = knn_graph)
+
+# Seurat
+lta_seurat = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate(seurat_pcas, axis = 0)[query_cell,:],
+                                  z_train = np.concatenate(seurat_pcas, axis = 0)[training_cell,:])
+
+# Liger
+lta_liger = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate((H1_liger, H2_liger), axis = 0)[query_cell,:],
+                                  z_train = np.concatenate((H1_liger, H2_liger), axis = 0)[training_cell,:])
+
+# UINMF
+lta_uinmf = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate((H1_uinmf, H2_uinmf), axis = 0)[query_cell,:],
+                                  z_train = np.concatenate((H1_uinmf, H2_uinmf), axis = 0)[training_cell,:])
+
+# MultiMap
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
+knn_indices_multimap = G_multimap.argsort(axis = 1)[:, -n_neighbors:]
+knn_graph_multimap = np.zeros_like(G_multimap)
+knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
+lta_multimap = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, knn_graph = knn_graph_multimap[query_cell, :][:, training_cell])
+lt2_multimap2 = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate(X_multimaps, axis = 0)[query_cell,:],
+                                  z_train = np.concatenate(X_multimaps, axis = 0)[training_cell,:])
+
+print("Label transfer accuracy (scMoMaT): {:.3f}".format(lta_scmomat))
+print("Label transfer accuracy (Seurat): {:.3f}".format(lta_seurat))
+print("Label transfer accuracy (Liger): {:.3f}".format(lta_liger))
+print("Label transfer accuracy (UINMF): {:.3f}".format(lta_uinmf))
+print("Label transfer accuracy (MultiMap Graph): {:.3f}".format(lta_multimap))
+print("Label transfer accuracy (MultiMap): {:.3f}".format(lt2_multimap2))
+
 
 scores = pd.DataFrame(columns = ["methods", "resolution", "NMI", "ARI", "GC"])
 scores["NMI"] = np.array(nmi_scmomat + nmi_seurat + nmi_liger + nmi_uinmf + nmi_multimap)
 scores["ARI"] = np.array(ari_scmomat + ari_seurat + ari_liger + ari_uinmf + ari_multimap)
 scores["GC"] = np.array([gc_scmomat] * len(nmi_scmomat) + [gc_seurat] * len(nmi_seurat) + [gc_liger] * len(nmi_liger) + [gc_uinmf] * len(nmi_uinmf) + [gc_multimap] * len(nmi_multimap))
+scores["LTA"] = np.array([lta_scmomat] * len(nmi_scmomat) + [lta_seurat] * len(nmi_seurat) + [lta_liger] * len(nmi_liger) + [lta_uinmf] * len(nmi_uinmf) + [lta_multimap] * len(ari_multimap))
 scores["resolution"] = np.array([x for x in np.arange(0.1, 10, 0.5)] * 5)
 scores["methods"] = np.array(["scMoMaT"] * len(nmi_scmomat) + ["Seurat"] * len(nmi_seurat) + ["Liger"] * len(nmi_liger) + ["UINMF"] * len(nmi_uinmf) + ["MultiMap"] * len(nmi_multimap))
-scores.to_csv(result_dir + "score2.csv")
-
-
-# In[]
-# # score for the original post-processing
-# scores = pd.read_csv(result_dir + "score.csv")
-# # score for post_nn_distance
-# scores1 = pd.read_csv(result_dir + "score1.csv")
-# score for post_nn_distance2
-scores2 = pd.read_csv(result_dir + "score2.csv", index_col = 0)
-# print("GC (scMoMaT) postprocess ori: {:.4f}".format(np.max(scores.loc[scores["methods"] == "scMoMaT", "GC"].values)))
-# print("NMI (scMoMaT) postprocess ori: {:.4f}".format(np.max(scores.loc[scores["methods"] == "scMoMaT", "NMI"].values)))
-# print("ARI (scMoMaT) postprocess ori: {:.4f}".format(np.max(scores.loc[scores["methods"] == "scMoMaT", "ARI"].values)))
-
-# print("GC (scMoMaT) postprocess 1: {:.4f}".format(np.max(scores1.loc[scores["methods"] == "scMoMaT", "GC"].values)))
-# print("NMI (scMoMaT) postprocess 1: {:.4f}".format(np.max(scores1.loc[scores["methods"] == "scMoMaT", "NMI"].values)))
-# print("ARI (scMoMaT) postprocess 1: {:.4f}".format(np.max(scores1.loc[scores["methods"] == "scMoMaT", "ARI"].values)))
-
-print("GC (scMoMaT) postprocess 2: {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "scMoMaT", "GC"].values)))
-print("NMI (scMoMaT) postprocess 2: {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "scMoMaT", "NMI"].values)))
-print("ARI (scMoMaT) postprocess 2: {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "scMoMaT", "ARI"].values)))
-
-print("GC (UINMF): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "UINMF", "GC"].values)))
-print("NMI (UINMF): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "UINMF", "NMI"].values)))
-print("ARI (UINMF): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "UINMF", "ARI"].values)))
-
-print("GC (MultiMap): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "MultiMap", "GC"].values)))
-print("NMI (MultiMap): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "MultiMap", "NMI"].values)))
-print("ARI (MultiMap): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "MultiMap", "ARI"].values)))
-
-print("GC (LIGER): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Liger", "GC"].values)))
-print("NMI (LIGER): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Liger", "NMI"].values)))
-print("ARI (LIGER): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Liger", "ARI"].values)))
-
-print("GC (Seurat): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Seurat", "GC"].values)))
-print("NMI (Seurat): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Seurat", "NMI"].values)))
-print("ARI (Seurat): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Seurat", "ARI"].values)))
-
-# performance not good
-# scores2 = pd.read_csv(result_dir + "score2_2.csv", index_col = 0)
-# print("GC (scMoMaT) postprocess 2: {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "scMoMaT", "GC"].values)))
-# print("NMI (scMoMaT) postprocess 2: {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "scMoMaT", "NMI"].values)))
-# print("ARI (scMoMaT) postprocess 2: {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "scMoMaT", "ARI"].values)))
-
-# print("GC (UINMF): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "UINMF", "GC"].values)))
-# print("NMI (UINMF): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "UINMF", "NMI"].values)))
-# print("ARI (UINMF): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "UINMF", "ARI"].values)))
-
-# print("GC (MultiMap): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "MultiMap", "GC"].values)))
-# print("NMI (MultiMap): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "MultiMap", "NMI"].values)))
-# print("ARI (MultiMap): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "MultiMap", "ARI"].values)))
-
-# print("GC (LIGER): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Liger", "GC"].values)))
-# print("NMI (LIGER): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Liger", "NMI"].values)))
-# print("ARI (LIGER): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Liger", "ARI"].values)))
-
-# print("GC (Seurat): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Seurat", "GC"].values)))
-# print("NMI (Seurat): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Seurat", "NMI"].values)))
-# print("ARI (Seurat): {:.4f}".format(np.max(scores2.loc[scores2["methods"] == "Seurat", "ARI"].values)))
+scores.to_csv(result_dir + "score.csv")
 
 # In[]
 # GC
@@ -508,7 +491,7 @@ def show_values_on_bars(axs):
     else:
         _show_on_single_plot(axs)
 
-score = pd.read_csv(result_dir + "score2.csv")
+score = pd.read_csv(result_dir + "score.csv")
 gc_scmomat = np.max(score.loc[score["methods"] == "scMoMaT", "GC"].values)
 gc_uinmf = np.max(score.loc[score["methods"] == "UINMF", "GC"].values)
 gc_multimap = np.max(score.loc[score["methods"] == "MultiMap", "GC"].values)
@@ -572,6 +555,27 @@ _ = ax.set_ylabel("ARI", fontsize = 20)
 show_values_on_bars(ax)
 fig.savefig(result_dir + "ARI.png", bbox_inches = "tight")    
 
+# LTA
+lta_scmomat = np.max(scores.loc[scores["methods"] == "scMoMaT", "LTA"].values)
+lta_uinmf = np.max(scores.loc[scores["methods"] == "UINMF", "LTA"].values)
+lta_multimap = np.max(scores.loc[scores["methods"] == "MultiMap", "LTA"].values)
+lta_liger = np.max(scores.loc[scores["methods"] == "Liger", "LTA"].values)
+
+fig = plt.figure(figsize = (7,5))
+ax = fig.add_subplot()
+barlist = ax.bar([1,2,3,4], [lta_scmomat, lta_uinmf, lta_multimap, lta_liger], width = 0.4)
+barlist[0].set_color('r')    
+
+ax.tick_params(axis='x', labelsize=15)
+ax.tick_params(axis='y', labelsize=15)
+ax.set_title("LTA", fontsize = 20)
+_ = ax.set_xticks([1,2,3,4])
+_ = ax.set_xticklabels(["scMoMaT", "UINMF", "MultiMap", "Liger"])
+# _ = ax.set_xlabel("cluster", fontsize = 20)
+_ = ax.set_ylabel("LTA", fontsize = 20)
+show_values_on_bars(ax)
+fig.savefig(result_dir + "LTA.png", bbox_inches = "tight")    
+
 
 # In[] 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -589,13 +593,13 @@ for batch in range(1, n_batches+1):
     labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch) + '.csv'), index_col=0)["BioClassification"].values.squeeze())
     
     try:
-        counts_atac = np.array(sp.load_npz(os.path.join(dir, 'RxC' + str(batch) + ".npz")).todense().T)
+        counts_atac = sp.load_npz(os.path.join(dir, 'RxC' + str(batch) + ".npz")).toarray().T
         counts_atac = utils.preprocess(counts_atac, modality = "ATAC")   
     except:
         counts_atac = None
         
     try:
-        counts_rna = np.array(sp.load_npz(os.path.join(dir, 'GxC' + str(batch) + ".npz")).todense().T)
+        counts_rna = sp.load_npz(os.path.join(dir, 'GxC' + str(batch) + ".npz")).toarray().T
         counts_rna = utils.preprocess(counts_rna, modality = "RNA", log = False)
     except:
         counts_rna = None
@@ -617,8 +621,7 @@ for batch in range(1, n_batches+1):
 
 counts = {"rna":counts_rnas, "atac": counts_atacs, "motif": counts_motifs}
 
-A = sp.load_npz(os.path.join(dir, 'GxR.npz'))
-A = np.array(A.todense())
+A = sp.load_npz(os.path.join(dir, 'GxR.npz')).toarray()
 interacts = None
 
 genes = pd.read_csv(dir + "genes.txt", header = None).values.squeeze()
@@ -657,7 +660,7 @@ for mod in model2.mods:
 
 # In[]
 C_gene = C_feats["rna"]
-utils.plot_feat_score(C_gene, n_feats = 20, figsize= (15,20), save_as = result_dir + "C_gene.png", title = None)
+utils.plot_feat_score(C_gene, n_feats = 20, figsize= (15,30), save_as = result_dir + "C_gene.png", title = None)
 
 C_motif = C_feats["motif"]
 utils.plot_feat_score(C_motif, n_feats = 20, figsize= (20,30), save_as = result_dir + "C_motif.png", title = None)

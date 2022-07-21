@@ -44,8 +44,9 @@ def lsi(counts):
 #
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
 # NOTE: read in dataset
-dir = "../data/simulated/6b16c_test_1_large/unequal2/"
-result_dir = "simulated/6b16c_1_large2_2"
+# dir = "../data/_simulated/6b16c_test_2_large/unequal2/"
+dir = "../data/simulated/6b16c_test_9/unequal/"
+result_dir = "simulated/6b16c_test_9/scenario2"
 scmomat_dir = result_dir + "/scmomat/"
 
 if not os.path.exists(scmomat_dir):
@@ -88,20 +89,25 @@ for batch in range(n_batches):
 
 counts = {"rna":counts_rnas, "atac": counts_atacs}
 
-# # diagonal integration
-# counts["rna"][0] = None
-# counts["rna"][1] = None
-# counts["rna"][2] = None
-# counts["atac"][3] = None 
-# counts["atac"][4] = None
-# counts["atac"][5] = None
-
-# diagonal with partial shared
-counts["rna"][0] = None
-counts["rna"][1] = None
-counts["rna"][2] = None
-counts["atac"][4] = None
-counts["atac"][5] = None
+if result_dir[-1] == "1":
+    print("scenario1")
+    # NOTE: SCENARIO 1: diagonal integration
+    counts["rna"][0] = None
+    counts["rna"][1] = None
+    counts["rna"][2] = None
+    counts["atac"][3] = None 
+    counts["atac"][4] = None
+    counts["atac"][5] = None
+elif result_dir[-1] == "2":
+    print("scenario2")
+    # NOTE: SCENARIO 2: diagonal with partial shared
+    counts["rna"][0] = None
+    counts["rna"][1] = None
+    counts["rna"][2] = None
+    counts["atac"][4] = None
+    counts["atac"][5] = None
+else:
+    assert False
 
 # No need for pseudo-count matrix
 A = np.loadtxt(os.path.join(dir, 'region2gene.txt'), delimiter = "\t").T
@@ -166,17 +172,18 @@ interval = 1000
 T = 4000
 lr = 1e-2
 
-start_time = time.time()
-model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
-losses1 = model1.train_func(T = T)
-end_time = time.time()
-print("running time: " + str(end_time - start_time))
+# start_time = time.time()
+# model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
+# losses1 = model1.train_func(T = T)
+# end_time = time.time()
+# print("running time: " + str(end_time - start_time))
 
-x = np.linspace(0, T, int(T/interval)+1)
-plt.plot(x, losses1)
+# x = np.linspace(0, T, int(T/interval)+1)
+# plt.plot(x, losses1)
+# plt.yscale("log")
 
 # torch.save(model1, scmomat_dir + f'CFRM_{K}_{T}.pt')
-# model1 = torch.load(scmomat_dir + f'CFRM_{K}_{T}.pt')
+model1 = torch.load(scmomat_dir + f'CFRM_{K}_{T}.pt')
 
 # # In[] Sanity check, the scales should be positive, A_assos should also be positive
 # for mod in model1.A_assos.keys():
@@ -357,7 +364,7 @@ utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "joint", save = uinmf_
 multimap_path = result_dir + "/multimap/"
 batches = pd.read_csv(multimap_path + "batch_id.csv", index_col = 0)
 X_multimap = np.load(multimap_path + "multimap.npy")
-G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").todense()
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
 X_multimaps = []
 for batch in ["C1", "C2", "C3", "C4", "C5", "C6"]:
     X_multimaps.append(X_multimap[batches.values.squeeze() == batch, :])
@@ -374,11 +381,13 @@ utils.plot_latent_ext(X_multimaps, annos = labels, mode = "joint", save = multim
 
 
 # In[]
-n_neighbors = 30
+n_neighbors =  knn_indices.shape[1]
 # graph connectivity score (gc) measure the batch effect removal per cell identity
 # 1. scMoMaT
-gc_scmomat = bmk.graph_connectivity(X = np.concatenate(zs, axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
-print('GC (scMoMaT): {:.3f}'.format(gc_scmomat))
+knn_graph = np.zeros((knn_indices.shape[0], knn_indices.shape[0]))
+knn_graph[np.arange(knn_indices.shape[0])[:, None], knn_indices] = 1
+gc_scmomat = bmk.graph_connectivity(G = knn_graph, groups = np.concatenate(labels, axis = 0))
+print('GC (scmomat): {:.3f}'.format(gc_scmomat))
 
 # 2. UINMF
 gc_uinmf = bmk.graph_connectivity(X = np.concatenate((H1_uinmf, H2_uinmf, H3_uinmf, H4_uinmf, H5_uinmf, H6_uinmf), axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
@@ -389,8 +398,10 @@ print('GC (UINMF): {:.3f}'.format(gc_uinmf))
 # print('GC (LIGER): {:.3f}'.format(gc_liger))
 
 # 3. Multimap
-G_multimap[G_multimap == 0] = np.inf
-knn_indices_multimap = G_multimap.argsort(axis = 1)[:, :n_neighbors]
+# NOTE: G_multimap is an affinity graph, closer neighbor with larger value
+# argsort from small to large, select the last n_neighbors
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
+knn_indices_multimap = G_multimap.argsort(axis = 1)[:, -n_neighbors:]
 knn_graph_multimap = np.zeros_like(G_multimap)
 knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
 gc_multimap = bmk.graph_connectivity(G = knn_graph_multimap, groups = np.concatenate(labels, axis = 0), k = n_neighbors)
@@ -405,8 +416,8 @@ print('GC (MultiMap): {:.3f}'.format(gc_multimap2))
 nmi_scmomat = []
 ari_scmomat = []
 for resolution in np.arange(0.1, 10, 0.5):
-    # leiden_labels_scjmt = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
-    leiden_labels_smomat = utils.leiden_cluster(X = np.concatenate(zs, axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
+    # use the post-processed graph
+    leiden_labels_smomat = utils.leiden_cluster(X = None, knn_indices = knn_indices, knn_dists = knn_dists, resolution = resolution)
     nmi_scmomat.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_smomat))
     ari_scmomat.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_smomat))
 print('NMI (scMoMaT): {:.3f}'.format(max(nmi_scmomat)))
@@ -433,17 +444,55 @@ print('ARI (UINMF): {:.3f}'.format(max(ari_uinmf)))
 # print('ARI (LIGER): {:.3f}'.format(max(ari_liger)))
 
 # 3. Multimap
-G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").todense()
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
 nmi_multimap = []
 ari_multimap = []
 for resolution in np.arange(0.1, 10, 0.5):
     # leiden_labels_seurat = utils.leiden_cluster(X = np.concatenate(seurat_pcas, axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
-    # Multimap state to use graph for clustering
+    # Multimap state to use graph for clustering, leiden cluster the same as multimap tutorial [Checked]
     leiden_labels_multimap = utils.leiden_cluster(affin = G_multimap, resolution = resolution)
     nmi_multimap.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_multimap))
     ari_multimap.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_multimap))
 print('NMI (MultiMap): {:.3f}'.format(max(nmi_multimap)))
 print('ARI (MultiMap): {:.3f}'.format(max(ari_multimap)))
+
+# Label transfer accuracy
+# randomly select a half of cells as query
+np.random.seed(0)
+query_cell = np.array([False] * knn_indices.shape[0])
+query_cell[np.random.choice(np.arange(knn_indices.shape[0]), size = int(0.5 * knn_indices.shape[0]), replace = False)] = True
+training_cell = (1 - query_cell).astype(np.bool)
+query_label = np.concatenate(labels)[query_cell]
+training_label = np.concatenate(labels)[training_cell]
+
+# NOTE: KNN graph should be constructed between train and query cells. We should have n_neighbors train cells around each query cell, and then vote
+# however, the pre-reconstructed knn graph for scMoMaT and MultiMap find n_neighbors from all cells (train+query), it's hard to modify pre-reconstructed graph to match the requirement.
+# We use the pre-reconstructed graph directly and ignore the query cells when voting, to methods still have the same number of n_neighbors
+# scmomat
+knn_graph = np.zeros((knn_indices.shape[0], knn_indices.shape[0]))
+knn_graph[np.arange(knn_indices.shape[0])[:, None], knn_indices] = 1
+knn_graph = knn_graph[query_cell, :][:, training_cell]
+lta_scmomat = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, knn_graph = knn_graph)
+
+# UINMF
+lta_uinmf = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate((H1_uinmf, H2_uinmf, H3_uinmf, H4_uinmf, H5_uinmf, H6_uinmf), axis = 0)[query_cell,:],
+                                  z_train = np.concatenate((H1_uinmf, H2_uinmf, H3_uinmf, H4_uinmf, H5_uinmf, H6_uinmf), axis = 0)[training_cell,:])
+
+# MultiMap
+G_multimap = sp.load_npz(multimap_path + "multimap_graph.npz").toarray()
+knn_indices_multimap = G_multimap.argsort(axis = 1)[:, -n_neighbors:]
+knn_graph_multimap = np.zeros_like(G_multimap)
+knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
+lta_multimap = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, knn_graph = knn_graph_multimap[query_cell, :][:, training_cell])
+lt2_multimap2 = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate(X_multimaps, axis = 0)[query_cell,:],
+                                  z_train = np.concatenate(X_multimaps, axis = 0)[training_cell,:])
+
+print("Label transfer accuracy (scMoMaT): {:.3f}".format(lta_scmomat))
+print("Label transfer accuracy (UINMF): {:.3f}".format(lta_uinmf))
+print("Label transfer accuracy (MultiMap Graph): {:.3f}".format(lta_multimap))
+print("Label transfer accuracy (MultiMap): {:.3f}".format(lt2_multimap2))
 
 # scores = pd.DataFrame(columns = ["methods", "resolution", "NMI", "ARI", "GC"])
 # scores["NMI"] = np.array(nmi_scmomat + nmi_uinmf + nmi_liger + nmi_multimap)
@@ -453,115 +502,146 @@ print('ARI (MultiMap): {:.3f}'.format(max(ari_multimap)))
 # scores["methods"] = np.array(["scMoMaT"] * len(nmi_scmomat) + ["UINMF"] * len(nmi_uinmf) + ["LIGER"] * len(nmi_liger) + ["MultiMap"] * len(ari_multimap))
 
 # NO LIGER
-scores = pd.DataFrame(columns = ["methods", "resolution", "NMI", "ARI", "GC"])
+scores = pd.DataFrame(columns = ["methods", "resolution", "NMI", "ARI", "GC", "LTA"])
 scores["NMI"] = np.array(nmi_scmomat + nmi_uinmf + nmi_multimap)
 scores["ARI"] = np.array(ari_scmomat + ari_uinmf + ari_multimap)
 scores["GC"] = np.array([gc_scmomat] * len(nmi_scmomat) + [gc_uinmf] * len(nmi_uinmf) + [gc_multimap] * len(ari_multimap))
+scores["LTA"] = np.array([lta_scmomat] * len(nmi_scmomat) + [lta_uinmf] * len(nmi_uinmf) + [lta_multimap] * len(ari_multimap))
 scores["resolution"] = np.array([x for x in np.arange(0.1, 10, 0.5)] * 3)
 scores["methods"] = np.array(["scMoMaT"] * len(nmi_scmomat) + ["UINMF"] * len(nmi_uinmf) + ["MultiMap"] * len(ari_multimap))
 
-scores.to_csv(result_dir + "score.csv")
+scores.to_csv(result_dir + "/score.csv")
 
 # In[]
 nmi_scmomat = []
 ari_scmomat = []
 gc_scmomat = []
+lta_scmomat = []
 nmi_uinmf = []
 ari_uinmf = []
 gc_uinmf = []
+lta_uinmf = []
 nmi_liger = []
 ari_liger = []
 gc_liger = []
+lta_liger = []
 nmi_multimap = []
 ari_multimap = []
 gc_multimap = []
+lta_multimap = []
 # for seed in [1,2,3,4,9]:
+# ARI higher: 2, 3, 9
 for seed in [1,2,3,4,5,6,7,9]:
-    result_dir = f'simulated/6b16c_{seed}_large2_1'
+    result_dir = f'simulated/6b16c_test_{seed}/scenario1/'
     scores = pd.read_csv(result_dir + "score.csv", index_col = 0)
     scores_scmomat = scores[scores["methods"] == "scMoMaT"]
     scores_uinmf = scores[scores["methods"] == "UINMF"]
-    scores_liger = scores[scores["methods"] == "LIGER"]
+    # scores_liger = scores[scores["methods"] == "LIGER"]
     scores_multimap = scores[scores["methods"] == "MultiMap"]
+    
     nmi_scmomat.append(np.max(scores_scmomat["NMI"].values))
     ari_scmomat.append(np.max(scores_scmomat["ARI"].values))
     gc_scmomat.append(np.max(scores_scmomat["GC"].values))
+    lta_scmomat.append(np.max(scores_scmomat["LTA"].values))
+
     nmi_uinmf.append(np.max(scores_uinmf["NMI"].values))
     ari_uinmf.append(np.max(scores_uinmf["ARI"].values))
     gc_uinmf.append(np.max(scores_uinmf["GC"].values))
-    nmi_liger.append(np.max(scores_liger["NMI"].values))
-    ari_liger.append(np.max(scores_liger["ARI"].values))
-    gc_liger.append(np.max(scores_liger["GC"].values))
+    lta_uinmf.append(np.max(scores_uinmf["LTA"].values))
+
+    # nmi_liger.append(np.max(scores_liger["NMI"].values))
+    # ari_liger.append(np.max(scores_liger["ARI"].values))
+    # gc_liger.append(np.max(scores_liger["GC"].values))
+    # lta_liger.append(np.max(scores_liger["LTA"].values))
+    
     nmi_multimap.append(np.max(scores_multimap["NMI"].values))
     ari_multimap.append(np.max(scores_multimap["ARI"].values))
     gc_multimap.append(np.max(scores_multimap["GC"].values))
+    lta_multimap.append(np.max(scores_multimap["LTA"].values))
 
 new_score = pd.DataFrame()
-new_score["method"] = ["scMoMaT"] * len(ari_scmomat) + ["MultiMap"] * len(ari_multimap) + ["UINMF"] * len(ari_uinmf) + ["LIGER"] * len(ari_liger)
-new_score["ARI"] = ari_scmomat + ari_multimap + ari_uinmf + ari_liger
-new_score["NMI"] = nmi_scmomat + nmi_multimap + nmi_uinmf + nmi_liger
-new_score["GC"] = gc_scmomat + gc_multimap + gc_uinmf + gc_liger
+new_score["method"] = ["scMoMaT"] * len(ari_scmomat) + ["MultiMap"] * len(ari_multimap) + ["UINMF"] * len(ari_uinmf) #+ ["LIGER"] * len(ari_liger)
+new_score["ARI"] = ari_scmomat + ari_multimap + ari_uinmf #+ ari_liger
+new_score["NMI"] = nmi_scmomat + nmi_multimap + nmi_uinmf #+ nmi_liger
+new_score["GC"] = gc_scmomat + gc_multimap + gc_uinmf #+ gc_liger
+new_score["LTA"] = lta_scmomat + lta_multimap + lta_uinmf #+ lta_liger
+
 
 import seaborn as sns
 plt.rcParams["font.size"] = 20
-fig = plt.figure(figsize = (20, 7))
-ax = fig.subplots(nrows = 1, ncols = 3)
+fig = plt.figure(figsize = (25, 7))
+ax = fig.subplots(nrows = 1, ncols = 4)
 sns.boxplot(data = new_score, x = "method", y = "GC", ax = ax[0])
 sns.boxplot(data = new_score, x = "method", y = "ARI", ax = ax[1])
 sns.boxplot(data = new_score, x = "method", y = "NMI", ax = ax[2])
+sns.boxplot(data = new_score, x = "method", y = "LTA", ax = ax[3])
 ax[0].set_title("Graph connectivity")
 ax[1].set_title("ARI")
 ax[2].set_title("NMI")
+ax[3].set_title("Lable Transfer Accuracy")
 fig.tight_layout()
-fig.savefig("simulated/scores1.png", bbox_inches = "tight")
+fig.savefig("simulated/scores_scenario1.png", bbox_inches = "tight")
     
 # In[]
 nmi_scmomat = []
 ari_scmomat = []
 gc_scmomat = []
+lta_scmomat = []
 nmi_uinmf = []
 ari_uinmf = []
 gc_uinmf = []
+lta_uinmf = []
 nmi_liger = []
 ari_liger = []
 gc_liger = []
+lta_liger = []
 nmi_multimap = []
 ari_multimap = []
 gc_multimap = []
+lta_multimap = []
 # for seed in [1,2,3,4,9]:
 for seed in [1,2,3,4,5,6,7,9]:
-    result_dir = f'simulated/6b16c_{seed}_large2_2'
-    scores = pd.read_csv(result_dir + "score.csv", index_col = 0)
+    result_dir = f'simulated/6b16c_test_{seed}/scenario2/'
+    scores = pd.read_csv(result_dir + "/score.csv", index_col = 0)
     scores_scmomat = scores[scores["methods"] == "scMoMaT"]
     scores_uinmf = scores[scores["methods"] == "UINMF"]
     scores_multimap = scores[scores["methods"] == "MultiMap"]
+
     nmi_scmomat.append(np.max(scores_scmomat["NMI"].values))
     ari_scmomat.append(np.max(scores_scmomat["ARI"].values))
     gc_scmomat.append(np.max(scores_scmomat["GC"].values))
+    lta_scmomat.append(np.max(scores_scmomat["LTA"].values))
+
     nmi_uinmf.append(np.max(scores_uinmf["NMI"].values))
     ari_uinmf.append(np.max(scores_uinmf["ARI"].values))
     gc_uinmf.append(np.max(scores_uinmf["GC"].values))
+    lta_uinmf.append(np.max(scores_uinmf["LTA"].values))
+
     nmi_multimap.append(np.max(scores_multimap["NMI"].values))
     ari_multimap.append(np.max(scores_multimap["ARI"].values))
     gc_multimap.append(np.max(scores_multimap["GC"].values))
+    lta_multimap.append(np.max(scores_multimap["LTA"].values))
 
 new_score = pd.DataFrame()
 new_score["method"] = ["scMoMaT"] * len(ari_scmomat) + ["MultiMap"] * len(ari_multimap) + ["UINMF"] * len(ari_uinmf)
 new_score["ARI"] = ari_scmomat + ari_multimap + ari_uinmf
 new_score["NMI"] = nmi_scmomat + nmi_multimap + nmi_uinmf
 new_score["GC"] = gc_scmomat + gc_multimap + gc_uinmf
+new_score["LTA"] = lta_scmomat + lta_multimap + lta_uinmf
 
 import seaborn as sns
 plt.rcParams["font.size"] = 20
-fig = plt.figure(figsize = (20, 7))
-ax = fig.subplots(nrows = 1, ncols = 3)
+fig = plt.figure(figsize = (25, 7))
+ax = fig.subplots(nrows = 1, ncols = 4)
 sns.boxplot(data = new_score, x = "method", y = "GC", ax = ax[0])
 sns.boxplot(data = new_score, x = "method", y = "ARI", ax = ax[1])
 sns.boxplot(data = new_score, x = "method", y = "NMI", ax = ax[2])
+sns.boxplot(data = new_score, x = "method", y = "LTA", ax = ax[3])
 ax[0].set_title("Graph connectivity")
 ax[1].set_title("ARI")
 ax[2].set_title("NMI")
+ax[3].set_title("Lable Transfer Accuracy")
 fig.tight_layout()
-fig.savefig("simulated/scores2.png", bbox_inches = "tight")
+fig.savefig("simulated/scores_scenario2.png", bbox_inches = "tight")
 
 # %%

@@ -9,10 +9,7 @@ from sklearn.metrics.cluster import adjusted_rand_score
 from sklearn.metrics.cluster import normalized_mutual_info_score
 from sklearn.metrics.cluster import silhouette_samples, silhouette_score
 from scipy.sparse.csgraph import connected_components
-from sklearn.neighbors import NearestNeighbors, kneighbors_graph
-from sklearn.decomposition import NMF
-import matplotlib.pyplot as plt
-
+from sklearn.neighbors import KNeighborsClassifier, kneighbors_graph
 
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
@@ -21,7 +18,40 @@ import matplotlib.pyplot as plt
 #
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
-
+########################################################################################
+#
+# LABEL Trasfer accuracy from SCOT(https://github.com/rsinghlab/SCOT/blob/master/src/evals.py)
+#
+########################################################################################
+def transfer_accuracy(query_label, train_label, n = 30, z_query = None, z_train = None, knn_graph = None):
+    """
+    Label transfer accuracy
+    Parameter:
+    ----------
+        knn_indices is a (n_query, n_train) matrix
+    """
+    if knn_graph is not None:
+        n_query = knn_graph.shape[0]
+        n_train = knn_graph.shape[1]
+        assert len(query_label) == n_query
+        assert len(train_label) == n_train
+        count = 0
+        for i_query in range(n_query):
+            neighs = np.where(knn_graph[i_query, :] != 0)[0]
+            neigh_labels, neigh_votes = np.unique(train_label[neighs], return_counts = True)
+            query_predict = neigh_labels[np.argmax(neigh_votes)]
+            if query_predict == query_label[i_query]:
+                count += 1
+    else:
+        knn = KNeighborsClassifier(n_neighbors=n)
+        knn.fit(z_train, train_label)
+        query_predict = knn.predict(z_query)
+        # np.savetxt("query_predict.txt", query_predict)
+        count = 0
+        for label1, label2 in zip(query_predict, query_label):
+            if label1 == label2:
+                count += 1
+    return count / len(query_label)
 
 ########################################################################################
 #

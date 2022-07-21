@@ -270,8 +270,8 @@ x = np.linspace(0, T, int(T/interval)+1)
 plt.plot(x, losses1)
 
 # save the model
-# torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
-# model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
+torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
+model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
 # In[] Sanity check, the scales should be positive, A_assos should also be positive
 for mod in model1.A_assos.keys():
     if mod != "shared":
