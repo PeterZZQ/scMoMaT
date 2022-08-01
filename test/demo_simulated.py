@@ -44,9 +44,8 @@ def lsi(counts):
 #
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
 # NOTE: read in dataset
-# dir = "../data/_simulated/6b16c_test_2_large/unequal2/"
-dir = "../data/simulated/6b16c_test_9/unequal/"
-result_dir = "simulated/6b16c_test_9/scenario2"
+dir = "../data/simulated/6b16c_test_1/unequal/"
+result_dir = "simulated/6b16c_test_1/scenario1"
 scmomat_dir = result_dir + "/scmomat/"
 
 if not os.path.exists(scmomat_dir):
@@ -274,7 +273,7 @@ for batch in range(n_batches):
 
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "separate", save = scmomat_dir + f'latent_separate_{K}_{T}_processed.png', 
-                      figsize = (7,20), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, alpha = 0.7, text_size = "x-large")
+                      figsize = (7,20), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7, text_size = "x-large")
 
 utils.plot_latent_ext(x_umaps, annos = labels, mode = "joint", save = scmomat_dir + f'latent_joint_{K}_{T}_processed.png', 
                       figsize = (7,5), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, alpha = 0.7, text_size = "x-large")
@@ -318,7 +317,7 @@ for batch in range(n_batches):
         uinmf_umaps.append(uinmf_umap[start_pointer:end_pointer,:])
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "separate", save = uinmf_path + f'latent_separate_uinmf.png', 
-                      figsize = (7,20), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, text_size = "large", alpha = 0.7)
+                      figsize = (7,20), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", alpha = 0.7)
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "modality", save = uinmf_path + f'latent_batches_uinmf.png', 
                       figsize = (7,5), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, text_size = "large", alpha = 0.7)
@@ -371,7 +370,7 @@ for batch in ["C1", "C2", "C3", "C4", "C5", "C6"]:
 
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "separate", save = multimap_path + f'latent_separate_multimap.png', 
-                      figsize = (7,20), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, alpha = 0.7, text_size = "x-large")
+                      figsize = (7,20), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7, text_size = "x-large")
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "modality", save = multimap_path + f'latent_batches_multimap.png', 
                       figsize = (7,5), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = False, alpha = 0.7, text_size = "x-large")
@@ -569,7 +568,7 @@ new_score["LTA"] = lta_scmomat + lta_multimap + lta_uinmf #+ lta_liger
 
 import seaborn as sns
 plt.rcParams["font.size"] = 20
-fig = plt.figure(figsize = (25, 7))
+fig = plt.figure(figsize = (21, 5))
 ax = fig.subplots(nrows = 1, ncols = 4)
 sns.boxplot(data = new_score, x = "method", y = "GC", ax = ax[0])
 sns.boxplot(data = new_score, x = "method", y = "ARI", ax = ax[1])
@@ -631,7 +630,7 @@ new_score["LTA"] = lta_scmomat + lta_multimap + lta_uinmf
 
 import seaborn as sns
 plt.rcParams["font.size"] = 20
-fig = plt.figure(figsize = (25, 7))
+fig = plt.figure(figsize = (21, 5))
 ax = fig.subplots(nrows = 1, ncols = 4)
 sns.boxplot(data = new_score, x = "method", y = "GC", ax = ax[0])
 sns.boxplot(data = new_score, x = "method", y = "ARI", ax = ax[1])

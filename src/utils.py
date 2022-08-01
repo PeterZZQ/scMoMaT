@@ -467,7 +467,7 @@ def plot_factor(C_feats, markers, cluster = 0, figsize = (10,20)):
             _ = axs[marker%nrows, marker//nrows].set_xticklabels(clusts)
             _ = axs[marker%nrows, marker//nrows].set_xlabel("cluster", fontsize = 20)
             _ = axs[marker%nrows, marker//nrows].set_ylabel("factor value", fontsize = 20)
-        
+            axs[marker%nrows, marker//nrows].ticklabel_format(axis="y", style="sci", scilimits=(0,0))
         elif nrows == 1 and ncols == 1:
             barlist = axs.bar(np.arange(C_feats.shape[1]), x)
             if isinstance(cluster, list):
@@ -483,7 +483,8 @@ def plot_factor(C_feats, markers, cluster = 0, figsize = (10,20)):
             _ = axs.set_xticklabels(clusts)
             _ = axs.set_xlabel("cluster", fontsize = 20)
             _ = axs.set_ylabel("factor value", fontsize = 20)
-        
+            axs.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
+
         else:
             barlist = axs[marker].bar(np.arange(C_feats.shape[1]), x)
             if isinstance(cluster, list):
@@ -499,8 +500,9 @@ def plot_factor(C_feats, markers, cluster = 0, figsize = (10,20)):
             _ = axs[marker].set_xticklabels(clusts)
             _ = axs[marker].set_xlabel("cluster", fontsize = 20)
             _ = axs[marker].set_ylabel("factor value", fontsize = 20)
+            axs[marker].ticklabel_format(axis="y", style="sci", scilimits=(0,0))
+
     plt.tight_layout()
-    plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
     return fig
 
 # ----------------------------------------------------- # 

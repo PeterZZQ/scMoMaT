@@ -556,10 +556,10 @@ show_values_on_bars(ax)
 fig.savefig(result_dir + "ARI.png", bbox_inches = "tight")    
 
 # LTA
-lta_scmomat = np.max(scores.loc[scores["methods"] == "scMoMaT", "LTA"].values)
-lta_uinmf = np.max(scores.loc[scores["methods"] == "UINMF", "LTA"].values)
-lta_multimap = np.max(scores.loc[scores["methods"] == "MultiMap", "LTA"].values)
-lta_liger = np.max(scores.loc[scores["methods"] == "Liger", "LTA"].values)
+lta_scmomat = np.max(score.loc[score["methods"] == "scMoMaT", "LTA"].values)
+lta_uinmf = np.max(score.loc[score["methods"] == "UINMF", "LTA"].values)
+lta_multimap = np.max(score.loc[score["methods"] == "MultiMap", "LTA"].values)
+lta_liger = np.max(score.loc[score["methods"] == "Liger", "LTA"].values)
 
 fig = plt.figure(figsize = (7,5))
 ax = fig.add_subplot()
@@ -648,9 +648,9 @@ lamb = 0.01
 
 # the leiden label is the one produced by the best resolution
 model2 = model.scmomat_retrain(model = model1, counts =  counts, labels = leiden_labels, lamb = lamb, device = device)
-losses = model2.train(T = 2000)
+losses = model2.train(T = 4000)
 
-x = np.linspace(0, 2000, int(2000/interval) + 1)
+x = np.linspace(0, 4000, int(4000/interval) + 1)
 plt.plot(x, losses)
 
 C_feats = {}
@@ -660,10 +660,10 @@ for mod in model2.mods:
 
 # In[]
 C_gene = C_feats["rna"]
-utils.plot_feat_score(C_gene, n_feats = 20, figsize= (15,30), save_as = result_dir + "C_gene.png", title = None)
+utils.plot_feat_score(C_gene, n_feats = 20, figsize= (15,30), save_as = result_dir + "C_gene.pdf", title = None)
 
 C_motif = C_feats["motif"]
-utils.plot_feat_score(C_motif, n_feats = 20, figsize= (20,30), save_as = result_dir + "C_motif.png", title = None)
+utils.plot_feat_score(C_motif, n_feats = 20, figsize= (20,30), save_as = result_dir + "C_motif.pdf", title = None)
 
 C_region = C_feats["atac"]
 
@@ -674,6 +674,11 @@ C_region.to_csv(result_dir + "C_region.csv")
 C_gene = pd.read_csv(result_dir + "C_gene.csv", index_col = 0)
 C_motif = pd.read_csv(result_dir + "C_motif.csv", index_col = 0)
 C_region = pd.read_csv(result_dir + "C_region.csv", index_col = 0)
+
+# TODO: normalize between 0 and 1
+C_gene.values[:] = C_gene.values/np.sum(C_gene.values, axis = 0, keepdims = True)
+C_motif.values[:] = C_motif.values/np.sum(C_motif.values, axis = 0, keepdims = True)
+C_region.values[:] = C_region.values/np.sum(C_region.values, axis = 0, keepdims = True)
 
 
 # In[] 

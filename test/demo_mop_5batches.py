@@ -260,17 +260,17 @@ interval = 1000
 T = 4000
 lr = 1e-2
 
-start_time = time.time()
-model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
-losses1 = model1.train_func(T = T)
-end_time = time.time()
-print("running time: " + str(end_time - start_time))
+# start_time = time.time()
+# model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
+# losses1 = model1.train_func(T = T)
+# end_time = time.time()
+# print("running time: " + str(end_time - start_time))
 
-x = np.linspace(0, T, int(T/interval)+1)
-plt.plot(x, losses1)
+# x = np.linspace(0, T, int(T/interval)+1)
+# plt.plot(x, losses1)
 
 # save the model
-torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
+# torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
 model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
 # In[] Sanity check, the scales should be positive, A_assos should also be positive
 for mod in model1.A_assos.keys():
@@ -447,9 +447,9 @@ lamb = 0.01
 
 # the leiden label is the one produced by the best resolution
 model2 = model.scmomat_retrain(model = model1, counts =  counts, labels = leiden_labels, lamb = lamb, device = device)
-losses = model2.train(T = 2000)
+losses = model2.train(T = 4000)
 
-x = np.linspace(0, 2000, int(2000/interval) + 1)
+x = np.linspace(0, 4000, int(4000/interval) + 1)
 plt.plot(x, losses)
 
 C_feats = {}
@@ -474,8 +474,10 @@ C_gene = pd.read_csv(result_dir + "C_gene.csv", index_col = 0)
 C_motif = pd.read_csv(result_dir + "C_motif.csv", index_col = 0)
 C_region = pd.read_csv(result_dir + "C_region.csv", index_col = 0)
 
-# import seaborn as sns
-# sns.clustermap(data = C_gene)
+# TODO: normalize between 0 and 1
+C_gene.values[:] = C_gene.values/np.sum(C_gene.values, axis = 0, keepdims = True)
+C_motif.values[:] = C_motif.values/np.sum(C_motif.values, axis = 0, keepdims = True)
+C_region.values[:] = C_region.values/np.sum(C_region.values, axis = 0, keepdims = True)
 
 
 # In[] 
@@ -524,7 +526,7 @@ def plot_factor(C_feats, markers, cluster1 = 0, cluster2 = 0, figsize = (10,20))
             labels = list(colors.keys())
             handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
             axs[marker%nrows, marker//nrows].legend(handles, labels, loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
-        
+            axs[marker%nrows, marker//nrows].ticklabel_format(axis="y", style="sci", scilimits=(0,0))
         elif nrows == 1 and ncols == 1:
             barlist = axs.bar(np.arange(C_feats.shape[1]), x)
             if isinstance(cluster1, list):
@@ -549,7 +551,8 @@ def plot_factor(C_feats, markers, cluster1 = 0, cluster2 = 0, figsize = (10,20))
             labels = list(colors.keys())
             handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
             axs.legend(handles, labels, loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
-        
+            axs.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
+
         else:
             barlist = axs[marker].bar(np.arange(C_feats.shape[1]), x)
             if isinstance(cluster1, list):
@@ -574,6 +577,7 @@ def plot_factor(C_feats, markers, cluster1 = 0, cluster2 = 0, figsize = (10,20))
             labels = list(colors.keys())
             handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
             axs[marker].legend(handles, labels, loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+            axs[marker].ticklabel_format(axis="y", style="sci", scilimits=(0,0))
 
     plt.tight_layout()
     return fig
@@ -597,7 +601,7 @@ sub_dir = result_dir + "NP/"
 if not os.path.exists(sub_dir):
     os.makedirs(sub_dir)
 genes = ['Fezf2', 'Slc17a7', 'Sla2', 'Tshz2']
-fig = utils.plot_factor(C_gene, markers = genes, cluster = 7, figsize = (10,10))
+fig = utils.plot_factor(C_gene, markers = genes, cluster = 7, figsize = (10,7))
 fig.savefig(sub_dir + "marker_genes.png")
 
 # In[] Checked, Factor 1 L2/3 'Slc17a7', 'Slc30a3', 'Rfx3', 'Lamp5', 'Calb1', 'Otof'
@@ -661,8 +665,15 @@ sub_dir = result_dir + "GABAergic/"
 if not os.path.exists(sub_dir):
     os.makedirs(sub_dir)
 genes = ["Pvalb", "Sst", "Npy", "Lamp5", "Sncg", "Vip"]
-fig = utils.plot_factor(C_gene, markers = genes, cluster = [4,6], figsize = (10, 12))
+fig = utils.plot_factor(C_gene, markers = genes, cluster = [4], figsize = (10, 12))
 fig.savefig(sub_dir + "marker_genes.png")
+
+sub_dir = result_dir + "GABAergic/"
+if not os.path.exists(sub_dir):
+    os.makedirs(sub_dir)
+genes = ["Pvalb", "Sst", "Npy", "Lamp5", "Sncg", "Vip"]
+fig = utils.plot_factor(C_gene, markers = genes, cluster = [6], figsize = (10, 12))
+fig.savefig(sub_dir + "marker_genes2.png")
 
 # In[] Motifs
 # L2/3 Rfx (enriched), Mads (slightly enriched), Tal, NK, Pou, Arid (deplete)

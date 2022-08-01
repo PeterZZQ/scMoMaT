@@ -9,7 +9,7 @@ from sklearn.metrics.cluster import adjusted_rand_score
 from sklearn.metrics.cluster import normalized_mutual_info_score
 from sklearn.metrics.cluster import silhouette_samples, silhouette_score
 from scipy.sparse.csgraph import connected_components
-from sklearn.neighbors import KNeighborsClassifier, kneighbors_graph
+from sklearn.neighbors import KNeighborsClassifier, kneighbors_graph, NearestNeighbors
 
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
@@ -18,6 +18,22 @@ from sklearn.neighbors import KNeighborsClassifier, kneighbors_graph
 #
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
+########################################################################################
+#
+# KNN purity (https://rdrr.io/github/YosefLab/SymSim/man/cal_KNNP.html)
+#
+########################################################################################
+def knn_purity(X, label, k = 30):
+    neighbor = NearestNeighbors(n_neighbors = k)
+    neighbor.fit(X)
+    # get test connectivity result 0-1 adj_matrix, mode = 'connectivity' by default
+    G = neighbor.kneighbors_graph(X).toarray()
+    score = 0
+    for i in range(G.shape[0]):
+        score += (np.sum(label[G[i,:].astype(np.bool)] == label[i]) - 1)/(k-1)
+    return score/G.shape[0]
+
+
 ########################################################################################
 #
 # LABEL Trasfer accuracy from SCOT(https://github.com/rsinghlab/SCOT/blob/master/src/evals.py)
