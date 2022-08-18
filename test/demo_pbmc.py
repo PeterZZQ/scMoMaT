@@ -819,10 +819,10 @@ utils.plot_feat_score(C_motif, n_feats = 20, figsize= (20,20), save_as = result_
 
 C_region = C_feats["atac"]
 
-C_gene.to_csv(result_dir_feats + "C_gene.csv")
-C_motif.to_csv(result_dir_feats + "C_motif.csv")
-C_region.to_csv(result_dir_feats + "C_region.csv")
-C_protein.to_csv(result_dir_feats + "C_protein.csv")
+# C_gene.to_csv(result_dir_feats + "C_gene.csv")
+# C_motif.to_csv(result_dir_feats + "C_motif.csv")
+# C_region.to_csv(result_dir_feats + "C_region.csv")
+# C_protein.to_csv(result_dir_feats + "C_protein.csv")
 
 C_gene = pd.read_csv(result_dir_feats + "C_gene.csv", index_col = 0)
 C_motif = pd.read_csv(result_dir_feats + "C_motif.csv", index_col = 0)

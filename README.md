@@ -4,6 +4,8 @@ scMoMaT is a single-cell data integration method that is able to:
 * uncover the cell type specific bio-markers at the same time when learning a unified cell representation
 * integrate cell batches with unequal cell type composition
 
+<img src = "fig1.png" width = 700ptx>
+
 #### Directory
 * `src` contains the main script of scMoMaT
 * `test` contains the testing script of scMoMaT on the datasets in the manuscript and running script of baseline methods.

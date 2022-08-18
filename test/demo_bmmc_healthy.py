@@ -10,12 +10,29 @@ import time
 import pandas as pd  
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 
 import model
 import utils
 import bmk
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+def lsi(counts, n_components = 30):
+    from sklearn.feature_extraction.text import TfidfTransformer
+    from sklearn.decomposition import TruncatedSVD
+
+    tfidf = TfidfTransformer(norm='l2', sublinear_tf=True)
+    normed_count = tfidf.fit_transform(counts)
+
+    # perform SVD on the sparse matrix
+    lsi = TruncatedSVD(n_components=n_components + 1, random_state=42)
+    lsi_r = lsi.fit_transform(normed_count)
+
+    lsi.explained_variance_ratio_
+
+    X_lsi = lsi_r[:, 1:]
+    return X_lsi
 
 # In[] 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -589,23 +606,68 @@ counts_atacs = []
 counts_motifs = []
 labels = []
 n_batches = 2
-for batch in range(1, n_batches+1):
-    labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch) + '.csv'), index_col=0)["BioClassification"].values.squeeze())
+ks = [5, 10, 20, 30, 40, 50]
+knnp_orig = []
+knnp_leiden = []
+silhouette_orig = []
+silhouette_leiden = []
+for batch in range(n_batches):
+    labels.append(pd.read_csv(os.path.join(dir, 'meta_c' + str(batch + 1) + '.csv'), index_col=0)["BioClassification"].values.squeeze())
     
     try:
-        counts_atac = sp.load_npz(os.path.join(dir, 'RxC' + str(batch) + ".npz")).toarray().T
-        counts_atac = utils.preprocess(counts_atac, modality = "ATAC")   
+        counts_atac = sp.load_npz(os.path.join(dir, 'RxC' + str(batch + 1) + ".npz")).toarray().T
+        counts_atac = utils.preprocess(counts_atac, modality = "ATAC")
+        # Plot
+        x_lsi = lsi(counts_atac, n_components = 30)
+        x_umap = UMAP(n_components = 2, min_dist = 0.1, random_state = 0).fit_transform(x_lsi)
+        print("umap atac for batch" + str(batch + 1))
+        utils.plot_latent_ext([x_umap], annos = [labels[batch]], mode = "joint", save = result_dir + f'RxC{batch+1}.png', figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 10, label_inplace = False)
+        utils.plot_latent_ext([x_umap], annos = [leiden_labels[batch]], mode = "joint", save = result_dir + f'RxC{batch+1}_leiden.png', figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 10, label_inplace = False)
+
+        silhouette_orig.append(bmk.silhouette(x_lsi, labels[batch]))
+        silhouette_leiden.append(bmk.silhouette(x_lsi, leiden_labels[batch]))        
+        print("silhouette score (Original cluster): {:.3f}".format(silhouette_orig[-1]))
+        print("silhouette score (Leiden cluster): {:.3f}".format(silhouette_leiden[-1]))
+        knnp_orig.append([])
+        knnp_leiden.append([])
+        for k in ks:
+            knnp_orig[-1].append(bmk.knn_purity(X = x_lsi, label = labels[batch], k = k))
+            knnp_leiden[-1].append(bmk.knn_purity(X = x_lsi, label = leiden_labels[batch], k = k))
+            print(f"k = {k}")
+            print("knn purity score (Original cluster): {:.3f}".format(knnp_orig[-1][-1]))
+            print("knn purity score (Leiden cluster): {:.3f}".format(knnp_leiden[-1][-1]))
+   
     except:
         counts_atac = None
         
     try:
-        counts_rna = sp.load_npz(os.path.join(dir, 'GxC' + str(batch) + ".npz")).toarray().T
+        counts_rna = sp.load_npz(os.path.join(dir, 'GxC' + str(batch + 1) + ".npz")).toarray().T
         counts_rna = utils.preprocess(counts_rna, modality = "RNA", log = False)
+        # Plot
+        x_pca = PCA(n_components = 30).fit_transform(np.log1p(counts_rna))
+        x_umap = UMAP(n_components = 2, min_dist = 0.1, random_state = 0).fit_transform(x_pca)
+        print("umap rna for batch" + str(batch + 1))
+        utils.plot_latent_ext([x_umap], annos = [labels[batch]], mode = "joint", save = result_dir + f'GxC{batch+1}', figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 10, label_inplace = False)
+        utils.plot_latent_ext([x_umap], annos = [leiden_labels[batch]], mode = "joint", save = result_dir + f'GxC{batch+1}_leiden.png', figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 10, label_inplace = False)
+
+        silhouette_orig.append(bmk.silhouette(x_pca, labels[batch]))
+        silhouette_leiden.append(bmk.silhouette(x_pca, leiden_labels[batch]))
+        print("silhouette score (Original cluster): {:.3f}".format(silhouette_orig[-1]))
+        print("silhouette score (Leiden cluster): {:.3f}".format(silhouette_leiden[-1]))
+        knnp_orig.append([])
+        knnp_leiden.append([])
+        for k in ks:
+            knnp_orig[-1].append(bmk.knn_purity(X = x_pca, label = labels[batch], k = k))
+            knnp_leiden[-1].append(bmk.knn_purity(X = x_pca, label = leiden_labels[batch], k = k))
+            print(f"k = {k}")
+            print("knn purity score (Original cluster): {:.3f}".format(knnp_orig[-1][-1]))
+            print("knn purity score (Leiden cluster): {:.3f}".format(knnp_leiden[-1][-1]))
+
     except:
         counts_rna = None
     
     try:
-        counts_motif = pd.read_csv(dir + r'C{}xM.csv'.format(batch), index_col = 0)
+        counts_motif = pd.read_csv(dir + r'C{}xM.csv'.format(batch + 1), index_col = 0)
         # there might be small amount of na
         counts_motif = counts_motif.fillna(0)
         motifs = counts_motif.columns.values
@@ -642,6 +704,24 @@ counts["rna"][0] = (counts["rna"][0]!=0).astype(int)
 
 counts["nbatches"] = n_batches  
 
+knnp_orig = np.array(knnp_orig)
+knnp_leiden = np.array(knnp_leiden)
+knnp_orig = np.mean(knnp_orig, axis = 0)
+knnp_leiden = np.mean(knnp_leiden, axis = 0)
+
+from matplotlib.ticker import FormatStrFormatter
+plt.rcParams["font.size"] = 15
+fig = plt.figure(figsize = (7, 5))
+ax = fig.add_subplot()
+ax.plot(ks, knnp_orig, label = "Original BMMC")
+ax.plot(ks, knnp_leiden, label = "scMoMaT")
+ax.legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
+ax.set_title("KNN purity")
+ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+fig.savefig(result_dir + "knn_purity.png", bbox_inches = "tight")
+
+print("silhouette score (Original cluster): {:.3f}".format(np.mean(np.array(silhouette_orig))))
+print("silhouette score (Leiden cluster): {:.3f}".format(np.mean(np.array(silhouette_leiden))))
 
 # In[] retrain model, you can incorporate new matrices 
 lamb = 0.01
@@ -667,9 +747,9 @@ utils.plot_feat_score(C_motif, n_feats = 20, figsize= (20,30), save_as = result_
 
 C_region = C_feats["atac"]
 
-C_gene.to_csv(result_dir + "C_gene.csv")
-C_motif.to_csv(result_dir + "C_motif.csv")
-C_region.to_csv(result_dir + "C_region.csv")
+# C_gene.to_csv(result_dir + "C_gene.csv")
+# C_motif.to_csv(result_dir + "C_motif.csv")
+# C_region.to_csv(result_dir + "C_region.csv")
 
 C_gene = pd.read_csv(result_dir + "C_gene.csv", index_col = 0)
 C_motif = pd.read_csv(result_dir + "C_motif.csv", index_col = 0)

@@ -466,13 +466,13 @@ utils.plot_feat_score(C_motif, n_feats = 20, figsize= (20,35), save_as = result_
 
 C_region = C_feats["atac"]
 
-C_gene.to_csv(result_dir + "C_gene.csv")
-C_motif.to_csv(result_dir + "C_motif.csv")
-C_region.to_csv(result_dir + "C_region.csv")
+# C_gene.to_csv(result_dir + "C_gene.csv")
+# C_motif.to_csv(result_dir + "C_motif.csv")
+# C_region.to_csv(result_dir + "C_region.csv")
 
-C_gene = pd.read_csv(result_dir + "C_gene.csv", index_col = 0)
-C_motif = pd.read_csv(result_dir + "C_motif.csv", index_col = 0)
-C_region = pd.read_csv(result_dir + "C_region.csv", index_col = 0)
+# C_gene = pd.read_csv(result_dir + "C_gene.csv", index_col = 0)
+# C_motif = pd.read_csv(result_dir + "C_motif.csv", index_col = 0)
+# C_region = pd.read_csv(result_dir + "C_region.csv", index_col = 0)
 
 # TODO: normalize between 0 and 1
 C_gene.values[:] = C_gene.values/np.sum(C_gene.values, axis = 0, keepdims = True)
@@ -521,7 +521,7 @@ def plot_factor(C_feats, markers, cluster1 = 0, cluster2 = 0, figsize = (10,20))
             _ = axs[marker%nrows, marker//nrows].set_xticks(np.arange(C_feats.shape[1]))
             _ = axs[marker%nrows, marker//nrows].set_xticklabels(clusts)
             _ = axs[marker%nrows, marker//nrows].set_xlabel("cluster", fontsize = 20)
-            _ = axs[marker%nrows, marker//nrows].set_ylabel("factor value", fontsize = 20)
+            _ = axs[marker%nrows, marker//nrows].set_ylabel("feature score", fontsize = 20)
             colors = {'L6CT_L6b':'r', 'L6IT':'y'}         
             labels = list(colors.keys())
             handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
@@ -546,7 +546,7 @@ def plot_factor(C_feats, markers, cluster1 = 0, cluster2 = 0, figsize = (10,20))
             _ = axs.set_xticks(np.arange(C_feats.shape[1]))
             _ = axs.set_xticklabels(clusts)
             _ = axs.set_xlabel("cluster", fontsize = 20)
-            _ = axs.set_ylabel("factor value", fontsize = 20)
+            _ = axs.set_ylabel("feature score", fontsize = 20)
             colors = {'L6CT_L6b':'r', 'L6IT':'y'}         
             labels = list(colors.keys())
             handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
@@ -572,7 +572,7 @@ def plot_factor(C_feats, markers, cluster1 = 0, cluster2 = 0, figsize = (10,20))
             _ = axs[marker].set_xticks(np.arange(C_feats.shape[1]))
             _ = axs[marker].set_xticklabels(clusts)
             _ = axs[marker].set_xlabel("cluster", fontsize = 20)
-            _ = axs[marker].set_ylabel("factor value", fontsize = 20)
+            _ = axs[marker].set_ylabel("feature score", fontsize = 20)
             colors = {'L6CT_L6b':'r', 'L6IT':'y'}         
             labels = list(colors.keys())
             handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]

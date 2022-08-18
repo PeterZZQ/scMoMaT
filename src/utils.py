@@ -389,7 +389,7 @@ def plot_feat_score(C_feats, n_feats = 10, figsize= (20,20), save_as = None, tit
                 
 
             axs[clust%nrows, clust//nrows].set_title("cluster " + str(clust), fontsize = 25)
-            axs[clust%nrows, clust//nrows].set_ylabel("factor value", fontsize = 19)
+            axs[clust%nrows, clust//nrows].set_ylabel("feature score", fontsize = 19)
             axs[clust%nrows, clust//nrows].set_xticks([])
             axs[clust%nrows, clust//nrows].spines['right'].set_visible(False)
             axs[clust%nrows, clust//nrows].spines['top'].set_visible(False)
@@ -408,7 +408,7 @@ def plot_feat_score(C_feats, n_feats = 10, figsize= (20,20), save_as = None, tit
                             label = C_feats.index.values[de_idx])
                 
             axs.set_title("cluster " + str(clust), fontsize = 25)
-            axs.set_ylabel("factor value", fontsize = 19)
+            axs.set_ylabel("feature score", fontsize = 19)
             axs.set_xticks([])
             axs.spines['right'].set_visible(False)
             axs.spines['top'].set_visible(False)
@@ -425,7 +425,7 @@ def plot_feat_score(C_feats, n_feats = 10, figsize= (20,20), save_as = None, tit
                                    label = C_feats.index.values[de_idx])
                 
             axs[clust].set_title("cluster " + str(i), fontsize = 25)
-            axs[clust].set_ylabel("factor value", fontsize = 19)
+            axs[clust].set_ylabel("feature score", fontsize = 19)
             axs[clust].set_xticks([])
             axs[clust].spines['right'].set_visible(False)
             axs[clust].spines['top'].set_visible(False)
@@ -466,7 +466,7 @@ def plot_factor(C_feats, markers, cluster = 0, figsize = (10,20)):
             _ = axs[marker%nrows, marker//nrows].set_xticks(np.arange(C_feats.shape[1]))
             _ = axs[marker%nrows, marker//nrows].set_xticklabels(clusts)
             _ = axs[marker%nrows, marker//nrows].set_xlabel("cluster", fontsize = 20)
-            _ = axs[marker%nrows, marker//nrows].set_ylabel("factor value", fontsize = 20)
+            _ = axs[marker%nrows, marker//nrows].set_ylabel("feature score", fontsize = 20)
             axs[marker%nrows, marker//nrows].ticklabel_format(axis="y", style="sci", scilimits=(0,0))
         elif nrows == 1 and ncols == 1:
             barlist = axs.bar(np.arange(C_feats.shape[1]), x)
@@ -482,7 +482,7 @@ def plot_factor(C_feats, markers, cluster = 0, figsize = (10,20)):
             _ = axs.set_xticks(np.arange(C_feats.shape[1]))
             _ = axs.set_xticklabels(clusts)
             _ = axs.set_xlabel("cluster", fontsize = 20)
-            _ = axs.set_ylabel("factor value", fontsize = 20)
+            _ = axs.set_ylabel("feature score", fontsize = 20)
             axs.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
 
         else:
@@ -499,7 +499,7 @@ def plot_factor(C_feats, markers, cluster = 0, figsize = (10,20)):
             _ = axs[marker].set_xticks(np.arange(C_feats.shape[1]))
             _ = axs[marker].set_xticklabels(clusts)
             _ = axs[marker].set_xlabel("cluster", fontsize = 20)
-            _ = axs[marker].set_ylabel("factor value", fontsize = 20)
+            _ = axs[marker].set_ylabel("feature score", fontsize = 20)
             axs[marker].ticklabel_format(axis="y", style="sci", scilimits=(0,0))
 
     plt.tight_layout()
