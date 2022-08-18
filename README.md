@@ -1,4 +1,4 @@
-## scMoMaT: Mosaic integration of single cell multi-omics matrices using matrix trifactorization
+## scMoMaT: a unified framework for single cell mosaic integration and multi-modal bio-marker detection
 scMoMaT is a single-cell data integration method that is able to:
 * integrate single cell multi-omics data under the mosaic scenario using matrix tri-factorization
 * uncover the cell type specific bio-markers at the same time when learning a unified cell representation
