@@ -6,6 +6,20 @@ scMoMaT is a single-cell data integration method that is able to:
 
 <img src = "fig1.png" width = 700ptx>
 
+#### Dependency
+```
+Python >= 3.8.10
+numpy >= 1.19.5
+torch >= 1.11.0
+scipy >= 1.7.3
+sklearn >= 0.22.2.post1
+matplotlib >= 3.5.2
+umap >= 0.5.2
+adjustText >= 0.7.3 (optional)
+pandas >= 1.4.0 (optional)
+```
+
+
 #### Directory
 * `src` contains the main script of scMoMaT
 * `test` contains the testing script of scMoMaT on the datasets in the manuscript and running script of baseline methods.
