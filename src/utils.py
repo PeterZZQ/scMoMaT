@@ -1,6 +1,4 @@
-from signal import raise_signal
 import numpy as np
-from numpy import block
 import torch
 # from torch_sparse import SparseTensor
 import matplotlib.pyplot as plt
@@ -8,14 +6,12 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 from scipy import stats
-from scipy.spatial.distance import pdist, squareform
 import scipy.sparse as sp
 from umap.utils import fast_knn_indices
 
 from sklearn.preprocessing import StandardScaler
 from adjustText import adjust_text
 import time
-from multiprocessing import Pool, cpu_count
 
 plt.rcParams["font.size"] = 10
 # ----------------------------------------------------- # 
@@ -933,25 +929,25 @@ def post_process(X, n_neighbors, r = None, njobs = None):
     end_time = time.time()
     print("modify distance 1, time used {:.4f}s".format(end_time - start_time))
 
-    start_time = time.time()
+    # start_time = time.time()
     # Modify pairwise distance matrix where the elements are changed due to knn_dists, 
     # pairwise_distance does not affect the UMAP visualization and leiden clustering
 
 
     # NEW, UMAP
-    pairwise_distances = np.zeros_like(pair_dist)
-    pairwise_distances[np.arange(pairwise_distances.shape[0])[:, None], knn_indices] = knn_dists
-    pairwise_distances = pairwise_distances + pairwise_distances.T - pairwise_distances * pairwise_distances.T
+    # pairwise_distances = np.zeros_like(pair_dist)
+    # pairwise_distances[np.arange(pairwise_distances.shape[0])[:, None], knn_indices] = knn_dists
+    # pairwise_distances = pairwise_distances + pairwise_distances.T - pairwise_distances * pairwise_distances.T
 
-    end_time = time.time()
-    print("modify distance 2, time used {:.4f}s".format(end_time - start_time))
+    # end_time = time.time()
+    # print("modify distance 2, time used {:.4f}s".format(end_time - start_time))
 
     # start_time = time.time()     
-    pairwise_distances = sp.csr_matrix(pairwise_distances)
+    pair_dist = sp.csr_matrix(pair_dist)
     # end_time = time.time()
     # print("make sparse, time used {:.4f}s".format(end_time - start_time))
     # pairwise_distances = pair_dist
-    return pairwise_distances, knn_indices, knn_dists
+    return pair_dist, knn_indices, knn_dists
 
 
 
