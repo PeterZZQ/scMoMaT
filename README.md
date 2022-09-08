@@ -22,14 +22,16 @@ pandas >= 1.4.0 (optional)
 
 #### Directory
 * `src` contains the main script of scMoMaT
-* `test` contains the testing script of scMoMaT on the datasets in the manuscript and running script of baseline methods.
+* `test` contains the testing script of scMoMaT on the datasets in the manuscript and running script of baseline methods. Please refer to this folder for the reproduction of test results. The testing dataset is available upon request.
 * `data` stores the datasets
 
 #### Data
 Necessary data for PBMC (the first real dataset in the manuscript, `ASAP-PBMC`) and MOp (the second real dataset in the manuscript, `MOp_5batches`) are provided, which should be suffice for the running of scMoMaT in `demo_pbmc.py` and `demo_mop_5batches.py` as examples. The dataset for the other demo scrips are available upon requests. 
 
-#### Usage 
-`demo_scmomat.ipynb` provides a example run on `MOp_5batches` dataset. For more example, please see the test scripts in `test` folder, necessary comments are included:
+#### Installation and usage 
+No installation is needed.
+
+`demo_scmomat.ipynb` provides a example run on `MOp_5batches` dataset (running time: training procedure takes ~5mins on NVIDIA A40 GPU, total file takes ~30mins). For more example, please see the test scripts in `test` folder, necessary comments are included:
 * `demo_pbmc.py`: The first real dataset in the manuscript (**data provided**).
 * `demo_bmmc_healthy.py`: The third real dataset in the maunscript.
 * `demo_spleen.py`: The fourth real dataset in the manuscript.
