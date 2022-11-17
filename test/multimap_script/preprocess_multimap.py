@@ -70,6 +70,25 @@ rna.write_h5ad(result_paths + "rna.h5ad")
 atac_genes.write_h5ad(result_paths + "atac-genes.h5ad")
 atac_peaks.write_h5ad(result_paths + "atac-peaks.h5ad")
 
+# In[] Pancreas
+path = "../../data/real/hori/Pancreas/"
+n_batches = 8
+meta_cells = []
+counts = []
+adatas = []
+result_paths = path + "multimap/"
+for batch in range(n_batches):
+    counts.append(load_npz(path + f"GxC{batch}.npz").T)
+    meta_cell = pd.read_csv(os.path.join(path, 'meta_c' + str(batch) + '.csv'), index_col=0)
+    meta_cell["source"] = f"C{batch}"
+    meta_cells.append(meta_cell)
+    
+    # create adata
+    rna = AnnData(X = counts[-1])
+    rna.obs = meta_cells[-1]
+    sc.pp.log1p(rna)
+    rna.write_h5ad(result_paths + f"rna_{batch}.h5ad")
+
 # In[] Mouse brain cortex
 path = "../../data/real/diag/mouse_brain_cortex/"
 counts_rna = mmread(path + "multimap/counts_rna.mtx")
@@ -145,10 +164,10 @@ rna.write_h5ad(result_paths + "rna.h5ad")
 atac_genes.write_h5ad(result_paths + "atac-genes.h5ad")
 atac_peaks.write_h5ad(result_paths + "atac-peaks.h5ad")
 
-# In[] Simulated test scenario 1
+# In[] Simulated test remove cell types
 np.random.seed(0)
-path = "../../data/simulated/6b16c_test_10_large/"
-path_new = path + "unequal2/"
+path = "../../data/simulated/6b16c_test_10/original"
+path_new = "../../data/simulated/6b16c_test_10/unequal/"
 if not os.path.exists(path_new):
     os.mkdir(path_new)
 
@@ -230,6 +249,152 @@ for batch in range(n_batches):
     adata_atac.write_h5ad(result_path + "atac_peaks_" + str(batch+1) + ".h5ad")
     adata_atac2rna.write_h5ad(result_path + "atac_genes_" + str(batch+1) + ".h5ad")
 
+# In[] Imbalanced simulated datasets
+path = "../../data/simulated/6b16c_test_10/imbalanced/"
+
+result_path = path + "multimap/"
+if not os.path.exists(result_path):
+    os.makedirs(result_path)
+n_batches = 6
+adata_rnas = []
+adata_atacs = []
+adata_atac2rnas = []
+labels = []
+# association matrix
+A = np.loadtxt(os.path.join(path, 'region2gene.txt'), delimiter = "\t")
+for batch in range(n_batches):        
+    label = pd.read_csv(os.path.join(path, 'cell_label' + str(batch + 1) + '.txt'), index_col=0, sep = "\t")["pop"].values.squeeze()
+    labels.append(label)
+    # read in atac-seq
+    counts_atac = np.loadtxt(os.path.join(path, 'RxC' + str(batch + 1) + ".txt"), delimiter = "\t").T
+    counts_atac = (counts_atac > 0).astype(np.float)
+    barcodes = np.array(["batch_" + str(batch) + ":cell_" + str(x) for x in range(counts_atac.shape[0])])
+    regions = np.array(["region_" + str(x) for x in range(counts_atac.shape[1])])
+    adata_atac = AnnData(csr_matrix(counts_atac))
+    adata_atac.var.index = regions
+    adata_atac.obs.index = barcodes
+    adata_atac.obs["source"] = "C" + str(batch + 1)
+    adata_atac.obs["pop"] = label
+    print("read atac for batch" + str(batch + 1))
+
+    # read in rna-seq
+    counts_rna = np.loadtxt(os.path.join(path, 'GxC' + str(batch + 1) + ".txt"), delimiter = "\t").T
+    barcodes = np.array(["batch_" + str(batch) + ":cell_" + str(x) for x in range(counts_rna.shape[0])])
+    genes = np.array(["gene_" + str(x) for x in range(counts_rna.shape[1])])
+    adata_rna = AnnData(csr_matrix(counts_rna))
+    adata_rna.var.index = genes
+    adata_rna.obs.index = barcodes
+    adata_rna.obs["source"] = "C" + str(batch + 1)
+    adata_rna.obs["pop"] = label
+    print("read rna for batch" + str(batch + 1))
+        
+    adata_atac2rna = AnnData(csr_matrix(counts_atac @ A))
+    adata_atac2rna.var = adata_rna.var
+    adata_atac2rna.obs = adata_atac.obs
+
+    # remove genes and regions that have only zero counts
+    # sc.pp.filter_genes(adata_rna, min_cells = 1)
+    sc.pp.log1p(adata_rna)
+    # sc.pp.filter_genes(adata_atac, min_cells = 1)
+    # sc.pp.filter_genes(adata_atac2rna, min_cells = 1)
+    sc.pp.log1p(adata_atac2rna)
+
+    
+    # preprocess the count matrix
+    adata_rnas.append(adata_rna)
+    adata_atacs.append(adata_atac)
+    adata_atac2rnas.append(adata_atac2rna)
+
+    adata_rna.write_h5ad(result_path + "rna_" + str(batch+1) + ".h5ad")
+    adata_atac.write_h5ad(result_path + "atac_peaks_" + str(batch+1) + ".h5ad")
+    adata_atac2rna.write_h5ad(result_path + "atac_genes_" + str(batch+1) + ".h5ad")
+
+# In[] simulated protein data
+path = "../../data/simulated/6b16c_test_1/unequal/"
+
+result_path = path + "multimap/"
+if not os.path.exists(result_path):
+    os.makedirs(result_path)
+n_batches = 6
+adata_rnas = []
+adata_atacs = []
+adata_atac2rnas = []
+labels = []
+# association matrix
+RxG = np.loadtxt(os.path.join(path, 'region2gene.txt'), delimiter = "\t")
+PxG = np.loadtxt(os.path.join(path, 'protein2gene.txt'), delimiter = "\t")
+for batch in range(n_batches):        
+    label = pd.read_csv(os.path.join(path, 'cell_label' + str(batch + 1) + '.txt'), index_col=0, sep = "\t")["pop"].values.squeeze()
+    labels.append(label)
+    # read in atac-seq
+    counts_atac = np.loadtxt(os.path.join(path, 'RxC' + str(batch + 1) + ".txt"), delimiter = "\t").T
+    counts_atac = (counts_atac > 0).astype(np.float)
+    barcodes = np.array(["batch_" + str(batch) + ":cell_" + str(x) for x in range(counts_atac.shape[0])])
+    regions = np.array(["region_" + str(x) for x in range(counts_atac.shape[1])])
+    adata_atac = AnnData(csr_matrix(counts_atac))
+    adata_atac.var.index = regions
+    adata_atac.obs.index = barcodes
+    adata_atac.obs["source"] = "C" + str(batch + 1)
+    adata_atac.obs["pop"] = label
+    print("read atac for batch" + str(batch + 1))
+
+    # read in rna-seq
+    counts_rna = np.loadtxt(os.path.join(path, 'GxC' + str(batch + 1) + ".txt"), delimiter = "\t").T
+    barcodes = np.array(["batch_" + str(batch) + ":cell_" + str(x) for x in range(counts_rna.shape[0])])
+    genes = np.array(["gene_" + str(x) for x in range(counts_rna.shape[1])])
+    adata_rna = AnnData(csr_matrix(counts_rna))
+    adata_rna.var.index = genes
+    adata_rna.obs.index = barcodes
+    adata_rna.obs["source"] = "C" + str(batch + 1)
+    adata_rna.obs["pop"] = label
+    print("read rna for batch" + str(batch + 1))
+
+    # read in the protein data
+    counts_protein = np.loadtxt(os.path.join(path, 'PxC' + str(batch + 1) + ".txt"), delimiter = "\t").T
+    barcodes = np.array(["batch_" + str(batch) + ":cell_" + str(x) for x in range(counts_protein.shape[0])])
+    proteins = np.array(["protein_" + str(x) for x in range(counts_protein.shape[1])])
+    adata_protein = AnnData(csr_matrix(counts_protein))
+    adata_protein.var.index = proteins
+    adata_protein.obs.index = barcodes
+    adata_protein.obs["source"] = "C" + str(batch + 1)
+    adata_protein.obs["pop"] = label
+    print("read protein for batch" + str(batch + 1))
+    
+    adata_atac2rna = AnnData(csr_matrix(counts_atac @ RxG))
+    adata_atac2rna.var = adata_rna.var
+    adata_atac2rna.obs = adata_atac.obs
+
+    adata_atac2protein = AnnData(csr_matrix(counts_atac @ RxG @ PxG.T))
+    adata_atac2protein.var = adata_protein.var
+    adata_atac2protein.obs = adata_atac.obs
+
+    adata_rna2protein = AnnData(csr_matrix(counts_rna @ PxG.T))
+    adata_rna2protein.var = adata_protein.var
+    adata_rna2protein.obs = adata_atac.obs
+
+    # remove genes and regions that have only zero counts
+    # sc.pp.filter_genes(adata_rna, min_cells = 1)
+    sc.pp.log1p(adata_rna)
+    # sc.pp.filter_genes(adata_atac, min_cells = 1)
+    # sc.pp.filter_genes(adata_atac2rna, min_cells = 1)
+    sc.pp.log1p(adata_atac2rna)
+
+    sc.pp.log1p(adata_atac2protein)
+    sc.pp.log1p(adata_protein)
+    sc.pp.log1p(adata_rna2protein)
+    
+    # preprocess the count matrix
+    adata_rnas.append(adata_rna)
+    adata_atacs.append(adata_atac)
+    adata_atac2rnas.append(adata_atac2rna)
+
+    adata_rna.write_h5ad(result_path + "rna_" + str(batch+1) + ".h5ad")
+    adata_atac.write_h5ad(result_path + "atac_peaks_" + str(batch+1) + ".h5ad")
+    adata_protein.write_h5ad(result_path + "proteins_" + str(batch+1) + ".h5ad")
+
+    adata_atac2rna.write_h5ad(result_path + "atac_genes_" + str(batch+1) + ".h5ad")
+    adata_atac2protein.write_h5ad(result_path + "atac_proteins_" + str(batch+1) + ".h5ad")
+    adata_rna2protein.write_h5ad(result_path + "rna_proteins_" + str(batch+1) + ".h5ad")
 
 # %%
 

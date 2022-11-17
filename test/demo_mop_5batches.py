@@ -44,9 +44,9 @@ def lsi(counts):
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
 # NOTE: read in dataset
 dir = "../data/real/MOp_5batches/"
-result_dir = "MOp_5batches/scmomat/"
 
 n_batches = 5
+no_pseudo = True
 counts_rnas = []
 counts_atacs = []
 labels_ori = []
@@ -223,18 +223,31 @@ for batch in range(n_batches):
 
 counts = {"rna":counts_rnas, "atac": counts_atacs}
 
-A = sp.load_npz(os.path.join(dir, 'GxR.npz'))
-A = np.array(A.todense())
+if no_pseudo == False:
+    result_dir = "MOp_5batches/scmomat/"
 
-# CALCULATE PSEUDO-SCRNA-SEQ
-counts["rna"][2] = counts["atac"][2] @ A.T
-#BINARIZE, still is able to see the cluster pattern, much denser than scRNA-Seq (cluster pattern clearer)
-counts["rna"][2] = (counts["rna"][2]!=0).astype(int)
+    A = sp.load_npz(os.path.join(dir, 'GxR.npz'))
+    A = np.array(A.todense())
 
-# CALCULATE PSEUDO-SCRNA-SEQ
-counts["rna"][4] = counts["atac"][4] @ A.T
-#BINARIZE, still is able to see the cluster pattern, much denser than scRNA-Seq (cluster pattern clearer)
-counts["rna"][4] = (counts["rna"][4]!=0).astype(int)
+    # CALCULATE PSEUDO-SCRNA-SEQ
+    counts["rna"][2] = counts["atac"][2] @ A.T
+    #BINARIZE, still is able to see the cluster pattern, much denser than scRNA-Seq (cluster pattern clearer)
+    counts["rna"][2] = (counts["rna"][2]!=0).astype(int)
+
+    # CALCULATE PSEUDO-SCRNA-SEQ
+    counts["rna"][4] = counts["atac"][4] @ A.T
+    #BINARIZE, still is able to see the cluster pattern, much denser than scRNA-Seq (cluster pattern clearer)
+    counts["rna"][4] = (counts["rna"][4]!=0).astype(int)
+else:
+    A = sp.load_npz(os.path.join(dir, 'GxR.npz'))
+    A = np.array(A.todense())
+
+    # CALCULATE PSEUDO-SCRNA-SEQ
+    counts["rna"][4] = counts["atac"][4] @ A.T
+    #BINARIZE, still is able to see the cluster pattern, much denser than scRNA-Seq (cluster pattern clearer)
+    counts["rna"][4] = (counts["rna"][4]!=0).astype(int)
+    counts["rna"][0] = None
+    result_dir = "MOp_5batches/scmomat_nopseudo_b1/"
 
 # obtain the feature name
 genes = pd.read_csv(dir + "genes.txt", header = None).values.squeeze()
@@ -260,17 +273,17 @@ interval = 1000
 T = 4000
 lr = 1e-2
 
-# start_time = time.time()
-# model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
-# losses1 = model1.train_func(T = T)
-# end_time = time.time()
-# print("running time: " + str(end_time - start_time))
+start_time = time.time()
+model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
+losses1 = model1.train_func(T = T)
+end_time = time.time()
+print("running time: " + str(end_time - start_time))
 
-# x = np.linspace(0, T, int(T/interval)+1)
-# plt.plot(x, losses1)
+x = np.linspace(0, T, int(T/interval)+1)
+plt.plot(x, losses1)
 
 # save the model
-# torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
+torch.save(model1, result_dir + f'CFRM_{K}_{T}.pt')
 model1 = torch.load(result_dir + f'CFRM_{K}_{T}.pt')
 # In[] Sanity check, the scales should be positive, A_assos should also be positive
 for mod in model1.A_assos.keys():

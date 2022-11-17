@@ -112,6 +112,20 @@ def ari(group1, group2, implementation=None):
 
 
 
+########################################################################################
+#
+# F1 score for rare cell type detection
+#
+########################################################################################
+def F1_score(gt, predict):
+    tp = np.sum((predict != 0) * (gt != 0))
+    fp = np.sum((predict != 0) * (gt == 0))
+    tn = np.sum((predict == 0) * (gt == 0))
+    fn = np.sum((predict == 0) * (gt != 0))
+    precision = tp/(tp + fp)
+    recall = tp/(tp + fn)
+    return 2 * precision * recall / (precision + recall)
+
 
 ########################################################################################
 #

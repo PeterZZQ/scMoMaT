@@ -303,6 +303,38 @@ utils.plot_latent_ext(X_multimaps, annos = prec_labels, mode = "modality", save 
                       figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7)
 
 
+# Stabmap
+stabmap_path = "pbmc/stabmap/"
+stabmap_b1 = pd.read_csv(stabmap_path + "stab_b1.csv", index_col = 0).values
+stabmap_b2 = pd.read_csv(stabmap_path + "stab_b2.csv", index_col = 0).values
+stabmap_b3 = pd.read_csv(stabmap_path + "stab_b3.csv", index_col = 0).values
+stabmap_b4 = pd.read_csv(stabmap_path + "stab_b4.csv", index_col = 0).values
+stabmap_umap = UMAP(n_components = 2, min_dist = 0.4, random_state = 0).fit_transform(np.concatenate((stabmap_b1, stabmap_b2, stabmap_b3, stabmap_b4), axis = 0))
+stabmap_umaps = []
+for batch in range(n_batches):
+    if batch == 0:
+        start_pointer = 0
+        end_pointer = start_pointer + zs[batch].shape[0]
+        stabmap_umaps.append(stabmap_umap[start_pointer:end_pointer,:])
+    elif batch == (n_batches - 1):
+        start_pointer = start_pointer + zs[batch - 1].shape[0]
+        stabmap_umaps.append(stabmap_umap[start_pointer:,:])
+    else:
+        start_pointer = start_pointer + zs[batch - 1].shape[0]
+        end_pointer = start_pointer + zs[batch].shape[0]
+        stabmap_umaps.append(stabmap_umap[start_pointer:end_pointer,:])
+
+utils.plot_latent_ext(stabmap_umaps, annos = labels, mode = "separate", save = stabmap_path + f'latent_separate_stabmap.png', 
+                      figsize = (10,20), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7, text_size = "x-large")
+
+utils.plot_latent_ext(stabmap_umaps, annos = prec_labels, mode = "separate", save = stabmap_path + f'latent_separate_stabmap_prec.png', 
+                      figsize = (10,20), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7, text_size = "x-large")
+
+utils.plot_latent_ext(stabmap_umaps, annos = prec_labels, mode = "modality", save = stabmap_path + f'latent_batches_stabmap.png', 
+                      figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, alpha = 0.7)
+
+
+
 # In[]
 n_neighbors = 30
 # graph connectivity score (gc) measure the batch effect removal per cell identity
@@ -327,8 +359,13 @@ knn_graph_multimap = np.zeros_like(G_multimap)
 knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
 gc_multimap = bmk.graph_connectivity(G = knn_graph_multimap, groups = np.concatenate(prec_labels, axis = 0), k = n_neighbors)
 gc_multimap2 = bmk.graph_connectivity(X = np.concatenate(X_multimaps, axis = 0), groups = np.concatenate(prec_labels, axis = 0), k = n_neighbors)
-print('GC (MultiMap): {:.3f}'.format(gc_multimap))
-print('GC (MultiMap Graph): {:.3f}'.format(gc_multimap2))
+print('GC (MultiMap Graph): {:.3f}'.format(gc_multimap))
+print('GC (MultiMap): {:.3f}'.format(gc_multimap2))
+
+# 4. Stabmap
+gc_stabmap = bmk.graph_connectivity(X = np.concatenate((stabmap_b1, stabmap_b2, stabmap_b3, stabmap_b4), axis = 0), groups = np.concatenate(prec_labels, axis = 0), k = n_neighbors)
+print('GC (Stabmap): {:.3f}'.format(gc_stabmap))
+
 # Batch effect removal regardless of cell identity
 # Graph iLISI
 
@@ -368,6 +405,17 @@ for resolution in np.arange(0.1, 10, 0.5):
 print('NMI (MultiMap): {:.3f}'.format(max(nmi_multimap)))
 print('ARI (MultiMap): {:.3f}'.format(max(ari_multimap)))
 
+# 4. Stabmap
+nmi_stabmap = []
+ari_stabmap = []
+for resolution in np.arange(0.1, 10, 0.5):
+    leiden_labels_stabmap = utils.leiden_cluster(X = np.concatenate((stabmap_b1, stabmap_b2, stabmap_b3, stabmap_b4), axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
+    nmi_stabmap.append(bmk.nmi(group1 = np.concatenate(prec_labels), group2 = leiden_labels_stabmap))
+    ari_stabmap.append(bmk.ari(group1 = np.concatenate(prec_labels), group2 = leiden_labels_stabmap))
+print('NMI (Stabmap): {:.3f}'.format(max(nmi_stabmap)))
+print('ARI (Stabmap): {:.3f}'.format(max(ari_stabmap)))
+
+
 # Label transfer accuracy
 # randomly select a half of cells as query
 np.random.seed(0)
@@ -398,22 +446,28 @@ knn_graph_multimap = np.zeros_like(G_multimap)
 knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
 knn_graph_multimap = knn_graph_multimap[query_cell, :][:, training_cell]
 lta_multimap = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, knn_graph = knn_graph_multimap)
-lt2_multimap2 = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+lta_multimap2 = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
                                   z_query = np.concatenate(X_multimaps, axis = 0)[query_cell,:],
                                   z_train = np.concatenate(X_multimaps, axis = 0)[training_cell,:])
+
+# Stabmap 
+lta_stabmap = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate((stabmap_b1, stabmap_b2, stabmap_b3, stabmap_b4), axis = 0)[query_cell,:],
+                                  z_train = np.concatenate((stabmap_b1, stabmap_b2, stabmap_b3, stabmap_b4), axis = 0)[training_cell,:])
 
 print("Label transfer accuracy (scMoMaT): {:.3f}".format(lta_scmomat))
 print("Label transfer accuracy (UINMF): {:.3f}".format(lta_uinmf))
 print("Label transfer accuracy (MultiMap Graph): {:.3f}".format(lta_multimap))
-print("Label transfer accuracy (MultiMap): {:.3f}".format(lt2_multimap2))
+print("Label transfer accuracy (MultiMap): {:.3f}".format(lta_multimap2))
+print("Label transfer accuracy (Stabmap): {:.3f}".format(lta_stabmap))
 
 scores = pd.DataFrame(columns = ["methods", "resolution", "NMI", "ARI", "GC", "LTA"])
-scores["NMI (prec)"] = np.array(nmi_scmomat + nmi_uinmf + nmi_multimap)
-scores["ARI (prec)"] = np.array(ari_scmomat + ari_uinmf + ari_multimap)
-scores["GC (prec)"] = np.array([gc_scmomat] * len(nmi_scmomat) + [gc_uinmf] * len(nmi_uinmf) + [gc_multimap] * len(ari_multimap))
-scores["LTA (prec)"] = np.array([lta_scmomat] * len(nmi_scmomat) + [lta_uinmf] * len(nmi_uinmf) + [lta_multimap] * len(ari_multimap))
-scores["resolution"] = np.array([x for x in np.arange(0.1, 10, 0.5)] * 3)
-scores["methods"] = np.array(["scMoMaT"] * len(nmi_scmomat) + ["UINMF"] * len(nmi_uinmf) + ["MultiMap"] * len(ari_multimap))
+scores["NMI (prec)"] = np.array(nmi_scmomat + nmi_uinmf + nmi_multimap + nmi_stabmap)
+scores["ARI (prec)"] = np.array(ari_scmomat + ari_uinmf + ari_multimap + ari_stabmap)
+scores["GC (prec)"] = np.array([gc_scmomat] * len(nmi_scmomat) + [gc_uinmf] * len(nmi_uinmf) + [gc_multimap] * len(ari_multimap) + [gc_stabmap] * len(ari_stabmap))
+scores["LTA (prec)"] = np.array([lta_scmomat] * len(nmi_scmomat) + [lta_uinmf] * len(nmi_uinmf) + [lta_multimap] * len(ari_multimap) + [lta_stabmap] * len(ari_stabmap))
+scores["resolution"] = np.array([x for x in np.arange(0.1, 10, 0.5)] * 4)
+scores["methods"] = np.array(["scMoMaT"] * len(nmi_scmomat) + ["UINMF"] * len(nmi_uinmf) + ["MultiMap"] * len(ari_multimap) + ["Stabmap"] * len(ari_stabmap))
 
 # 1. scMoMaT
 gc_scmomat = bmk.graph_connectivity(X = np.concatenate(zs, axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
@@ -436,8 +490,12 @@ knn_graph_multimap = np.zeros_like(G_multimap)
 knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
 gc_multimap = bmk.graph_connectivity(G = knn_graph_multimap, groups = np.concatenate(labels, axis = 0), k = n_neighbors)
 gc_multimap2 = bmk.graph_connectivity(X = np.concatenate(X_multimaps, axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
-print('GC (MultiMap): {:.3f}'.format(gc_multimap))
-print('GC (MultiMap Graph): {:.3f}'.format(gc_multimap2))
+print('GC (MultiMap Graph): {:.3f}'.format(gc_multimap))
+print('GC (MultiMap): {:.3f}'.format(gc_multimap2))
+
+# 4. Stabmap
+gc_stabmap = bmk.graph_connectivity(X = np.concatenate((stabmap_b1, stabmap_b2, stabmap_b3, stabmap_b4), axis = 0), groups = np.concatenate(labels, axis = 0), k = n_neighbors)
+print('GC (Stabmap): {:.3f}'.format(gc_stabmap))
 
 
 # Conservation of biological identity
@@ -475,6 +533,17 @@ for resolution in np.arange(0.1, 10, 0.5):
 print('NMI (MultiMap): {:.3f}'.format(max(nmi_multimap)))
 print('ARI (MultiMap): {:.3f}'.format(max(ari_multimap)))
 
+# 4. Stabmap
+nmi_stabmap = []
+ari_stabmap = []
+for resolution in np.arange(0.1, 10, 0.5):
+    leiden_labels_stabmap = utils.leiden_cluster(X = np.concatenate((stabmap_b1, stabmap_b2, stabmap_b3, stabmap_b4), axis = 0), knn_indices = None, knn_dists = None, resolution = resolution)
+    nmi_stabmap.append(bmk.nmi(group1 = np.concatenate(labels), group2 = leiden_labels_stabmap))
+    ari_stabmap.append(bmk.ari(group1 = np.concatenate(labels), group2 = leiden_labels_stabmap))
+print('NMI (Stabmap): {:.3f}'.format(max(nmi_stabmap)))
+print('ARI (Stabmap): {:.3f}'.format(max(ari_stabmap)))
+
+
 
 # Label transfer accuracy
 # randomly select a half of cells as query
@@ -506,19 +575,25 @@ knn_graph_multimap = np.zeros_like(G_multimap)
 knn_graph_multimap[np.arange(knn_indices_multimap.shape[0])[:, None], knn_indices_multimap] = 1
 knn_graph_multimap = knn_graph_multimap[query_cell, :][:, training_cell]
 lta_multimap = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, knn_graph = knn_graph_multimap)
-lt2_multimap2 = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+lta_multimap2 = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
                                   z_query = np.concatenate(X_multimaps, axis = 0)[query_cell,:],
                                   z_train = np.concatenate(X_multimaps, axis = 0)[training_cell,:])
+
+# Stabmap 
+lta_stabmap = bmk.transfer_accuracy(query_label = query_label, train_label = training_label, 
+                                  z_query = np.concatenate((stabmap_b1, stabmap_b2, stabmap_b3, stabmap_b4), axis = 0)[query_cell,:],
+                                  z_train = np.concatenate((stabmap_b1, stabmap_b2, stabmap_b3, stabmap_b4), axis = 0)[training_cell,:])
 
 print("Label transfer accuracy (scMoMaT): {:.3f}".format(lta_scmomat))
 print("Label transfer accuracy (UINMF): {:.3f}".format(lta_uinmf))
 print("Label transfer accuracy (MultiMap Graph): {:.3f}".format(lta_multimap))
-print("Label transfer accuracy (MultiMap): {:.3f}".format(lt2_multimap2))
+print("Label transfer accuracy (MultiMap): {:.3f}".format(lta_multimap2))
+print("Label transfer accuracy (Stabmap): {:.3f}".format(lta_stabmap))
 
-scores["NMI"] = np.array(nmi_scmomat + nmi_uinmf + nmi_multimap)
-scores["ARI"] = np.array(ari_scmomat + ari_uinmf + ari_multimap)
-scores["GC"] = np.array([gc_scmomat] * len(nmi_scmomat) + [gc_uinmf] * len(nmi_uinmf) + [gc_multimap] * len(ari_multimap))
-scores["LTA"] = np.array([lta_scmomat] * len(nmi_scmomat) + [lta_uinmf] * len(nmi_uinmf) + [lta_multimap] * len(ari_multimap))
+scores["NMI"] = np.array(nmi_scmomat + nmi_uinmf + nmi_multimap + nmi_stabmap)
+scores["ARI"] = np.array(ari_scmomat + ari_uinmf + ari_multimap + ari_stabmap)
+scores["GC"] = np.array([gc_scmomat] * len(nmi_scmomat) + [gc_uinmf] * len(nmi_uinmf) + [gc_multimap] * len(ari_multimap) + [gc_stabmap] * len(ari_stabmap))
+scores["LTA"] = np.array([lta_scmomat] * len(nmi_scmomat) + [lta_uinmf] * len(nmi_uinmf) + [lta_multimap] * len(ari_multimap) + [lta_stabmap] * len(ari_stabmap))
 # scores["resolution"] = np.array([x for x in np.arange(0.1, 10, 0.5)] * 4)
 # scores["methods"] = np.array(["scMoMaT"] * len(nmi_scmomat) + ["UINMF"] * len(nmi_uinmf) + ["MultiMap"] * len(ari_multimap))
 
@@ -547,18 +622,19 @@ score = pd.read_csv(result_dir + "score.csv")
 gc_scmomat = np.max(score.loc[score["methods"] == "scMoMaT", "GC"].values)
 gc_uinmf = np.max(score.loc[score["methods"] == "UINMF", "GC"].values)
 gc_multimap = np.max(score.loc[score["methods"] == "MultiMap", "GC"].values)
+gc_stabmap = np.max(score.loc[score["methods"] == "Stabmap", "GC"].values)
 
-fig = plt.figure(figsize = (4,5))
+fig = plt.figure(figsize = (5,5))
 ax = fig.add_subplot()
-barlist = ax.bar([1,2,3], [gc_scmomat, gc_uinmf, gc_multimap], width = 0.4)
+barlist = ax.bar([1,2,3,4], [gc_scmomat, gc_uinmf, gc_multimap, gc_stabmap], width = 0.4)
 barlist[0].set_color('r')
 fig.savefig(result_dir + "GC.pdf", bbox_inches = "tight")    
 
 ax.tick_params(axis='x', labelsize=15)
 ax.tick_params(axis='y', labelsize=15)
 ax.set_title("graph connectivity", fontsize = 20)
-_ = ax.set_xticks([1,2,3])
-_ = ax.set_xticklabels(["scMoMaT", "UINMF", "MultiMap"])
+_ = ax.set_xticks([1,2,3,4])
+_ = ax.set_xticklabels(["scMoMaT", "UINMF", "MultiMap", "Stabmap"])
 # _ = ax.set_xlabel("cluster", fontsize = 20)
 _ = ax.set_ylabel("GC", fontsize = 20)
 show_values_on_bars(ax)
@@ -568,18 +644,19 @@ fig.savefig(result_dir + "GC.png", bbox_inches = "tight")
 nmi_scmomat = np.max(score.loc[score["methods"] == "scMoMaT", "NMI"].values)
 nmi_uinmf = np.max(score.loc[score["methods"] == "UINMF", "NMI"].values)
 nmi_multimap = np.max(score.loc[score["methods"] == "MultiMap", "NMI"].values)
+nmi_stabmap = np.max(score.loc[score["methods"] == "Stabmap", "NMI"].values)
 
-fig = plt.figure(figsize = (4,5))
+fig = plt.figure(figsize = (5,5))
 ax = fig.add_subplot()
-barlist = ax.bar([1,2,3], [nmi_scmomat, nmi_uinmf, nmi_multimap], width = 0.4)
+barlist = ax.bar([1,2,3,4], [nmi_scmomat, nmi_uinmf, nmi_multimap, nmi_stabmap], width = 0.4)
 barlist[0].set_color('r')    
 
 ax.tick_params(axis='x', labelsize=15)
 ax.tick_params(axis='y', labelsize=15)
 ax.set_ylim(0, 0.7)
 ax.set_title("NMI", fontsize = 20)
-_ = ax.set_xticks([1,2,3])
-_ = ax.set_xticklabels(["scMoMaT", "UINMF", "MultiMap"])
+_ = ax.set_xticks([1,2,3,4])
+_ = ax.set_xticklabels(["scMoMaT", "UINMF", "MultiMap", "Stabmap"])
 # _ = ax.set_xlabel("cluster", fontsize = 20)
 _ = ax.set_ylabel("NMI", fontsize = 20)
 show_values_on_bars(ax)
@@ -589,17 +666,18 @@ fig.savefig(result_dir + "NMI.png", bbox_inches = "tight")
 ari_scmomat = np.max(score.loc[score["methods"] == "scMoMaT", "ARI"].values)
 ari_uinmf = np.max(score.loc[score["methods"] == "UINMF", "ARI"].values)
 ari_multimap = np.max(score.loc[score["methods"] == "MultiMap", "ARI"].values)
+ari_stabmap = np.max(score.loc[score["methods"] == "Stabmap", "ARI"].values)
 
-fig = plt.figure(figsize = (4,5))
+fig = plt.figure(figsize = (5,5))
 ax = fig.add_subplot()
-barlist = ax.bar([1,2,3], [ari_scmomat, ari_uinmf, ari_multimap], width = 0.4)
+barlist = ax.bar([1,2,3,4], [ari_scmomat, ari_uinmf, ari_multimap, ari_stabmap], width = 0.4)
 barlist[0].set_color('r')    
 
 ax.tick_params(axis='x', labelsize=15)
 ax.tick_params(axis='y', labelsize=15)
 ax.set_title("ARI", fontsize = 20)
-_ = ax.set_xticks([1,2,3])
-_ = ax.set_xticklabels(["scMoMaT", "UINMF", "MultiMap"])
+_ = ax.set_xticks([1,2,3,4])
+_ = ax.set_xticklabels(["scMoMaT", "UINMF", "MultiMap", "Stabmap"])
 ax.set_ylim(0, 0.7)
 # _ = ax.set_xlabel("cluster", fontsize = 20)
 _ = ax.set_ylabel("ARI", fontsize = 20)
@@ -610,17 +688,18 @@ fig.savefig(result_dir + "ARI.png", bbox_inches = "tight")
 lta_scmomat = np.max(scores.loc[scores["methods"] == "scMoMaT", "LTA"].values)
 lta_uinmf = np.max(scores.loc[scores["methods"] == "UINMF", "LTA"].values)
 lta_multimap = np.max(scores.loc[scores["methods"] == "MultiMap", "LTA"].values)
+lta_stabmap = np.max(scores.loc[scores["methods"] == "Stabmap", "LTA"].values)
 
-fig = plt.figure(figsize = (4,5))
+fig = plt.figure(figsize = (5,5))
 ax = fig.add_subplot()
-barlist = ax.bar([1,2,3], [lta_scmomat, lta_uinmf, lta_multimap], width = 0.4)
+barlist = ax.bar([1,2,3,4], [lta_scmomat, lta_uinmf, lta_multimap, lta_stabmap], width = 0.4)
 barlist[0].set_color('r')    
 
 ax.tick_params(axis='x', labelsize=15)
 ax.tick_params(axis='y', labelsize=15)
 ax.set_title("Label Transfer Accuracy", fontsize = 20)
-_ = ax.set_xticks([1,2,3])
-_ = ax.set_xticklabels(["scMoMaT", "UINMF", "MultiMap"])
+_ = ax.set_xticks([1,2,3,4])
+_ = ax.set_xticklabels(["scMoMaT", "UINMF", "MultiMap", "Stabmap"])
 # _ = ax.set_xlabel("cluster", fontsize = 20)
 _ = ax.set_ylabel("LTA", fontsize = 20)
 show_values_on_bars(ax)

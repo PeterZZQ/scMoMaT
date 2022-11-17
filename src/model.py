@@ -5,7 +5,6 @@ import torch.optim as opt
 from torch.nn import Module, Parameter, ParameterList, ParameterDict
 from torch import softmax, log_softmax, Tensor
 
-import matplotlib.pyplot as plt
 # from sparsemax import Sparsemax
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

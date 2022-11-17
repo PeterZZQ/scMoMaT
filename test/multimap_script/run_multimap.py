@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 sc.settings.set_figure_params(dpi=80)
 # In[]
-data = "pbmc"
+data = "simulated_protein2"
 if data == "diag":
         #create the anndata for each batch of count matrix, should use raw count without highly variable genes, cells gene expression should only be log transformed
         data_dir = "./"
@@ -120,6 +120,23 @@ if data == "diag":
         # adata.obsp["connectivities"] stores a cell by cell graph, note that the cells from all batches are included (seems to be a binarized graph).
         # adata.write_h5ad("outputs/multimap_int.h5ad")
 
+        adata.obs[["source"]].to_csv("outputs/batch_id.csv")
+        np.save("outputs/multimap.npy", adata.obsm["X_multimap"])
+        save_npz("outputs/multimap_graph.npz", adata.obsp["connectivities"])
+
+elif data == "pancreas":
+        data_dir = "./"
+        nbatches = 8
+        rnas = []
+        for batch in range(nbatches):
+                rna = sc.read(data_dir + f"rna_{batch}.h5ad")
+                rna_pca = rna.copy()
+                sc.pp.scale(rna_pca)
+                sc.pp.pca(rna_pca)
+                rna.obsm["X_pca"] = rna_pca.obsm["X_pca"].copy()
+                rnas.append(rna)
+
+        adata = MultiMAP.Integration(adatas = rnas, use_reps = ["X_pca"] * len(rnas))
         adata.obs[["source"]].to_csv("outputs/batch_id.csv")
         np.save("outputs/multimap.npy", adata.obsm["X_multimap"])
         save_npz("outputs/multimap_graph.npz", adata.obsp["connectivities"])
@@ -251,7 +268,7 @@ elif data == "pbmc":
         # np.save("outputs/multimap.npy", adata.obsm["X_multimap"])
         # save_npz("outputs/multimap_graph.npz", adata.obsp["connectivities"])
 
-elif data == "simulated":
+elif data == "simulated_scenario1":
         #create the anndata for each batch of count matrix, should use raw count without highly variable genes, cells gene expression should only be log transformed
         data_dir = "./"
         atac_genes1 = sc.read(data_dir + 'atac_genes_1.h5ad')
@@ -315,7 +332,7 @@ elif data == "simulated":
         np.save("outputs/multimap.npy", adata.obsm["X_multimap"])
         save_npz("outputs/multimap_graph.npz", adata.obsp["connectivities"])
 
-elif data == "simulated2":
+elif data == "simulated_scenario2":
         #create the anndata for each batch of count matrix, should use raw count without highly variable genes, cells gene expression should only be log transformed
         data_dir = "./"
         atac_genes1 = sc.read(data_dir + 'atac_genes_1.h5ad')
@@ -348,7 +365,9 @@ elif data == "simulated2":
         paired4_pca4 = paired4.copy()
         rna_pca5 = rna5.copy()
         rna_pca6 = rna6.copy()
+        # there can be genes with the same value across dataset, scale make them nan
         sc.pp.scale(paired4_pca4)
+        paired4_pca4.X = np.where(np.isnan(paired4_pca4.X), 0, paired4_pca4.X)
         sc.pp.pca(paired4_pca4)
         sc.pp.scale(rna_pca5)
         sc.pp.pca(rna_pca5)
@@ -358,7 +377,7 @@ elif data == "simulated2":
         rna5.obsm['X_pca'] = rna_pca5.obsm['X_pca'].copy()
         rna6.obsm['X_pca'] = rna_pca6.obsm['X_pca'].copy()
 
-        
+
 
         # calculate the reduced dimensional space of each dataset
         # for scATAC-Seq uses TF-IDF & LSI
@@ -373,8 +392,11 @@ elif data == "simulated2":
         atac_genes1.obsm['X_lsi'] = atac_peaks1.obsm['X_lsi'].copy()
         atac_genes2.obsm['X_lsi'] = atac_peaks2.obsm['X_lsi'].copy()
         atac_genes3.obsm['X_lsi'] = atac_peaks3.obsm['X_lsi'].copy()
-
-        adata = MultiMAP.Integration(adatas = [atac_genes1, atac_genes2, atac_genes3, paired4, rna5, rna6], use_reps = ['X_lsi', 'X_lsi', 'X_lsi', 'X_pca', 'X_pca', 'X_pca'])
+        adatas = [atac_genes1, atac_genes2, atac_genes3, paired4, rna5, rna6]
+        for i in range(len(adatas)):
+                sc.pp.scale(adatas[i])
+                adatas[i].X = np.where(np.isnan(adatas[i].X), 0, adatas[i].X)
+        adata = MultiMAP.Integration(adatas = adatas, use_reps = ['X_lsi', 'X_lsi', 'X_lsi', 'X_pca', 'X_pca', 'X_pca'], scale = False)
         # adata.obsm["X_multimap"] is two dimensional, like umap visualization
         # adata.obsp["connectivities"] stores a cell by cell graph, note that the cells from all batches are included (seems to be a binarized graph).
         # adata.write_h5ad("outputs/multimap_int.h5ad")
@@ -382,4 +404,168 @@ elif data == "simulated2":
         adata.obs[["source"]].to_csv("outputs/batch_id.csv")
         np.save("outputs/multimap.npy", adata.obsm["X_multimap"])
         save_npz("outputs/multimap_graph.npz", adata.obsp["connectivities"])
+
+elif data == "simulated_protein1":
+        #create the anndata for each batch of count matrix, should use raw count without highly variable genes, cells gene expression should only be log transformed
+        data_dir = "./"
+        atac_proteins1 = sc.read(data_dir + 'atac_proteins_1.h5ad')
+        atac_proteins2 = sc.read(data_dir + 'atac_proteins_2.h5ad')
+        atac_proteins3 = sc.read(data_dir + 'atac_proteins_3.h5ad')
+        atac_proteins4 = sc.read(data_dir + 'atac_proteins_4.h5ad')
+        atac_proteins5 = sc.read(data_dir + 'atac_proteins_5.h5ad')
+        atac_proteins6 = sc.read(data_dir + 'atac_proteins_6.h5ad')
+        
+        atac_peaks1 = sc.read(data_dir + 'atac_peaks_1.h5ad')
+        atac_peaks2 = sc.read(data_dir + 'atac_peaks_2.h5ad')
+        atac_peaks3 = sc.read(data_dir + 'atac_peaks_3.h5ad')
+        atac_peaks4 = sc.read(data_dir + 'atac_peaks_4.h5ad')
+        atac_peaks5 = sc.read(data_dir + 'atac_peaks_5.h5ad')
+        atac_peaks6 = sc.read(data_dir + 'atac_peaks_6.h5ad')
+        
+        rna_genes1 = sc.read(data_dir + 'rna_1.h5ad')
+        rna_genes2 = sc.read(data_dir + 'rna_2.h5ad')
+        rna_genes3 = sc.read(data_dir + 'rna_3.h5ad')
+        rna_genes4 = sc.read(data_dir + 'rna_4.h5ad')
+        rna_genes5 = sc.read(data_dir + 'rna_5.h5ad')
+        rna_genes6 = sc.read(data_dir + 'rna_6.h5ad')
+
+        rna_proteins1 = sc.read(data_dir + 'rna_proteins_1.h5ad')
+        rna_proteins2 = sc.read(data_dir + 'rna_proteins_2.h5ad')
+        rna_proteins3 = sc.read(data_dir + 'rna_proteins_3.h5ad')
+        rna_proteins4 = sc.read(data_dir + 'rna_proteins_4.h5ad')
+        rna_proteins5 = sc.read(data_dir + 'rna_proteins_5.h5ad')
+        rna_proteins6 = sc.read(data_dir + 'rna_proteins_6.h5ad')
+
+        protein1 = sc.read(data_dir + 'proteins_1.h5ad')
+        protein2 = sc.read(data_dir + 'proteins_2.h5ad')
+        protein3 = sc.read(data_dir + 'proteins_3.h5ad')
+        protein4 = sc.read(data_dir + 'proteins_4.h5ad')
+        protein5 = sc.read(data_dir + 'proteins_5.h5ad')
+        protein6 = sc.read(data_dir + 'proteins_6.h5ad')
+
+         # calculate the pca space of rna
+        protein_pca3 = protein3.copy()
+        protein_pca4 = protein4.copy()
+        sc.pp.scale(protein_pca3)
+        sc.pp.pca(protein_pca3)
+        sc.pp.scale(protein_pca4)
+        sc.pp.pca(protein_pca4)
+        protein3.obsm['X_pca'] = protein_pca3.obsm['X_pca'].copy()
+        protein4.obsm['X_pca'] = protein_pca4.obsm['X_pca'].copy()
+
+        # calculate the reduced dimensional space of each dataset
+        # for scATAC-Seq uses TF-IDF & LSI
+        MultiMAP.TFIDF_LSI(atac_peaks1)
+        MultiMAP.TFIDF_LSI(atac_peaks2)
+
+        sc.pp.scale(rna_genes5)
+        sc.pp.pca(rna_genes5)
+        sc.pp.scale(rna_genes6)
+        sc.pp.pca(rna_genes6)
+
+        # note that the reduced space is saved into atac_genes instead of atac_peaks, as atac_genes is the only input
+        atac_proteins1.obsm['X_lsi'] = atac_peaks1.obsm['X_lsi'].copy()
+        atac_proteins2.obsm['X_lsi'] = atac_peaks2.obsm['X_lsi'].copy()
+        rna_proteins5.obsm['X_pca'] = rna_genes5.obsm['X_pca'].copy()
+        rna_proteins6.obsm['X_pca'] = rna_genes6.obsm['X_pca'].copy()
+
+        adatas = [atac_proteins1, atac_proteins2, protein3, protein4, rna_proteins5, rna_proteins6]
+        for i in range(len(adatas)):
+                sc.pp.scale(adatas[i])
+                adatas[i].X = np.where(np.isnan(adatas[i].X), 0, adatas[i].X)
+        adata = MultiMAP.Integration(adatas = adatas, use_reps = ['X_lsi', 'X_lsi', 'X_pca', 'X_pca', 'X_pca', 'X_pca'], scale = False)
+
+        # adata.obsm["X_multimap"] is two dimensional, like umap visualization
+        # adata.obsp["connectivities"] stores a cell by cell graph, note that the cells from all batches are included (seems to be a binarized graph).
+        # adata.write_h5ad("outputs/multimap_int.h5ad")
+
+        adata.obs[["source"]].to_csv("outputs/batch_id.csv")
+        np.save("outputs/multimap.npy", adata.obsm["X_multimap"])
+        save_npz("outputs/multimap_graph.npz", adata.obsp["connectivities"])
+
+elif data == "simulated_protein2":
+        #create the anndata for each batch of count matrix, should use raw count without highly variable genes, cells gene expression should only be log transformed
+        data_dir = "./"
+        atac_proteins1 = sc.read(data_dir + 'atac_proteins_1.h5ad')
+        atac_proteins2 = sc.read(data_dir + 'atac_proteins_2.h5ad')
+        atac_proteins3 = sc.read(data_dir + 'atac_proteins_3.h5ad')
+        atac_proteins4 = sc.read(data_dir + 'atac_proteins_4.h5ad')
+        atac_proteins5 = sc.read(data_dir + 'atac_proteins_5.h5ad')
+        atac_proteins6 = sc.read(data_dir + 'atac_proteins_6.h5ad')
+        
+        atac_peaks1 = sc.read(data_dir + 'atac_peaks_1.h5ad')
+        atac_peaks2 = sc.read(data_dir + 'atac_peaks_2.h5ad')
+        atac_peaks3 = sc.read(data_dir + 'atac_peaks_3.h5ad')
+        atac_peaks4 = sc.read(data_dir + 'atac_peaks_4.h5ad')
+        atac_peaks5 = sc.read(data_dir + 'atac_peaks_5.h5ad')
+        atac_peaks6 = sc.read(data_dir + 'atac_peaks_6.h5ad')
+        
+        rna_genes1 = sc.read(data_dir + 'rna_1.h5ad')
+        rna_genes2 = sc.read(data_dir + 'rna_2.h5ad')
+        rna_genes3 = sc.read(data_dir + 'rna_3.h5ad')
+        rna_genes4 = sc.read(data_dir + 'rna_4.h5ad')
+        rna_genes5 = sc.read(data_dir + 'rna_5.h5ad')
+        rna_genes6 = sc.read(data_dir + 'rna_6.h5ad')
+
+        rna_proteins1 = sc.read(data_dir + 'rna_proteins_1.h5ad')
+        rna_proteins2 = sc.read(data_dir + 'rna_proteins_2.h5ad')
+        rna_proteins3 = sc.read(data_dir + 'rna_proteins_3.h5ad')
+        rna_proteins4 = sc.read(data_dir + 'rna_proteins_4.h5ad')
+        rna_proteins5 = sc.read(data_dir + 'rna_proteins_5.h5ad')
+        rna_proteins6 = sc.read(data_dir + 'rna_proteins_6.h5ad')
+
+        protein1 = sc.read(data_dir + 'proteins_1.h5ad')
+        protein2 = sc.read(data_dir + 'proteins_2.h5ad')
+        protein3 = sc.read(data_dir + 'proteins_3.h5ad')
+        protein4 = sc.read(data_dir + 'proteins_4.h5ad')
+        protein5 = sc.read(data_dir + 'proteins_5.h5ad')
+        protein6 = sc.read(data_dir + 'proteins_6.h5ad')
+
+        paired3 = anndata.AnnData(X = csr_matrix(np.concatenate((atac_peaks3.X.todense(), protein3.X.todense()), axis = 1)))
+        paired3.var.index = np.concatenate((atac_peaks3.var.index.values.squeeze(), protein3.var.index.values.squeeze()), axis = 0)
+        paired3.obs = atac_peaks3.obs
+
+        paired4 = anndata.AnnData(X = csr_matrix(np.concatenate((rna_genes4.X.todense(), protein4.X.todense()), axis = 1)))
+        paired4.var.index = np.concatenate((rna_genes4.var.index.values.squeeze(), protein4.var.index.values.squeeze()), axis = 0)
+        paired4.obs = rna_genes4.obs
+
+         # calculate the pca space of rna
+        paired_pca3 = paired3.copy()
+        paired_pca4 = paired4.copy()
+        sc.pp.scale(paired_pca3)
+        sc.pp.pca(paired_pca3)
+        sc.pp.scale(paired_pca4)
+        sc.pp.pca(paired_pca4)
+        paired3.obsm['X_pca'] = paired_pca3.obsm['X_pca'].copy()
+        paired4.obsm['X_pca'] = paired_pca4.obsm['X_pca'].copy()
+
+        # calculate the reduced dimensional space of each dataset
+        # for scATAC-Seq uses TF-IDF & LSI
+        MultiMAP.TFIDF_LSI(atac_peaks1)
+        MultiMAP.TFIDF_LSI(atac_peaks2)
+
+        sc.pp.scale(rna_genes5)
+        sc.pp.pca(rna_genes5)
+        sc.pp.scale(rna_genes6)
+        sc.pp.pca(rna_genes6)
+
+        # note that the reduced space is saved into atac_genes instead of atac_peaks, as atac_genes is the only input
+        atac_proteins1.obsm['X_lsi'] = atac_peaks1.obsm['X_lsi'].copy()
+        atac_proteins2.obsm['X_lsi'] = atac_peaks2.obsm['X_lsi'].copy()
+        rna_proteins5.obsm['X_pca'] = rna_genes5.obsm['X_pca'].copy()
+        rna_proteins6.obsm['X_pca'] = rna_genes6.obsm['X_pca'].copy()
+
+        adatas = [atac_proteins1, atac_proteins2, paired3, paired4, rna_proteins5, rna_proteins6]
+        for i in range(len(adatas)):
+                sc.pp.scale(adatas[i])
+                adatas[i].X = np.where(np.isnan(adatas[i].X), 0, adatas[i].X)
+        adata = MultiMAP.Integration(adatas = adatas, use_reps = ['X_lsi', 'X_lsi', 'X_pca', 'X_pca', 'X_pca', 'X_pca'], scale = False)
+        # adata.obsm["X_multimap"] is two dimensional, like umap visualization
+        # adata.obsp["connectivities"] stores a cell by cell graph, note that the cells from all batches are included (seems to be a binarized graph).
+        # adata.write_h5ad("outputs/multimap_int.h5ad")
+
+        adata.obs[["source"]].to_csv("outputs/batch_id.csv")
+        np.save("outputs/multimap.npy", adata.obsm["X_multimap"])
+        save_npz("outputs/multimap_graph.npz", adata.obsp["connectivities"])
+
 # %%
