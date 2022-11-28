@@ -7,7 +7,7 @@ import scanpy as sc
 from anndata import AnnData
 from scipy.sparse import save_npz, csr_matrix, load_npz
 import warnings 
-# warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")
 
 # In[] Health hema
 path = "../../data/real/diag/healthy_hema/"
@@ -310,7 +310,7 @@ for batch in range(n_batches):
     adata_atac2rna.write_h5ad(result_path + "atac_genes_" + str(batch+1) + ".h5ad")
 
 # In[] simulated protein data
-path = "../../data/simulated/6b16c_test_1/unequal/"
+path = "../../data/simulated/6b16c_test_10/unequal/"
 
 result_path = path + "multimap/"
 if not os.path.exists(result_path):

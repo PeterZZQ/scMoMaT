@@ -656,13 +656,18 @@ if True:
 
     import seaborn as sns
     plt.rcParams["font.size"] = 20
-    fig = plt.figure(figsize = (30, 5))
+    fig = plt.figure(figsize = (32, 5))
     ax = fig.subplots(nrows = 1, ncols = 5)
     sns.boxplot(data = new_score, x = "method", y = "GC", ax = ax[0])
+    sns.stripplot(data = new_score, x = "method", y = "GC", ax = ax[0], color = "black")
     sns.boxplot(data = new_score, x = "method", y = "ARI", ax = ax[1])
+    sns.stripplot(data = new_score, x = "method", y = "ARI", ax = ax[1], color = "black")
     sns.boxplot(data = new_score, x = "method", y = "NMI", ax = ax[2])
+    sns.stripplot(data = new_score, x = "method", y = "NMI", ax = ax[2], color = "black")    
     sns.boxplot(data = new_score, x = "method", y = "LTA", ax = ax[3])
+    sns.stripplot(data = new_score, x = "method", y = "LTA", ax = ax[3], color = "black")
     sns.boxplot(data = new_score, x = "method", y = "F1", ax = ax[4])
+    sns.stripplot(data = new_score, x = "method", y = "F1", ax = ax[4], color = "black")
     ax[0].set_title("Graph connectivity")
     ax[1].set_title("ARI")
     ax[2].set_title("NMI")

@@ -58,6 +58,7 @@ do
     sudo docker run -v /localscratch/ziqi/scMoMaT/test/multimap_script/multimap:/test_multimap/outputs --rm run_multimap 
     mkdir -p ../simulated/6b16c_test_${num}/protein_scenario2
     sudo chown -R 1059113:372345 multimap
+    sudo rm -rf ../simulated/6b16c_test_${num}/protein_scenario2/multimap
     sudo mv multimap ../simulated/6b16c_test_${num}/protein_scenario2/
     rm -rf *.h5ad
 done

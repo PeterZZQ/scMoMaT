@@ -567,7 +567,7 @@ scores["methods"] = np.array(["scMoMaT"] * len(nmi_scmomat) + ["UINMF"] * len(nm
 scores.to_csv(result_dir + "/score.csv")
 
 # In[]
-if False:
+if True:
     nmi_scmomat = []
     ari_scmomat = []
     gc_scmomat = []
@@ -637,9 +637,13 @@ if False:
     fig = plt.figure(figsize = (27, 5))
     ax = fig.subplots(nrows = 1, ncols = 4)
     sns.boxplot(data = new_score, x = "method", y = "GC", ax = ax[0])
+    sns.stripplot(data = new_score, x = "method", y = "GC", ax = ax[0], color = "black")
     sns.boxplot(data = new_score, x = "method", y = "ARI", ax = ax[1])
+    sns.stripplot(data = new_score, x = "method", y = "ARI", ax = ax[1], color = "black")
     sns.boxplot(data = new_score, x = "method", y = "NMI", ax = ax[2])
+    sns.stripplot(data = new_score, x = "method", y = "NMI", ax = ax[2], color = "black")
     sns.boxplot(data = new_score, x = "method", y = "LTA", ax = ax[3])
+    sns.stripplot(data = new_score, x = "method", y = "LTA", ax = ax[3], color = "black")
     ax[0].set_title("Graph connectivity")
     ax[1].set_title("ARI")
     ax[2].set_title("NMI")
@@ -710,9 +714,13 @@ if True:
     fig = plt.figure(figsize = (27, 5))
     ax = fig.subplots(nrows = 1, ncols = 4)
     sns.boxplot(data = new_score, x = "method", y = "GC", ax = ax[0])
+    sns.stripplot(data = new_score, x = "method", y = "GC", ax = ax[0], color = "black")    
     sns.boxplot(data = new_score, x = "method", y = "ARI", ax = ax[1])
+    sns.stripplot(data = new_score, x = "method", y = "ARI", ax = ax[1], color = "black")
     sns.boxplot(data = new_score, x = "method", y = "NMI", ax = ax[2])
+    sns.stripplot(data = new_score, x = "method", y = "NMI", ax = ax[2], color = "black")
     sns.boxplot(data = new_score, x = "method", y = "LTA", ax = ax[3])
+    sns.stripplot(data = new_score, x = "method", y = "LTA", ax = ax[3], color = "black")
     ax[0].set_title("Graph connectivity")
     ax[1].set_title("ARI")
     ax[2].set_title("NMI")

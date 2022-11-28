@@ -46,7 +46,7 @@ def lsi(counts):
 dir = "../data/real/MOp_5batches/"
 
 n_batches = 5
-no_pseudo = True
+no_pseudo = False
 counts_rnas = []
 counts_atacs = []
 labels_ori = []

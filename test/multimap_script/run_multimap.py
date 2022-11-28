@@ -533,8 +533,10 @@ elif data == "simulated_protein2":
         paired_pca3 = paired3.copy()
         paired_pca4 = paired4.copy()
         sc.pp.scale(paired_pca3)
+        paired_pca3.X = np.where(np.isnan(paired_pca3.X), 0, paired_pca3.X)
         sc.pp.pca(paired_pca3)
         sc.pp.scale(paired_pca4)
+        paired_pca4.X = np.where(np.isnan(paired_pca4.X), 0, paired_pca4.X)
         sc.pp.pca(paired_pca4)
         paired3.obsm['X_pca'] = paired_pca3.obsm['X_pca'].copy()
         paired4.obsm['X_pca'] = paired_pca4.obsm['X_pca'].copy()
@@ -545,8 +547,10 @@ elif data == "simulated_protein2":
         MultiMAP.TFIDF_LSI(atac_peaks2)
 
         sc.pp.scale(rna_genes5)
+        rna_genes5.X = np.where(np.isnan(rna_genes5.X), 0, rna_genes5.X)
         sc.pp.pca(rna_genes5)
         sc.pp.scale(rna_genes6)
+        rna_genes6.X = np.where(np.isnan(rna_genes6.X), 0, rna_genes6.X)
         sc.pp.pca(rna_genes6)
 
         # note that the reduced space is saved into atac_genes instead of atac_peaks, as atac_genes is the only input

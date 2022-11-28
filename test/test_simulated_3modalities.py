@@ -46,9 +46,14 @@ def lsi(counts):
 #
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
 # NOTE: read in dataset
-dir = "../data/simulated/6b16c_test_10/unequal/"
-result_dir = "simulated/6b16c_test_10/protein_scenario2"
-scmomat_dir = result_dir + "/scmomat/"
+dir = "../data/simulated/6b16c_test_9/unequal/"
+result_dir = "simulated/6b16c_test_9/protein_scenario2"
+
+USE_PSEUDO = True
+if USE_PSEUDO:
+    scmomat_dir = result_dir + "/scmomat_withpseudo/"
+else:
+    scmomat_dir = result_dir + "/scmomat/"
 
 if not os.path.exists(scmomat_dir):
     os.makedirs(scmomat_dir)
@@ -136,8 +141,8 @@ PxG = np.loadtxt(os.path.join(dir, 'protein2gene.txt'), delimiter = "\t")
 RxP = RxG @ PxG.T
 RxP = (RxP > 0) 
 
-if result_dir[-1] == "1":
-    # CALCULATE PSEUDO-SCRNA-SEQ
+if USE_PSEUDO == True:
+    # CALCULATE PSEUDO-PROTEIN
     for idx in range(len(counts["atac"])):
         if (counts["protein"][idx] is None) & (counts["atac"][idx] is not None):
             print(f"pseudo-protein for atac in batch {idx}")
@@ -565,10 +570,12 @@ scores["LTA"] = np.array([lta_scmomat] * len(nmi_scmomat) + [lta_uinmf] * len(nm
 scores["resolution"] = np.array([x for x in np.arange(0.1, 10, 0.5)] * 4)
 scores["methods"] = np.array(["scMoMaT"] * len(nmi_scmomat) + ["UINMF"] * len(nmi_uinmf) + ["MultiMap"] * len(ari_multimap) + ["Stabmap"] * len(ari_stabmap))
 
-scores.to_csv(result_dir + "/score.csv")
-
+if USE_PSEUDO == True:
+    scores.to_csv(result_dir + "/score_withpseudo.csv")
+else:
+    scores.to_csv(result_dir + "/score.csv")
 # In[]
-if True:
+if False:
     nmi_scmomat = []
     ari_scmomat = []
     gc_scmomat = []
@@ -644,6 +651,10 @@ if True:
     ari_scmomat = []
     gc_scmomat = []
     lta_scmomat = []
+    nmi_scmomat_withpseudo = []
+    ari_scmomat_withpseudo = []
+    gc_scmomat_withpseudo = []
+    lta_scmomat_withpseudo = []
     nmi_uinmf = []
     ari_uinmf = []
     gc_uinmf = []
@@ -661,15 +672,22 @@ if True:
     for seed in [1,2,3,4,5,6,7,9]:
         result_dir = f'simulated/6b16c_test_{seed}/protein_scenario2/'
         scores = pd.read_csv(result_dir + "score.csv", index_col = 0)
+        scores_withpseudo = pd.read_csv(result_dir + "score_withpseudo.csv", index_col = 0)
         scores_scmomat = scores[scores["methods"] == "scMoMaT"]
         scores_uinmf = scores[scores["methods"] == "UINMF"]
         scores_multimap = scores[scores["methods"] == "MultiMap"]
         scores_stabmap = scores[scores["methods"] == "Stabmap"]
+        scores_scmomat_withpseudo = scores_withpseudo[scores_withpseudo["methods"] == "scMoMaT"]
 
         nmi_scmomat.append(np.max(scores_scmomat["NMI"].values))
         ari_scmomat.append(np.max(scores_scmomat["ARI"].values))
         gc_scmomat.append(np.max(scores_scmomat["GC"].values))
         lta_scmomat.append(np.max(scores_scmomat["LTA"].values))
+
+        nmi_scmomat_withpseudo.append(np.max(scores_scmomat_withpseudo["NMI"].values))
+        ari_scmomat_withpseudo.append(np.max(scores_scmomat_withpseudo["ARI"].values))
+        gc_scmomat_withpseudo.append(np.max(scores_scmomat_withpseudo["GC"].values))
+        lta_scmomat_withpseudo.append(np.max(scores_scmomat_withpseudo["LTA"].values))
 
         nmi_uinmf.append(np.max(scores_uinmf["NMI"].values))
         ari_uinmf.append(np.max(scores_uinmf["ARI"].values))
@@ -687,26 +705,34 @@ if True:
         lta_stabmap.append(np.max(scores_stabmap["LTA"].values))
 
     new_score = pd.DataFrame()
-    new_score["method"] = ["scMoMaT"] * len(ari_scmomat) + ["MultiMap"] * len(ari_multimap) + ["UINMF"] * len(ari_uinmf) + ["Stabmap"] * len(ari_stabmap)
-    new_score["ARI"] = ari_scmomat + ari_multimap + ari_uinmf + ari_stabmap
-    new_score["NMI"] = nmi_scmomat + nmi_multimap + nmi_uinmf + nmi_stabmap
-    new_score["GC"] = gc_scmomat + gc_multimap + gc_uinmf + gc_stabmap
-    new_score["LTA"] = lta_scmomat + lta_multimap + lta_uinmf + lta_stabmap
+    new_score["method"] = ["scMoMaT (w/ pseudo)"] * len(ari_scmomat_withpseudo) + ["scMoMaT (w/o pseudo)"] * len(ari_scmomat) + ["MultiMap"] * len(ari_multimap) + ["UINMF"] * len(ari_uinmf) + ["Stabmap"] * len(ari_stabmap) 
+    new_score["ARI"] = ari_scmomat_withpseudo + ari_scmomat + ari_multimap + ari_uinmf + ari_stabmap
+    new_score["NMI"] = nmi_scmomat_withpseudo + nmi_scmomat + nmi_multimap + nmi_uinmf + nmi_stabmap
+    new_score["GC"] = gc_scmomat_withpseudo + gc_scmomat + gc_multimap + gc_uinmf + gc_stabmap
+    new_score["LTA"] = lta_scmomat_withpseudo + lta_scmomat + lta_multimap + lta_uinmf + lta_stabmap
 
 
     import seaborn as sns
     plt.rcParams["font.size"] = 20
-    fig = plt.figure(figsize = (27, 5))
+    fig = plt.figure(figsize = (30, 8))
     ax = fig.subplots(nrows = 1, ncols = 4)
     sns.boxplot(data = new_score, x = "method", y = "GC", ax = ax[0])
+    sns.stripplot(data = new_score, x = "method", y = "GC", ax = ax[0], color = "black")    
     sns.boxplot(data = new_score, x = "method", y = "ARI", ax = ax[1])
+    sns.stripplot(data = new_score, x = "method", y = "ARI", ax = ax[1], color = "black")    
     sns.boxplot(data = new_score, x = "method", y = "NMI", ax = ax[2])
+    sns.stripplot(data = new_score, x = "method", y = "NMI", ax = ax[2], color = "black")    
     sns.boxplot(data = new_score, x = "method", y = "LTA", ax = ax[3])
+    sns.stripplot(data = new_score, x = "method", y = "LTA", ax = ax[3], color = "black")    
+    ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=45, ha='right')
+    ax[1].set_xticklabels(ax[1].get_xticklabels(), rotation=45, ha='right')
+    ax[2].set_xticklabels(ax[2].get_xticklabels(), rotation=45, ha='right')
+    ax[3].set_xticklabels(ax[3].get_xticklabels(), rotation=45, ha='right')
     ax[0].set_title("Graph connectivity")
     ax[1].set_title("ARI")
     ax[2].set_title("NMI")
     ax[3].set_title("Lable Transfer Accuracy")
     fig.tight_layout()
-    fig.savefig("simulated/scores_protein_scenario2.png", bbox_inches = "tight")
+    fig.savefig("simulated/scores_protein_scenario2_withpseudo.png", bbox_inches = "tight")
 
 # %%

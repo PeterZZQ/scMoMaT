@@ -413,7 +413,7 @@ for batch in range(n_batches):
         uinmf_umaps.append(uinmf_umap[start_pointer:end_pointer,:])
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "separate", save = uinmf_path + f'latent_separate_uinmf.png', 
-                      figsize = (7,12), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (10,12), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(uinmf_umaps, annos = labels, mode = "modality", save = uinmf_path + f'latent_batches_uinmf.png', 
                       figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
@@ -433,7 +433,7 @@ for batch in ["RNA", "ATAC"]:
     X_multimaps.append(X_multimap[batches.values.squeeze() == batch, :])
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "separate", save = multimap_path + f'latent_separate_multimap.png', 
-                      figsize = (7,12), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
+                      figsize = (10,12), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)
 
 utils.plot_latent_ext(X_multimaps, annos = labels, mode = "modality", save = multimap_path + f'latent_batches_multimap.png', 
                       figsize = (10,7), axis_label = "UMAP", markerscale = 6, s = 5, label_inplace = True, text_size = "large", colormap = "Paired", alpha = 0.7)

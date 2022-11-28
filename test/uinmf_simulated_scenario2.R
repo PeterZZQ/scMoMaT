@@ -10,7 +10,10 @@ setwd("/localscratch/ziqi/scMoMaT/test/")
 # Read in the count matrix
 dir <- "../data/simulated/6b16c_test_1/unequal/"
 results_dir <- "simulated/6b16c_test_1/scenario2/uinmf/"
-dir.create(results_dir, showWarnings = FALSE)
+
+dir <- "../data/simulated/de_test_5/"
+results_dir <- "simulated/de_test_5/scenario2/uinmf/"
+dir.create(results_dir, showWarnings = T, recursive = T)
 
 counts.rna.1 <- as.matrix(read.table(paste0(dir, 'GxC1.txt'), sep = "\t"))
 counts.rna.2 <- as.matrix(read.table(paste0(dir, 'GxC2.txt'), sep = "\t"))
@@ -76,7 +79,7 @@ activity.matrix.3 <- gene2region %*% counts.atac.3
 
 # create the liger object for the unshared bin data
 liger_bin <- createLiger(list(peak1 = counts.atac.1, peak2 = counts.atac.2, peak3 = counts.atac.3, peak4 = counts.atac.4), remove.missing = FALSE)
-liger_bin <- normalize(liger_bin)
+liger_bin <- rliger::normalize(liger_bin)
 
 # use all regions as variable regions
 top_regions <- unlist(regions)
@@ -97,7 +100,7 @@ unshared_atac4 = liger_bin@scale.data$peak4
 
 # create the liger object and normalize the shared data
 ifnb_liger <- createLiger(list(rna1 = activity.matrix.1, rna2 = activity.matrix.2, rna3 = activity.matrix.3, rna4 = counts.rna.4, rna5 = counts.rna.5, rna6 = counts.rna.6), remove.missing = FALSE)
-ifnb_liger <- normalize(ifnb_liger)
+ifnb_liger <- rliger::normalize(ifnb_liger)
 # for protein we don't select has there are only 216 proteins
 ifnb_liger <- selectGenes(ifnb_liger)
 # scale the data
