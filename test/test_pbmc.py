@@ -1,10 +1,8 @@
 # In[]
 import sys, os
 sys.path.append('../')
-sys.path.append('../src/')
 
 import numpy as np
-import umap_batch
 from umap import UMAP
 import time
 import torch
@@ -13,9 +11,10 @@ import pandas as pd
 import scipy.sparse as sp
 from sklearn.decomposition import PCA
 
-import model
-import utils
-import bmk
+import scmomat.model as model
+import scmomat.utils as utils
+import scmomat.bmk as bmk
+import scmomat.umap_batch as umap_batch
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 def lsi(counts, n_components = 30):
@@ -113,7 +112,7 @@ T = 4000
 lr = 1e-2
 
 start_time = time.time()
-# model1 = model.scmomat(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
+# model1 = model.scmomat_model(counts = counts, K = K, batch_size = batchsize, interval = interval, lr = lr, lamb = lamb, seed = seed, device = device)
 # losses1 = model1.train_func(T = T)
 # end_time = time.time()
 # print("running time: " + str(end_time - start_time))
