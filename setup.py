@@ -26,7 +26,7 @@ REQUIRED = [
     'numpy>=1.19.5',
     'pandas>=1.4.0',
     'scipy>=1.7.3',
-    'sklearn>=0.22.2.post1',
+    'scikit-learn>=0.22.1',
     'umap>=0.5.2',
     'matplotlib>=3.5.2'
 ]
