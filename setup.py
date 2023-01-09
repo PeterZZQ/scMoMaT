@@ -27,7 +27,7 @@ REQUIRED = [
     'pandas>=1.4.0',
     'scipy>=1.7.3',
     'scikit-learn>=0.22.1',
-    'umap>=0.5.2',
+    'umap-learn>=0.5.2',
     'matplotlib>=3.5.2'
 ]
 
