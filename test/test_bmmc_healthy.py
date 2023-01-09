@@ -4,7 +4,6 @@ sys.path.append('../')
 sys.path.append('../src/')
 import torch
 import numpy as np
-import umap_batch
 from umap import UMAP
 import time
 import pandas as pd  
@@ -15,6 +14,7 @@ from sklearn.decomposition import PCA
 import model
 import utils
 import bmk
+import umap_batch
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
