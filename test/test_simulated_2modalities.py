@@ -44,8 +44,8 @@ def lsi(counts):
 #
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
 # NOTE: read in dataset
-dir = "../data/simulated/6b16c_test_4/unequal/"
-result_dir = "simulated/6b16c_test_4/scenario2"
+dir = "../data/simulated/6b16c_test_1/unequal/"
+result_dir = "simulated/6b16c_test_1/scenario1"
 scmomat_dir = result_dir + "/scmomat/"
 
 if not os.path.exists(scmomat_dir):

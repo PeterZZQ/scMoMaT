@@ -281,14 +281,23 @@ scores.columns = ["d", "lamb", "k", "r", "NMI", "ARI", "GC"]
 
 fig = plt.figure(figsize = (20, 5))
 ax = fig.subplots(nrows = 1, ncols = 3)
-sns.barplot(data = scores, x = "d", hue = "lamb", y = "NMI",  ax = ax[0], capsize = 0.1)
-sns.barplot(data = scores, x = "d", hue = "lamb", y = "ARI",  ax = ax[1], capsize = 0.1)
-sns.barplot(data = scores, x = "d", hue = "lamb", y = "GC",  ax = ax[2], capsize = 0.1)
+ax[0] = sns.barplot(data = scores, x = "d", hue = "lamb", y = "NMI",  ax = ax[0], capsize = 0.1)
+ax[1] = sns.barplot(data = scores, x = "d", hue = "lamb", y = "ARI",  ax = ax[1], capsize = 0.1)
+ax[2] = sns.barplot(data = scores, x = "d", hue = "lamb", y = "GC",  ax = ax[2], capsize = 0.1)
+
+handles, labels = ax[2].get_legend_handles_labels()
+
+if dataset == "pbmc":
+    sns.stripplot(data = scores, x = "d", hue = "lamb", y = "NMI", ax = ax[0], color = "black", dodge = True)    
+    sns.stripplot(data = scores, x = "d", hue = "lamb", y = "ARI", ax = ax[1], color = "black", dodge = True)  
+    sns.stripplot(data = scores, x = "d", hue = "lamb", y = "GC", ax = ax[2], color = "black", dodge = True)  
+
 ax[0].get_legend().remove()
 ax[1].get_legend().remove()
-# ax[0].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
-# ax[1].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
-ax[2].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), title = "$\lambda$")
+ax[2].get_legend().remove()
+l = plt.legend(handles, labels, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title = "$\lambda$", frameon = False)
+
+
 plt.tight_layout()
 if dataset == "simulated":
     fig.savefig("simulated/K_lamb.png", bbox_inches = "tight")
@@ -297,14 +306,21 @@ elif dataset == "pbmc":
 
 fig = plt.figure(figsize = (20, 5))
 ax = fig.subplots(nrows = 1, ncols = 3)
-sns.barplot(data = scores, x = "k", hue = "r", y = "NMI",  ax = ax[0], capsize = 0.1)
-sns.barplot(data = scores, x = "k", hue = "r", y = "ARI",  ax = ax[1], capsize = 0.1)
-sns.barplot(data = scores, x = "k", hue = "r", y = "GC",  ax = ax[2], capsize = 0.1)
+ax[0] =sns.barplot(data = scores, x = "k", hue = "r", y = "NMI",  ax = ax[0], capsize = 0.1)
+ax[1] =sns.barplot(data = scores, x = "k", hue = "r", y = "ARI",  ax = ax[1], capsize = 0.1)
+ax[2] =sns.barplot(data = scores, x = "k", hue = "r", y = "GC",  ax = ax[2], capsize = 0.1)
+
+handles, labels = ax[2].get_legend_handles_labels()
+
+if dataset == "pbmc":
+    sns.stripplot(data = scores, x = "k", hue = "r", y = "NMI", ax = ax[0], color = "black", dodge = True)    
+    sns.stripplot(data = scores, x = "k", hue = "r", y = "ARI", ax = ax[1], color = "black", dodge = True)  
+    sns.stripplot(data = scores, x = "k", hue = "r", y = "GC", ax = ax[2], color = "black", dodge = True)  
 ax[0].get_legend().remove()
 ax[1].get_legend().remove()
-# ax[0].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
-# ax[1].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1))
-ax[2].legend(loc='upper left', prop={'size': 15}, frameon = False, ncol = 1, bbox_to_anchor=(1.04, 1), title = "r")
+ax[2].get_legend().remove()
+l = plt.legend(handles, labels, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title = "r", frameon = False)
+
 plt.tight_layout()
 if dataset == "simulated":
     fig.savefig("simulated/neighbor_r.png", bbox_inches = "tight")

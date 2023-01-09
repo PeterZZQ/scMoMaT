@@ -1,4 +1,8 @@
 ## scMoMaT: a unified framework for single cell mosaic integration and multi-modal bio-marker detection
+scMoMaT v0.1.0
+
+
+#### Description
 scMoMaT is a single-cell data integration method that is able to:
 * integrate single cell multi-omics data under the mosaic scenario using matrix tri-factorization
 * uncover the cell type specific bio-markers at the same time when learning a unified cell representation
@@ -32,11 +36,11 @@ Necessary data for PBMC (the first real dataset in the manuscript, `ASAP-PBMC`) 
 No installation is needed.
 
 `demo_scmomat.ipynb` provides a example run on `MOp_5batches` dataset (running time: training procedure takes ~5mins on NVIDIA A40 GPU, total file takes ~30mins). For more example, please see the test scripts in `test` folder, necessary comments are included:
-* `demo_pbmc.py`: The first real dataset in the manuscript (**data provided**).
-* `demo_bmmc_healthy.py`: The third real dataset in the maunscript.
-* `demo_spleen.py`: The fourth real dataset in the manuscript.
-* `demo_spleen_subsample.py`: The fourth real dataset in the manuscript.
-* `demo_mop_5batches.py`: The second real dataset in the manuscript.
+* `test_pbmc.py`: The first real dataset in the manuscript (**data provided**).
+* `test_bmmc_healthy.py`: The third real dataset in the maunscript.
+* `test_spleen.py`: The fourth real dataset in the manuscript.
+* `test_spleen_subsample.py`: The fourth real dataset in the manuscript.
+* `test_mop_5batches.py`: The second real dataset in the manuscript.
 
 
 #### Contact

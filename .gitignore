@@ -1,11 +1,7 @@
-coupleNMF
 data
-test_old
 src/__pycache__
-src/_*
-Examples_old
 check_points
 **/.DS_Store
 **/*.mtx
-test/_*
+source_data
 
