@@ -355,7 +355,7 @@ class scmomat_model(Module):
         return losses                            
 
 
-class scmomaT_retrain(Module):
+class scmomat_retrain(Module):
     def __init__(self, model, counts, labels, lamb = 0.01, lr = 1e-2, seed = 0, device = device):
         """\
         Description:

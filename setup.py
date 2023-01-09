@@ -12,7 +12,7 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'scMoMaT'
+NAME = 'scmomat'
 DESCRIPTION = 'scmomat: a single-cell multi-omics mosaic integration method'
 URL = 'https://github.com/PeterZZQ/scMoMaT'
 EMAIL = 'zhangziqibuaa@gmail.com'
