@@ -19,6 +19,7 @@ scipy >= 1.7.3
 sklearn >= 0.22.2.post1
 matplotlib >= 3.5.2
 umap >= 0.5.2
+leidenalg >= 0.9.1
 adjustText >= 0.7.3 (optional)
 pandas >= 1.4.0 (optional)
 ```
