@@ -3,6 +3,7 @@ import numpy as np
 import torch.optim as opt
 from torch.nn import Module, Parameter, ParameterDict
 from torch import Tensor
+import pandas as pd
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -142,10 +143,6 @@ class scmomat_model(Module):
     @staticmethod
     def recon_loss(X, C1, C2, Sigma, b1, b2):
         return (X - C1 @ Sigma @ C2.t() - b1 - b2).pow(2).mean()
-
-    @staticmethod
-    def cosine_loss(A, B):
-        return -torch.trace(A.t() @ B)/(torch.norm(A) + 1e-6)/(torch.norm(B) + 1e-6)    
 
     def sample_mini_batch(self):
         """\
@@ -354,6 +351,21 @@ class scmomat_model(Module):
                 '''
         return losses                            
 
+    def extract_cell_factors(self):
+        """\
+        Description:
+        ------------
+            Extract cell factors from the trained model
+        
+        Return:
+        ------------
+            cell_factors: list of cell factors, where one factor correspond to one batch.
+        """
+        cell_factors = []
+        for batch in range(self.nbatches):
+            z = self.softmax(self.C_cells[str(batch)].cpu().detach()).numpy()
+            cell_factors.append(z)
+        return cell_factors
 
 class scmomat_retrain(Module):
     def __init__(self, model, counts, labels, lamb = 0.01, lr = 1e-2, seed = 0, device = device):
@@ -470,10 +482,6 @@ class scmomat_retrain(Module):
     @staticmethod
     def recon_loss(X, C1, C2, Sigma, b1, b2):
         return (X - C1 @ Sigma @ C2.t() - b1 - b2).pow(2).mean()
-
-    @staticmethod
-    def cosine_loss(A, B):
-        return -torch.trace(A.t() @ B)/(torch.norm(A) + 1e-6)/(torch.norm(B) + 1e-6)    
 
     def sample_mini_batch(self):
         """\
@@ -628,3 +636,33 @@ class scmomat_retrain(Module):
          
         return losses        
 
+    def extract_feature_factors(self):
+        """\
+        Description:
+        ------------
+            Extract feature factors from the trained model
+        
+        Return:
+        ------------
+            feature_factors: dict of feature factors, where each modality corresponds to one key.
+        """
+        feature_factors = {}
+        for mod in self.mods:
+            feature_factors[mod] = self.softmax(self.C_feats[mod]).data.cpu().numpy()
+        return feature_factors
+
+    def extract_marker_scores(self):
+        """\
+        Description:
+        ------------
+            Extract marker scores from the trained model, different from feature factor as it is multiplied with association matrix.
+        
+        Return:
+        ------------
+            S_feats: dict of marker scores, where each modality corresponds to one key.
+        """
+        S_feats = {}
+        for mod in self.mods:
+            S_feat = self.softmax(self.C_feats[mod]).data.cpu().numpy() @ self.A_assos["shared"].data.cpu().numpy().T 
+            S_feats[mod] = pd.DataFrame(data = S_feat, index = self.feats_name[mod], columns = ["cluster_" + str(i) for i in range(S_feat.shape[1])])
+            return S_feats

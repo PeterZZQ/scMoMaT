@@ -621,7 +621,7 @@ def leiden_cluster(
 
     return groups
 
-def post_process(X, n_neighbors, r = None, njobs = None, return_sparse_dist = False):
+def post_process(X, n_neighbors, r = None, njobs = 1, return_sparse_dist = False):
     # get a pairwise distance matrix for all batches
     from sklearn.metrics import pairwise_distances
     start_time = time.time()
