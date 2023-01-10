@@ -389,7 +389,7 @@ class scmomat_retrain(Module):
             labels_batches = []
             starting_pointer = 0
             for batch in range(model.nbatches):
-                n_cells = C_cells[str(batch)].shape[0]
+                n_cells = model.C_cells[str(batch)].shape[0]
                 if batch != (model.nbatches - 1):
                     labels_batches.append(labels[starting_pointer:(starting_pointer + n_cells)])
                 else:
@@ -545,7 +545,7 @@ class scmomat_retrain(Module):
 
         return loss, loss1, loss2
 
-    def train(self, T):
+    def train(self, T = 2000):
         """\
         Training function, T is the number of iterations
         """
