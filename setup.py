@@ -28,7 +28,8 @@ REQUIRED = [
     'scipy>=1.7.3',
     'scikit-learn>=0.22.1',
     'umap-learn>=0.5.2',
-    'matplotlib>=3.5.2'
+    'matplotlib>=3.5.2',
+    'leidenalg>=0.9.1'
 ]
 
 # What packages are optional?

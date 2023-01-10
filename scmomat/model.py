@@ -12,7 +12,7 @@ class scmomat_model(Module):
         Gene clusters more than cell clusters, force A_r and A_g to be sparse:
         
     """
-    def __init__(self, counts, K = 30, batch_size = 0.1, interval = 10, lr = 1e-2, lamb = 0.001, seed = 0, device = device):
+    def __init__(self, counts, K = 30, batch_size = 0.1, interval = 1000, lr = 1e-2, lamb = 0.001, seed = 0, device = device):
         super().__init__()
         
         # init parameters, 
@@ -206,7 +206,7 @@ class scmomat_model(Module):
         return loss, loss1, loss2
     
 
-    def train_func(self, T):
+    def train_func(self, T = 4000):
         best_loss = 1e12
         count = 0
         losses = []
