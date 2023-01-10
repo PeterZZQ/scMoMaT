@@ -364,18 +364,35 @@ class scmomat_retrain(Module):
         Parameters:
         ------------
             model: the old cfrm model
-            labels: the cell cluster labels, should be a list of arrays, each element within the list is the cluster assignment of cells within the corresponding batch
+            labels: the cell cluster labels
+                 1. be a list of arrays, each element within the list is the cluster assignment of cells within the corresponding batch
+                 2. be an array includes cells sorted according to batches
             lr: learning rate
             seed: seed
         """
         super().__init__()
+        # check if the labels is a list or not
+        if not isinstance(labels, list):
+            # if not, separate into list according to the batches
+            labels_batches = []
+            starting_pointer = 0
+            for batch in range(model.nbatches):
+                n_cells = C_cells[str(batch)].shape[0]
+                if batch != (model.nbatches - 1):
+                    labels_batches.append(labels[starting_pointer:(starting_pointer + n_cells)])
+                else:
+                    labels_batches.append(labels[starting_pointer:])
+                starting_pointer += n_cells
+        else:
+            labels_batches = labels
+
         # construct cell factors according to cell cluster labels
-        n_clusts = np.max(np.concatenate(labels, axis = 0)) + 1
+        n_clusts = np.max(np.concatenate(labels_batches, axis = 0)) + 1
         C_cells = {}
         for batch in range(model.nbatches):
             C_cells[str(batch)] = np.zeros((model.C_cells[str(batch)].shape[0], n_clusts))
             for clust in range(n_clusts):
-                C_cells[str(batch)][labels[batch] == clust, clust] = 100     
+                C_cells[str(batch)][labels_batches[batch] == clust, clust] = 100     
         
         # initialize parameters
         self.nbatches = model.nbatches
