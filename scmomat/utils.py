@@ -202,8 +202,8 @@ def plot_latent(zs, annos = None, batches = None, mode = "joint", save = None, f
             axs[i].spines['right'].set_visible(False)
             axs[i].spines['top'].set_visible(False)  
 
-            axs[i].set_xlim(np.min(zs[:,0]), np.max(zs[:,1]))
-            axs[i].set_ylim(np.min(zs[:,0]), np.max(zs[:,1]))
+            axs[i].set_xlim(np.min(zs[:,0]), np.max(zs[:,0]))
+            axs[i].set_ylim(np.min(zs[:,1]), np.max(zs[:,1]))
 
             if label_inplace:
                 if adjust_text_flag:
