@@ -1,5 +1,5 @@
 ## scMoMaT: a unified framework for single cell mosaic integration and multi-modal bio-marker detection
-scMoMaT v0.1.0
+scMoMaT v0.2.0
 
 
 #### Description
@@ -16,12 +16,12 @@ Python >= 3.8.10
 numpy >= 1.19.5
 torch >= 1.11.0
 scipy >= 1.7.3
-sklearn >= 0.22.2.post1
+sklearn >= 0.22.1
 matplotlib >= 3.5.2
 umap >= 0.5.2
 leidenalg >= 0.9.1
+pandas >= 1.4.0
 adjustText >= 0.7.3 (optional)
-pandas >= 1.4.0 (optional)
 ```
 
 
@@ -34,18 +34,20 @@ pandas >= 1.4.0 (optional)
 Necessary data for PBMC (the first real dataset in the manuscript, `ASAP-PBMC`) and MOp (the second real dataset in the manuscript, `MOp_5batches`) are provided, which should be suffice for the running of scMoMaT in `demo_pbmc.py` and `demo_mop_5batches.py` as examples. The dataset for the other demo scrips are available upon requests. 
 
 #### Installation 
+Install the package with 
+```
+pip install scmomat
+```
 
-Clone the repository with
+Or install the latest version by cloning the repository with
 
 ```
 git clone https://github.com/PeterZZQ/scMoMaT.git
 ```
-
 Enter the root directory of the package
 ```
 cd scMoMaT
 ```
-
 And run
 ```
 pip install .

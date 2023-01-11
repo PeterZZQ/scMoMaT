@@ -9,7 +9,25 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class scmomat_model(Module):
     """\
-        Gene clusters more than cell clusters, force A_r and A_g to be sparse:
+    Description:
+    ------------
+        Implementation of scMoMaT model in the 1st training stage.
+
+    Parameters:
+    ------------
+        counts: the dictionary that stores all the input count matrices.
+        K: number of latent dimensions.
+        batch_size: training batchsize for each iteration.
+        interval: number of iteration for each print out.
+        lr: learning rate.
+        lamb: hyper-parameter lambda in scMoMaT algorithm.
+        seed: random seed.
+        device: training device.
+    Examples:
+    -----------
+        model = scmomat.scmomat_model(counts, K = 30, device = torch.device("cuda:0"))
+        losses = model.train_func(T = 4000)
+        zs = model.extract_cell_factors()
         
     """
     def __init__(self, counts, K = 30, batch_size = 0.1, interval = 1000, lr = 1e-2, lamb = 0.001, seed = 0, device = device):
@@ -207,6 +225,16 @@ class scmomat_model(Module):
     
 
     def train_func(self, T = 4000):
+        """\
+        Description:
+        ------------
+            Main training function of scMoMaT model.
+        Parameters:
+        ------------
+            T: number of iterations.
+        Returns:
+            losses: final loss values.
+        """
         best_loss = 1e12
         count = 0
         losses = []
@@ -381,6 +409,7 @@ class scmomat_retrain(Module):
                  2. be an array includes cells sorted according to batches
             lr: learning rate
             seed: seed
+            device: training device
         """
         super().__init__()
         # check if the labels is a list or not
@@ -547,7 +576,12 @@ class scmomat_retrain(Module):
 
     def train(self, T = 2000):
         """\
-        Training function, T is the number of iterations
+        Description:
+        ------------
+            Retraining function.
+        Parameters:
+        ------------
+            T: number of training iterations.
         """
         best_loss = 1e12
         count = 0
@@ -665,4 +699,4 @@ class scmomat_retrain(Module):
         for mod in self.mods:
             S_feat = self.softmax(self.C_feats[mod]).data.cpu().numpy() @ self.A_assos["shared"].data.cpu().numpy().T 
             S_feats[mod] = pd.DataFrame(data = S_feat, index = self.feats_name[mod], columns = ["cluster_" + str(i) for i in range(S_feat.shape[1])])
-            return S_feats
+        return S_feats

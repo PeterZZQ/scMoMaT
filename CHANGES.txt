@@ -1,1 +1,2 @@
-v0.1.0, 2023-1-9 -- Initial release
+v0.1.0, 2022-12-30 -- Initial release
+v0.2.0, 2023-1-10 -- fix bugs

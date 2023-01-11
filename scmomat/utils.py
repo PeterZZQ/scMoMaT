@@ -9,6 +9,7 @@ from umap.utils import fast_knn_indices
 import time
 try:
     from adjustText import adjust_text
+    adjust_text_flag = True
 except ImportError:
     adjust_text_flag = False
 
@@ -67,7 +68,13 @@ def preprocess(counts, modality = "RNA", log = True):
     """\
     Description:
     ------------
-    Preprocess the dataset, for count, interaction matrices
+        Preprocess the dataset, for count, interaction matrices
+    
+    Parameters:
+    -------------
+        counts: count matrix
+        modality: modality that the matrix belong to, can be ``ATAC'', ``RNA'', ``protein''
+        log: log transform the data or not
     """
     if modality == "ATAC":
         # make binary, maximum is 1
@@ -76,9 +83,9 @@ def preprocess(counts, modality = "RNA", log = True):
         # counts = counts / np.sum(counts, axis = 1)[:,None]
         # counts = counts/np.max(counts)
 
-    elif modality == "interaction":
-        # gene by region matrix
-        counts = counts/(np.sum(counts, axis = 1)[:,None] + 1e-6)
+    # elif modality == "interaction":
+    #     # gene by region matrix
+    #     counts = counts/(np.sum(counts, axis = 1)[:,None] + 1e-6)
     
     else:
         # other cases, e.g. Protein, RNA, etc
@@ -96,24 +103,21 @@ def preprocess(counts, modality = "RNA", log = True):
 
 def plot_latent(zs, annos = None, batches = None, mode = "joint", save = None, figsize = (20,10), axis_label = "Latent", label_inplace = False, **kwargs):
     """\
-    Description
+    Description:
+    ------------
         Plot latent space
     Parameters
-        z1
-            the latent space of first data batch, of the shape (n_samples, n_dimensions)
-        z2
-            the latent space of the second data batch, of the shape (n_samples, n_dimensions)
-        anno1
-            the cluster annotation of the first data batch, of the  shape (n_samples,)
-        anno2
-            the cluster annotation of the second data batch, of the  shape (n_samples,)
-        mode
-            "joint": plot two latent spaces(from two batches) into one figure
-            "separate" plot two latent spaces separately
-        save
-            file name for the figure
-        figsize
-            figure size
+    ------------
+        zs: the latent embedding, of the shape (nsamples, nlatent)
+        annos: the annotation of the latent embedding, of the shape (nsamples,)
+        batches: the batch annotation of the latent embedding, of the  shape (nsamples,)
+        mode:
+            "joint": plot latent embedding of different batches into one figure
+            "separate" plot latent embedding of different batches separately
+        save: file name for the figure
+        figsize: figure size
+        axis_label: the label of axis in the plot
+        label_inplace: annotate the annotation directly into the figure or not.
     """
     _kwargs = {
         "s": 10,
@@ -215,26 +219,7 @@ def plot_latent(zs, annos = None, batches = None, mode = "joint", save = None, f
 
 
 def plot_latent_ext(zs, annos = None, mode = "joint", save = None, figsize = (20,10), axis_label = "Latent", label_inplace = False, **kwargs):
-    """\
-    Description
-        Plot latent space
-    Parameters
-        z1
-            the latent space of first data batch, of the shape (n_samples, n_dimensions)
-        z2
-            the latent space of the second data batch, of the shape (n_samples, n_dimensions)
-        anno1
-            the cluster annotation of the first data batch, of the  shape (n_samples,)
-        anno2
-            the cluster annotation of the second data batch, of the  shape (n_samples,)
-        mode
-            "joint": plot two latent spaces(from two batches) into one figure
-            "separate" plot two latent spaces separately
-        save
-            file name for the figure
-        figsize
-            figure size
-    """
+
     _kwargs = {
         "s": 10,
         "alpha": 0.9,
@@ -581,7 +566,25 @@ def leiden_cluster(
     k_neighs = 30,
     sigma = 1,
     affin = None,
+    njobs = 1,
     **partition_kwargs):
+    """\
+    Description:
+    ------------
+        Clustering the cells using cell embedding, the embedding can be either graph or matrix.
+    Parameters:
+    ------------
+        X: the matrix format embedding, provide if there exist one.
+        knn_indices: the knn indices of the graph format embedding.
+        knn_dists: the knn distances of the graph format embeddding.
+        resolution: leiden clustering resolution.
+        random_state: the random state of the clustering algorithm.
+        k_neighs: number of nearest neighbor.
+        njobs: number of jobs in parallel.
+    Return:
+    -------------
+        Cluster labels.
+    """
 
     from sklearn.neighbors import NearestNeighbors
 
@@ -600,10 +603,17 @@ def leiden_cluster(
             if X is None:
                 raise ValueError("`X' and `knn_indices & knn_dists', at least one need to be provided.")
 
-            neighbor = NearestNeighbors(n_neighbors = k_neighs)
-            neighbor.fit(X)
-            # get test connectivity result 0-1 adj_matrix, mode = 'connectivity' by default
-            knn_dists, knn_indices = neighbor.kneighbors(X, n_neighbors = k_neighs, return_distance = True)
+            # TODO: NearestNeighbor crashes when X is large
+            # neighbor = NearestNeighbors(n_neighbors = k_neighs)
+            # neighbor.fit(X)
+            # # get test connectivity result 0-1 adj_matrix, mode = 'connectivity' by default
+            # knn_dists, knn_indices = neighbor.kneighbors(X, n_neighbors = k_neighs, return_distance = True)
+
+            from sklearn.metrics import pairwise_distances
+            pair_dist = pairwise_distances(np.concatenate(X, axis = 0), n_jobs = njobs)
+            knn_indices = fast_knn_indices(pair_dist, k_neighs)[:, 1:]
+            knn_indices = knn_indices.astype(int)
+            knn_dists = pair_dist[np.arange(pair_dist.shape[0])[:, None], knn_indices].copy()
 
         affin = _compute_connectivities_umap(knn_indices = knn_indices, knn_dists = knn_dists, n_neighbors = k_neighs, set_op_mix_ratio=1.0, local_connectivity=1.0)
         affin = affin.todense()
@@ -622,6 +632,23 @@ def leiden_cluster(
     return groups
 
 def post_process(X, n_neighbors, r = None, njobs = 1, return_sparse_dist = False):
+    """\
+    Description:
+    ------------
+        The post-processing steps of scMoMaT.
+    Parameters:
+    ------------
+        X: the matrix format latent embedding.
+        n_neighors: number of nearest neighbors.
+        r: radius parameter of neighborhood size, between 0 and 1.
+        njobs: number of jobs to run in parallel, speed up the calculation.
+        return_sparse_dist: calculate the sparse pairwise distance or not in the end.
+    Return:
+    -------------
+        pair_dist: pairwise distance
+        knn_indices: the knn indices of the post-processed embedding graph.
+        knn_dists: the knn distance of the post-processed embedding graph.
+    """
     # get a pairwise distance matrix for all batches
     from sklearn.metrics import pairwise_distances
     start_time = time.time()

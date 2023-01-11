@@ -25,6 +25,18 @@ import scipy.stats as stats
 #
 ########################################################################################
 def knn_purity(X, label, k = 30):
+    """\
+    Description:
+    ------------
+        Calculate the knn purity score.
+    Parameters:
+    ------------
+        X: the embedding to calculate knn purity score upon.
+        label: the label of the embedding.
+        k: number of neighbors.
+    Return:
+        knn purity score
+    """
     neighbor = NearestNeighbors(n_neighbors = k)
     neighbor.fit(X)
     # get test connectivity result 0-1 adj_matrix, mode = 'connectivity' by default
@@ -41,11 +53,10 @@ def knn_purity(X, label, k = 30):
 #
 ########################################################################################
 def transfer_accuracy(query_label, train_label, n = 30, z_query = None, z_train = None, knn_graph = None):
-    """
-    Label transfer accuracy
-    Parameter:
-    ----------
-        knn_indices is a (n_query, n_train) matrix
+    """\
+    Description:
+    ------------
+        Label transfer accuracy
     """
     if knn_graph is not None:
         n_query = knn_graph.shape[0]
@@ -77,15 +88,19 @@ def transfer_accuracy(query_label, train_label, n = 30, z_query = None, z_train 
 ########################################################################################
 
 def ari(group1, group2, implementation=None):
-    """ Adjusted Rand Index
-    The function is symmetric, so group1 and group2 can be switched
-    For single cell integration evaluation the scenario is:
-        predicted cluster assignments vs. ground-truth (e.g. cell type) assignments
-    :param adata: anndata object
-    :param group1: string of column in adata.obs containing labels
-    :param group2: string of column in adata.obs containing labels
-    :params implementation: of set to 'sklearn', uses sklearns implementation,
+    """\
+    Description:
+    ------------
+        Calculate ARI score.
+    Parameters:
+    ------------
+        group1: labels 1
+        group2: labels 2
+        implementation: of set to 'sklearn', uses sklearns implementation,
         otherwise native implementation is taken
+    Return:
+    ------------
+        ARI score
     """
 
     if len(group1) != len(group2):
@@ -119,6 +134,18 @@ def ari(group1, group2, implementation=None):
 #
 ########################################################################################
 def F1_score(gt, predict):
+    """\
+    Description:
+    ------------
+        Calculation of F1 score for rare cell type detection.
+    Parameters:
+    ------------
+        gt: ground truth labels
+        predict: predicted labels
+    Return:
+    ------------
+        F1 score
+    """
     tp = np.sum((predict != 0) * (gt != 0))
     fp = np.sum((predict != 0) * (gt == 0))
     tn = np.sum((predict == 0) * (gt == 0))
@@ -134,22 +161,26 @@ def F1_score(gt, predict):
 #
 ########################################################################################
 def nmi(group1, group2, method="arithmetic", nmi_dir=None):
-    """
-    Wrapper for normalized mutual information NMI between two different cluster assignments
-    :param adata: Anndata object
-    :param group1: column name of `adata.obs`
-    :param group2: column name of `adata.obs`
-    :param method: NMI implementation
+    """\
+    Description:
+    ------------
+        Calculate NMI score.
+    Parameters:
+    ------------
+        group1: labels 1
+        group2: labels 2
+        method: NMI implementation
         'max': scikit method with `average_method='max'`
         'min': scikit method with `average_method='min'`
         'geometric': scikit method with `average_method='geometric'`
         'arithmetic': scikit method with `average_method='arithmetic'`
         'Lancichinetti': implementation by A. Lancichinetti 2009 et al. https://sites.google.com/site/andrealancichinetti/mutual
         'ONMI': implementation by Aaron F. McDaid et al. https://github.com/aaronmcdaid/Overlapping-NMI
-    :param nmi_dir: directory of compiled C code if 'Lancichinetti' or 'ONMI' are specified as `method`.
+        nmi_dir: directory of compiled C code if 'Lancichinetti' or 'ONMI' are specified as `method`.
         These packages need to be compiled as specified in the corresponding READMEs.
-    :return:
-        Normalized mutual information NMI value
+    Return:
+    ------------
+        NMI score
     """
     
     if len(group1) != len(group2):
@@ -294,15 +325,21 @@ def silhouette(
         metric='euclidean',
         scale=True
 ):
-    """
-    Wrapper for sklearn silhouette function values range from [-1, 1] with
-        1 being an ideal fit
-        0 indicating overlapping clusters and
-        -1 indicating misclassified cells
-    By default, the score is scaled between 0 and 1. This is controlled `scale=True`
-    :param group_gt: cell labels
-    :param X: embedding e.g. PCA
-    :param scale: default True, scale between 0 (worst) and 1 (best)
+    """\
+    Description:
+    ------------
+        Wrapper for sklearn silhouette function values range from [-1, 1] with
+            1 being an ideal fit
+            0 indicating overlapping clusters and
+            -1 indicating misclassified cells
+        By default, the score is scaled between 0 and 1. This is controlled `scale=True`
+
+    Parameters:
+    ------------
+        group_gt: cell labels
+        X: embedding 
+        scale: default True, scale between 0 (worst) and 1 (best)
+        metric: distance metric
     """
     asw = silhouette_score(
         X=X,
@@ -323,17 +360,24 @@ def silhouette_batch(
         scale=True,
         verbose=True
 ):
-    """
-    Absolute silhouette score of batch labels subsetted for each group.
-    :param batch_key: batches to be compared against
-    :param group_key: group labels to be subsetted by e.g. cell type
-    :param embed: name of column in adata.obsm
-    :param metric: see sklearn silhouette score
-    :param scale: if True, scale between 0 and 1
-    :param return_all: if True, return all silhouette scores and label means
+    """\
+    Description:
+    ------------
+        Absolute silhouette score of batch labels subsetted for each group.
+
+    Parameters:
+    -----------
+        batch_gt: ground truth batch label
+        group_gt: ground truth group label
+        X: embedding
+        metric: see sklearn silhouette score
+        scale: if True, scale between 0 and 1
+        return_all: if True, return all silhouette scores and label means
         default False: return average width silhouette (ASW)
-    :param verbose:
-    :return:
+        verbose:
+    
+    Returns:
+    -----------
         average width silhouette ASW
         mean silhouette per group in pd.DataFrame
         Absolute silhouette scores per group label
@@ -433,13 +477,19 @@ def silhouette_batch(
 ########################################################################################
 
 def graph_connectivity(X = None, G = None, groups = None, k = 10):
-    """"
-    Quantify how connected the subgraph corresponding to each batch cluster is.
-    Calculate per label: #cells_in_largest_connected_component/#all_cells
-    Final score: Average over labels
+    """\
+    Description:
+    ------------
+        Quantify how connected the subgraph corresponding to each batch cluster is.
+        Calculate per label: #cells_in_largest_connected_component/#all_cells
+        Final score: Average over labels
 
-    :param adata: adata with computed neighborhood graph
-    :param label_key: name in adata.obs containing the cell identity labels
+    Parameters:
+    ------------
+        X: embedding
+        G: embedding graph
+        groups: group labels
+        k: number of neighbors
     """
     clust_res = []
     if X is not None: 
