@@ -78,7 +78,7 @@ def preprocess(counts, modality = "RNA", log = True):
     """
     if modality == "ATAC":
         # make binary, maximum is 1
-        counts = (counts > 0).astype(np.float) 
+        counts = (counts > 0).astype(np.float64) 
         # # normalize according to library size
         # counts = counts / np.sum(counts, axis = 1)[:,None]
         # counts = counts/np.max(counts)
