@@ -1741,7 +1741,9 @@ class UMAP(BaseEstimator):
                     "a tuple of (distance [float], gradient [np.array])"
                 )
         elif self.metric == "precomputed":
+            # self.unique is set to be unique, the default is False
             if self.unique:
+                # if self.unique is true, raise error
                 raise ValueError("unique is poorly defined on a precomputed metric")
             warn(
                 "using precomputed metric; transform will be unavailable for new data and inverse_transform "
@@ -2215,6 +2217,7 @@ class UMAP(BaseEstimator):
             inverse = list(range(X.shape[0]))
 
         # Error check n_neighbors based on data size
+        # if not unique, X[index] is X itself, larger than self.n_neighbors, and self._n_neighbors is set to self.n_neighbors
         if X[index].shape[0] <= self.n_neighbors:
             if X[index].shape[0] == 1:
                 self.embedding_ = np.zeros(
@@ -2237,6 +2240,7 @@ class UMAP(BaseEstimator):
         if self._sparse_data and not X.has_sorted_indices:
             X.sort_indices()
 
+        # generate random state given seed
         random_state = check_random_state(self.random_state)
 
         if self.verbose:
@@ -2272,6 +2276,7 @@ class UMAP(BaseEstimator):
                     self._knn_indices[row_id] = row_indices[row_nn_data_indices]
                     self._knn_dists[row_id] = row_data[row_nn_data_indices]
             else:
+                # knn don't need to be calculated, as we have already calculated knn
                 print("Provided KNN...")
                 # use the provided knn in the initialization
                 self._knn_indices = self.knn_indices
@@ -2573,7 +2578,9 @@ class UMAP(BaseEstimator):
         if self.verbose:
             print(ts(), "Construct embedding")
 
+        # Transforming into embedding
         if self.transform_mode == "embedding":
+            # when we have graph and the init is random, self._raw_data[index] is a place-holder
             self.embedding_, aux_data = self._fit_embed_data(
                 self._raw_data[index], n_epochs, init, random_state,  # JH why raw data?
             )
@@ -2601,6 +2608,7 @@ class UMAP(BaseEstimator):
         """A method wrapper for simplicial_set_embedding that can be
         replaced by subclasses.
         """
+        print(init + " intialization...")
         return simplicial_set_embedding(
             X,
             self.graph_,

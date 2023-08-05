@@ -7,6 +7,7 @@ from scipy import stats
 import scipy.sparse as sp
 from umap.utils import fast_knn_indices
 import time
+import scmomat.umap_batch as umap_batch
 try:
     from adjustText import adjust_text
     adjust_text_flag = True
@@ -631,11 +632,11 @@ def leiden_cluster(
 
     return groups
 
-def post_process(X, n_neighbors, r = None, njobs = 1, return_sparse_dist = False):
+def calc_post_graph(X, n_neighbors, r = None, njobs = 1, return_sparse_dist = False):
     """\
     Description:
     ------------
-        The post-processing steps of scMoMaT.
+        Post-processing scMoMaT cell factor into neighborhood graph.
     Parameters:
     ------------
         X: the matrix format latent embedding.
@@ -645,7 +646,6 @@ def post_process(X, n_neighbors, r = None, njobs = 1, return_sparse_dist = False
         return_sparse_dist: calculate the sparse pairwise distance or not in the end.
     Return:
     -------------
-        pair_dist: pairwise distance
         knn_indices: the knn indices of the post-processed embedding graph.
         knn_dists: the knn distance of the post-processed embedding graph.
     """
@@ -741,27 +741,52 @@ def post_process(X, n_neighbors, r = None, njobs = 1, return_sparse_dist = False
                 block = knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])]
                 knn_dists[start_point[batch_i]:(end_point[batch_i] + 1), sum(b_neighbors[0:batch_j]):sum(b_neighbors[0:(batch_j+1)])] = block/(np.mean(block, axis = 1, keepdims = True) + 1e-6) * np.mean(ref_block, axis = 1, keepdims = True)
     end_time = time.time()
-    print("modify distance 1, time used {:.4f}s".format(end_time - start_time))
+    print("modify distance, time used {:.4f}s".format(end_time - start_time))
 
-    start_time = time.time()
+    # start_time = time.time()
     # Modify pairwise distance matrix where the elements are changed due to knn_dists, 
     # pairwise_distance does not affect the UMAP visualization and leiden clustering
 
 
     # NEW, UMAP
-    if return_sparse_dist:
-        pairwise_distances = np.zeros_like(pair_dist)
-        pairwise_distances[np.arange(pairwise_distances.shape[0])[:, None], knn_indices] = knn_dists
-        pairwise_distances = pairwise_distances + pairwise_distances.T - pairwise_distances * pairwise_distances.T
+    # if return_sparse_dist:
+    #     pairwise_distances = np.zeros_like(pair_dist)
+    #     pairwise_distances[np.arange(pairwise_distances.shape[0])[:, None], knn_indices] = knn_dists
+    #     pairwise_distances = pairwise_distances + pairwise_distances.T - pairwise_distances * pairwise_distances.T
 
-        end_time = time.time()
-        print("modify distance 2, time used {:.4f}s".format(end_time - start_time))
+    #     end_time = time.time()
+    #     print("modify distance 2, time used {:.4f}s".format(end_time - start_time))
 
-        # start_time = time.time()     
-        pair_dist = sp.csr_matrix(pairwise_distances)
-    else:
-        pair_dist = sp.csr_matrix(pair_dist)
+    #     # start_time = time.time()     
+    #     pair_dist = sp.csr_matrix(pairwise_distances)
+    # else:
+        # pair_dist = sp.csr_matrix(pair_dist)
     # end_time = time.time()
     # print("make sparse, time used {:.4f}s".format(end_time - start_time))
     # pairwise_distances = pair_dist
-    return pair_dist, knn_indices, knn_dists
+    return knn_indices, knn_dists
+
+
+def calc_umap_embedding(knn_indices, knn_dists, n_components = 2, n_neighbors = 100, min_dist = 0.2, 
+                        random_state = 0, init = "random", **kwarg):
+    """
+    Description:
+    -------------
+        Calculating UMAP from knn graph (knn_indices, knn_dists)
+    Parameters:
+    -------------
+        knn_indices, knn_dists: the output of function calc_post_graph
+        n_components: number of components in UMAP
+        n_neighbors, min_dist, random_state, init: UMAP parameters
+    Return:
+    -------------
+        x_umap: umap embedding of (n_cells, n_components) 
+        
+    """
+    umap_op = umap_batch.UMAP(n_components = n_components, n_neighbors = n_neighbors, min_dist = min_dist, random_state = random_state, 
+                              metric = "precomputed", knn_dists = knn_dists, knn_indices = knn_indices, init = init, **kwarg)
+    # fill in an empty matrix as place-holder
+    empty_matrix = sp.csr_matrix(np.zeros((knn_indices.shape[0], knn_indices.shape[0])))
+    x_umap = umap_op.fit_transform(empty_matrix)
+
+    return x_umap

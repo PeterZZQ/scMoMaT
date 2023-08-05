@@ -101,7 +101,7 @@ find_geneact <- function(peak.df, annotation.file, seq.levels, upstream = 2000, 
 
 
 # hyper-parameters
-species <- "Mouse"
+species <- "Human"
 # upstream region size (base-pair)
 upstream <- 2000
 # downstream region size (base-pair)
