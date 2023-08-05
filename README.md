@@ -1,5 +1,5 @@
 ## scMoMaT: a unified framework for single cell mosaic integration and multi-modal bio-marker detection
-scMoMaT v0.2.0
+scMoMaT v0.2.2 **Updated the post-processing step to solve the memory overflow issue**
 
 
 #### Description
