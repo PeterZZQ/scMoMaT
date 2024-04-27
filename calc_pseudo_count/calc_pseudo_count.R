@@ -124,4 +124,4 @@ if(species == "Mouse"){
 }
 
 # output gene activity matrix
-write.table(A, file = paste0(path, "GxR.csv"), sep = ",")
+write.table(A, file = paste0(path, "GxR.csv"), sep = ",", quote = FALSE)
