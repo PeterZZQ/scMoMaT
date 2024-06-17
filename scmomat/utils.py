@@ -494,6 +494,77 @@ def plot_factor(C_feats, markers, cluster = 0, figsize = (10,20)):
     plt.tight_layout()
     return fig
 
+def plot_latent_continuous(zs, annos = None, mode = "joint", save = None, title = None, figsize = (20,10), axis_label = "Latent", **kwargs):
+    """\
+    Description
+        Plot latent space with continuous values
+    Parameters
+        z1
+            the latent space of first data batch, of the shape (n_samples, n_dimensions)
+        z2
+            the latent space of the second data batch, of the shape (n_samples, n_dimensions)
+        anno1
+            the cluster annotation of the first data batch, of the  shape (n_samples,)
+        anno2
+            the cluster annotation of the second data batch, of the  shape (n_samples,)
+        mode
+            "joint": plot two latent spaces(from two batches) into one figure
+            "separate" plot two latent spaces separately
+        save
+            file name for the figure
+        figsize
+            figure size
+    """
+    _kwargs = {
+        "s": 10,
+        "alpha": 0.9,
+        "markerscale": 1,
+        "text_size": "xx-large",
+        "cmap": "gnuplot"
+    }
+    _kwargs.update(kwargs)
+
+    fig = plt.figure(figsize = figsize)
+    if mode == "joint":
+        ax = fig.add_subplot()
+        
+
+        p = ax.scatter(np.concatenate(zs, axis = 0)[:,0], np.concatenate(zs, axis = 0)[:,1], c = np.concatenate(annos), cmap=plt.get_cmap(_kwargs["cmap"]), s = _kwargs["s"], alpha = _kwargs["alpha"])
+                
+        ax.tick_params(axis = "both", which = "major", labelsize = 15)
+        ax.set_xlabel(axis_label + " 1", fontsize = 19)
+        ax.set_ylabel(axis_label + " 2", fontsize = 19)
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        if title is not None:
+            ax.set_title(title)
+        cbar = fig.colorbar(p, fraction=0.046, pad=0.04, ax = ax)
+        cbar.ax.tick_params(labelsize = 20)
+
+
+    elif mode == "separate":
+        axs = fig.subplots(len(zs),1)
+
+        for batch in range(len(zs)):
+            p = axs[batch].scatter(zs[batch][:,0], zs[batch][:,1], c = annos[batch], cmap=plt.get_cmap(_kwargs["cmap"]), s = _kwargs["s"], alpha = _kwargs["alpha"])
+            
+            axs[batch].set_title("batch " + str(batch + 1), fontsize = 25)
+            axs[batch].tick_params(axis = "both", which = "major", labelsize = 15)
+
+            axs[batch].set_xlabel(axis_label + " 1", fontsize = 19)
+            axs[batch].set_ylabel(axis_label + " 2", fontsize = 19)
+            # axs[batch].set_xlim(np.min(np.concatenate((z1[:,0], z2[:,0]))), np.max(np.concatenate((z1[:,0], z2[:,0]))))
+            # axs[batch].set_ylim(np.min(np.concatenate((z1[:,1], z2[:,1]))), np.max(np.concatenate((z1[:,1], z2[:,1]))))
+            axs[batch].spines['right'].set_visible(False)
+            axs[batch].spines['top'].set_visible(False)  
+            
+            cbar = fig.colorbar(p, fraction=0.046, pad=0.04, ax = axs[batch])
+            cbar.ax.tick_params(labelsize = 20)
+
+    plt.tight_layout()
+    if save:
+        fig.savefig(save, bbox_inches = "tight")
+        
 # ----------------------------------------------------- # 
 
 # Post-processing steps
